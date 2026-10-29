@@ -1,0 +1,20 @@
+Required Notice: Copyright Saeb Molaee — bitcoin4.fun
+
+Original project code, documentation and site content are licensed under
+PolyForm Noncommercial License 1.0.0; see LICENSE.md.
+
+This is source-available software, not OSI-approved open-source software.
+Commercial use not permitted by that license requires a separate prior written
+license from Saeb Molaee. Contact: 09113458375@bitcoin4.fun.
+
+The license applies to copyrightable project material, not exclusive ownership
+of the general idea of paper wallets or Bitcoin. Mandatory statutory rights
+are unaffected. Third-party components retain their own licenses:
+
+- bitcoin4funsite/static/fonts/: Sahel v3.4.0 by Saber Rastikerdar,
+  SIL Open Font License 1.1, with upstream Open Sans notice; see local LICENSE.
+- btc_envelope_maker/fonts/: Vazir Code Hack; see local LICENSE.
+- Python dependencies: their respective upstream licenses.
+
+Commercial permission for this project does not relicense third-party fonts
+or dependencies and does not constitute financial, legal or tax advice.

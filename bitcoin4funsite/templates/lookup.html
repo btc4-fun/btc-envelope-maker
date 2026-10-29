@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% set page = 'lookup' %}
+{% block title %}استعلام آدرس عمومی با سریال | بیت‌کوین برای سرگرمی{% endblock %}
+{% block content %}
+<header class="page-heading shell"><a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> استعلام سریال</a><p class="eyebrow">فقط بخش عمومی پاکت</p><h1>یک سریال.<br>یک آدرس عمومی.</h1><p class="page-deck">شمارهٔ سریال روی پاکت را وارد کنید تا آدرس دریافت آن را ببینید. اینجا جای کلمات بازیابی نیست؛ برای این کار نیازی به باز کردن راز پاکت ندارید.</p></header>
+<section class="lookup-layout shell" aria-label="استعلام عمومی پاکت">
+  <div class="lookup-main">
+    <form id="lookup-form" action="/lookup" method="get" data-initial-serial="{{ serial|default('', true) }}">
+      <label for="serial">شمارهٔ سریال پاکت</label>
+      <p id="serial-hint" class="field-hint">فقط شمارهٔ سریال؛ با حروف و ارقام انگلیسی، خط تیره یا زیرخط. فاصله وارد نکنید.</p>
+      <div class="lookup-controls"><input id="serial" name="serial" type="text" value="{{ serial|default('', true) }}" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,63}" aria-describedby="serial-hint" required><button id="lookup-submit" class="button" type="submit">نمایش آدرس <span aria-hidden="true">←</span></button></div>
+    </form>
+    <p id="lookup-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div id="lookup-result" class="lookup-result" hidden></div>
+    <noscript>
+      {% if wallet %}
+      <section class="lookup-result" aria-label="آدرس عمومی پیدا شد">
+        <h2>آدرس عمومی این پاکت</h2>
+        <p class="result-label">شمارهٔ سریال</p>
+        <p class="public-serial ltr-block" dir="ltr">{{ wallet.serial }}</p>
+        <p class="result-label">آدرس دریافت در شبکهٔ اصلی بیت‌کوین</p>
+        <p class="public-address ltr-block" dir="ltr">{{ wallet.address }}</p>
+        <figure class="qr-block"><img src="/api/wallets/{{ wallet.serial }}/qr.svg" alt="کد تصویری آدرس عمومی برای دریافت بیت‌کوین" width="192" height="192"><figcaption>فقط برای دریافت؛ کلمات بازیابی در این تصویر نیست.</figcaption></figure>
+        <a class="explorer-link" href="{{ wallet.explorer_url }}" target="_blank" rel="noopener noreferrer">مشاهدهٔ تراکنش‌ها در کاوشگر خارجی ↗</a>
+        <p>نمایش آدرس، تضمین موجودی یا تأیید تراکنش نیست. پیوند خارجی فقط با انتخاب شما باز می‌شود.</p>
+      </section>
+      {% elif lookup_error %}
+      <p role="status">{% if lookup_error == 'not_found' %}پاکتی با این شمارهٔ سریال پیدا نشد.{% else %}سرویس استعلام فعلاً در دسترس نیست.{% endif %}</p>
+      {% else %}
+      <div class="callout"><strong>جاوااسکریپت غیرفعال است.</strong><p>با فرستادن شمارهٔ سریال، آدرس و کد تصویری در همین صفحه نمایش داده می‌شوند؛ هرگز کلمات بازیابی را وارد نکنید.</p></div>
+      {% endif %}
+    </noscript>
+  </div>
+  <aside class="lookup-aside"><span class="aside-symbol" aria-hidden="true">↗</span><h2>چه چیزی نمایش داده می‌شود؟</h2><p>آدرس عمومی ثبت‌شده، کد تصویری محلی برای دریافت و یک پیوند اختیاری برای دیدن تراکنش‌ها.</p><p>هیچ درخواست خودکاری به مرورگر بلاک فرستاده نمی‌شود. فقط اگر پیوند خارجی را خودتان باز کنید، آن سرویس از آدرس و اطلاعات اتصال شما باخبر می‌شود.</p><p>سریال و آدرس، مالکیت، موجودی یا تأیید تراکنش را ثابت نمی‌کنند.</p><a class="text-link" href="/guide">پیش از واریز، راهنما را بخوانید <span aria-hidden="true">←</span></a></aside>
+</section>
+<section class="article-end shell"><p>اگر کسی برای استعلام از شما کلمات بازیابی خواست، متوقف شوید.</p><a class="text-link" href="/terms">شرایط و مسئولیت‌ها <span aria-hidden="true">←</span></a></section>
+{% endblock %}

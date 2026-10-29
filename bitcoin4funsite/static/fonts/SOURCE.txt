@@ -1,0 +1,13 @@
+Sahel v3.4.0, unmodified webfont files
+
+Upstream release:
+https://github.com/rastikerdar/sahel-font/releases/tag/v3.4.0
+
+Archive:
+https://github.com/rastikerdar/sahel-font/releases/download/v3.4.0/sahel-font-v3.4.0.zip
+
+Archive SHA-256:
+3437606dbc3044289310dde3a9b63decdc7727e10dd01a4889cf5a04dfe070ad
+
+Vendored files: Sahel.woff2, Sahel-Bold.woff2 and upstream LICENSE.
+Fonts are served from this site only. No remote font loader is used.

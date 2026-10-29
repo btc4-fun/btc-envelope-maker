@@ -1,0 +1,3 @@
+# Preserve vendored upstream license text byte-for-byte.
+bitcoin4funsite/static/fonts/LICENSE -whitespace
+btc_envelope_maker/fonts/LICENSE -whitespace

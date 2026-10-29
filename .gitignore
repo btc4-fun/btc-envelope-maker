@@ -1,0 +1,39 @@
+# Local operator notes and credentials
+/todo
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.kdbx
+
+# Generated wallets, ledgers, databases and local configuration
+**/config.toml
+**/out/
+**/ledger*.csv
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite3
+**/*.pdf
+**/data/
+**/backups/
+
+# Tooling and generated artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.idea/
+node_modules/
+artifacts/
+*.tar
+*.tar.gz
+*.log

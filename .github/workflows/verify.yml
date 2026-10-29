@@ -1,0 +1,27 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install locked website dependencies
+        run: python -m pip install --require-hashes -r bitcoin4funsite/requirements.txt
+      - name: Website unit and UI contract tests
+        run: python -m unittest discover -s bitcoin4funsite/tests -v
+      - name: Compile application
+        run: python -m compileall -q bitcoin4funsite scripts
+      - name: Publication guard regression controls
+        run: python bitcoin4funsite/tests/check_publication_guard.py
+      - name: Build deployment image
+        run: docker build -t bitcoin4fun:ci bitcoin4funsite

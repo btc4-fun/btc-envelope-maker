@@ -1,0 +1,53 @@
+name: bitcoin4fun
+
+services:
+  web:
+    image: ${BITCOIN4FUN_IMAGE:-bitcoin4fun:local}
+    build:
+      context: .
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 192m
+    cpus: 1.0
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid
+    ports:
+      - "127.0.0.1:${BITCOIN4FUN_BIND_PORT:-18084}:8080"
+    environment:
+      BTC_DB_HOST: ${BTC_DB_HOST:-nextcloud-aio-database}
+      BTC_DB_PORT: ${BTC_DB_PORT:-5432}
+      BTC_DB_NAME: ${BTC_DB_NAME:-d_bitcoin4fun}
+      BTC_DB_USER: ${BTC_DB_USER:?Set a dedicated read-only database role}
+      BTC_DB_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - type: bind
+        source: ${BTC_DB_PASSWORD_FILE:-./secrets/db_password}
+        target: /run/secrets/db_password
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  database:
+    external: true
+    name: ${BTC_DB_NETWORK:-nextcloud-aio}
