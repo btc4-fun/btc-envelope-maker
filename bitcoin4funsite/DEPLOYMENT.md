@@ -14,7 +14,7 @@ mean a live PostgreSQL-backed lookup works without reaching this server.
   serials by default. Health endpoint /healthz checks HTTP process health only,
   not database readiness.
 - Public JSON: /api/wallets/SERIAL, local QR: /api/wallets/SERIAL/qr.svg.
-- Direct pages: /s/SERIAL and /SERIAL, including go.bitcoin4.fun/SERIAL.
+- Direct pages: /s/SERIAL and /SERIAL, including go.btc4.fun/SERIAL.
 - No authentication, serial listing or write endpoint. Serial-address mapping
   is deliberately public; serials are not passwords or proof of ownership.
 
@@ -93,13 +93,15 @@ Shared Caddy uses host networking and the existing bind-mounted file:
 
 /home/saeb/caddy/Caddyfile
 
-Existing certificate lineage already covers bitcoin4.fun and go.bitcoin4.fun:
+The target hostnames are btc4.fun and go.btc4.fun. Before activation, verify
+hostname DNS and a certificate whose SANs cover both names. The example below
+assumes this certificate lineage; substitute the verified live paths if needed:
 
-/etc/letsencrypt/live/bitcoin4.fun/
+/etc/letsencrypt/live/btc4.fun/
 
-Before activation, recheck certificate SAN/validity and hostname DNS. Do not
-issue a replacement just because this application is new. Preserve all shared
-Caddy routes, mounts, global settings and unrelated certificates.
+A source rebrand does not issue or verify a certificate. Do not rename an
+existing lineage or assume the old certificate covers the new names. Preserve
+all shared Caddy routes, mounts, global settings and unrelated certificates.
 
 User approval is required for the exact domain blocks and reload. The approved
 operation for this task is only adding the two requested hostnames, with a
@@ -113,8 +115,8 @@ validate and reload the previous config. Never replace all shared routes with
 the example below.
 
 ```caddyfile
-https://bitcoin4.fun, https://go.bitcoin4.fun {
-    tls /etc/letsencrypt/live/bitcoin4.fun/fullchain.pem /etc/letsencrypt/live/bitcoin4.fun/privkey.pem
+https://btc4.fun, https://go.btc4.fun {
+    tls /etc/letsencrypt/live/btc4.fun/fullchain.pem /etc/letsencrypt/live/btc4.fun/privkey.pem
     encode zstd gzip
     reverse_proxy 127.0.0.1:18084
 }

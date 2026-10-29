@@ -1,19 +1,31 @@
-# Verified installation status
+# Installation record and domain rebrand checklist
 
-The site was built and activated on the explicitly requested RPi host. Both
-public HTTPS hostnames returned the application, and browser inspection proved
-same-origin font, CSS, JavaScript, API and QR requests with no automatic
-third-party requests or CSP errors. Mobile viewport testing at 360px showed no
-horizontal overflow.
+## Target public endpoints
 
-- Public site: https://bitcoin4.fun
-- Serial route: https://go.bitcoin4.fun/SERIAL
+- Public site: https://btc4.fun
+- Serial route: https://go.btc4.fun/SERIAL
+
+These are the source-level rebrand targets, not a fresh deployment receipt.
+DNS, TLS, proxy routing and the running image must be verified separately for
+both names. The repository slug and internal application/database identifiers
+remain unchanged; no database migration or wallet regeneration is required.
+
+## Original installation evidence (before the domain rebrand)
+
+The site was built and activated on the explicitly requested RPi host. At that
+time, both public HTTPS hostnames returned the application, and browser
+inspection proved same-origin font, CSS, JavaScript, API and QR requests with
+no automatic third-party requests or CSP errors. Mobile viewport testing at
+360px showed no horizontal overflow. These historical checks do not establish
+that the target endpoints above are deployed or verified.
+
 - Application root: /home/saeb/bitcoin4fun/bitcoin4funsite
 - Existing database: d_bitcoin4fun, table public.wallets.
 - Dedicated web role: bitcoin4fun_web_ro, SELECT(serial,address) only.
 - Bind address: 127.0.0.1:18084; shared Caddy forwards the two named hosts.
 - Caddy backup: /home/saeb/caddy/bitcoin4fun-preflight/Caddyfile.before.
-- Existing certificate covers both names; not reissued by this task.
+- The original certificate covered the original names; new-name coverage must
+  be verified during deployment.
 - Native architecture: linux/arm64. Nonroot, readonly rootfs and password mount,
   dropped capabilities, no-new-privileges and bounded logs verified at runtime.
 

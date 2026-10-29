@@ -44,7 +44,7 @@ class UIContract(unittest.TestCase):
         self.assertIn("بیت‌کوین،", source)
         self.assertIn("در یک پاکت", source)
         self.assertIn("کلمات بازیابی", source)
-        self.assertIn("09113458375@bitcoin4.fun", source)
+        self.assertIn("09113458375@btc4.fun", source)
         self.assertIn("https://github.com/sae13/bitcoin4fun", source)
         for tag, attrs in document.elements:
             self.assertFalse(any(key.startswith("on") for key in attrs), attrs)

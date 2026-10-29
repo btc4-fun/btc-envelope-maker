@@ -3,7 +3,7 @@
 Never submit recovery words, private keys, confidential PDFs, database passwords
 or customer ledgers in public issues. Report vulnerabilities privately to:
 
-09113458375@bitcoin4.fun
+09113458375@btc4.fun
 
 ## Website boundary
 
