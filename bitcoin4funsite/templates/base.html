@@ -8,24 +8,29 @@
   <title>{% block title %}بیت‌کوین برای سرگرمی؛ یک تجربهٔ کاغذی{% endblock %}</title>
   <link rel="stylesheet" href="/static/site.css">
   <script src="/static/site.js" defer></script>
+  {% block scripts %}{% endblock %}
 </head>
 <body>
   <a class="skip-link" href="#main-content">رفتن به محتوای اصلی</a>
   <header class="site-header shell">
     <a class="brand" href="/" aria-label="بیت‌کوین برای سرگرمی، صفحهٔ نخست">
       <span class="brand-mark" aria-hidden="true">₿</span>
-      <span>بیت‌کوین برای سرگرمی<span class="brand-subtitle" lang="en" dir="ltr">btc4.fun</span></span>
+      <span>بیت‌کوین برای سرگرمی<span class="brand-subtitle" lang="en" dir="ltr">btc4fun · btc4.fun</span></span>
     </a>
     <nav aria-label="راهنمای سایت">
       <a href="/guide"{% if page == 'guide' %} aria-current="page"{% endif %}>راهنمای پاکت</a>
-      <a href="/kids"{% if page == 'kids' %} aria-current="page"{% endif %}>برای کوچک‌ترها</a>
+      <a href="/kids"{% if page == 'kids' %} aria-current="page"{% endif %}>راهنما برای ۷ ساله‌ها</a>
+      <a href="/satoshi"{% if page == 'satoshi' %} aria-current="page"{% endif %}>ساتوشی چیست؟</a>
+      <a href="/costs"{% if page == 'costs' %} aria-current="page"{% endif %}>قیمت و هزینه‌ها</a>
+      <a class="nav-terms" href="/t"{% if page == 'terms' %} aria-current="page"{% endif %}>شرایط استفاده</a>
+      <a href="/contact"{% if page == 'contact' %} aria-current="page"{% endif %}>تماس</a>
       <a class="nav-lookup" href="/lookup"{% if page == 'lookup' %} aria-current="page"{% endif %}>استعلام سریال <span aria-hidden="true">↖</span></a>
     </nav>
   </header>
   <main id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
   <footer class="site-footer shell">
     <div class="footer-intro"><a class="footer-name" href="/">یک پاکت، یک شروع کنجکاوانه.</a><p>برای یاد گرفتن و تجربه کردن؛ نه وعدهٔ ثروتمند شدن.</p></div>
-    <div class="footer-links"><a href="/terms">شرایط و مسئولیت‌ها</a><a href="https://github.com/sae13/bitcoin4fun" target="_blank" rel="noopener noreferrer">کد و مجوز استفاده <span class="sr-only">؛ سایت خارجی، در زبانهٔ جدید</span><span aria-hidden="true">↗</span></a></div>
+    <div class="footer-links"><a href="/terms">شرایط و مسئولیت‌ها</a><a href="https://github.com/sae13/btc4fun" target="_blank" rel="noopener noreferrer">کد و مجوز استفاده <span class="sr-only">؛ سایت خارجی، در زبانهٔ جدید</span><span aria-hidden="true">↗</span></a></div>
     <div class="footer-contact"><span>برای راهنمایی، بدون ارسال کلمات بازیابی:</span><a class="ltr-block" dir="ltr" href="mailto:09113458375@btc4.fun">09113458375@btc4.fun</a></div>
     <p class="footer-note">این سایت هیچ‌وقت کلمات بازیابی شما را نمی‌خواهد. کلمات را در هیچ فرم، پیام یا عکسی برای ما نفرستید.</p>
   </footer>

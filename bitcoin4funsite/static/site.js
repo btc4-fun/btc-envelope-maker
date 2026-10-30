@@ -53,12 +53,20 @@
       caption.textContent = "کد تصویری فعلاً در دسترس نیست؛ از آدرس عمومی نوشته‌شده استفاده کنید.";
     });
     figure.append(qr, caption);
-    const explorer = element("a", "explorer-link", "مشاهدهٔ تراکنش‌ها در مرورگر بلاک ↗");
-    explorer.href = wallet.explorer_url;
-    explorer.target = "_blank";
-    explorer.rel = "noopener noreferrer";
-    const warning = element("p", "result-warning", "پیوند بالا یک سایت خارجی را در زبانهٔ جدید باز می‌کند و آدرس عمومی را با آن سرویس به اشتراک می‌گذارد. نمایش آدرس، تضمین موجودی یا تأیید تراکنش نیست.");
-    result.replaceChildren(heading, serialLabel, serial, addressLabel, address, copy, figure, explorer, warning);
+    const explorers = element("div", "explorer-links");
+    for (const [prefix, label] of [
+      ["https://mempool.space/address/", "کاوشگر مم‌پول ↗"],
+      ["https://blockstream.info/address/", "کاوشگر بلاک‌استریم ↗"],
+      ["https://www.blockchain.com/explorer/addresses/btc/", "کاوشگر بلاک‌چین ↗"]
+    ]) {
+      const explorer = element("a", "explorer-link", label);
+      explorer.href = prefix + wallet.address;
+      explorer.target = "_blank";
+      explorer.rel = "noopener noreferrer";
+      explorers.append(explorer);
+    }
+    const warning = element("p", "result-warning", "هر پیوند، یک سایت خارجی را در زبانهٔ جدید باز می‌کند و آدرس عمومی را با آن سرویس به اشتراک می‌گذارد. مرورگر هیچ درخواست خودکاری به این سرویس‌ها نمی‌فرستد. نمایش آدرس، تضمین موجودی یا تأیید تراکنش نیست.");
+    result.replaceChildren(heading, serialLabel, serial, addressLabel, address, copy, figure, explorers, warning);
     result.hidden = false;
   }
 

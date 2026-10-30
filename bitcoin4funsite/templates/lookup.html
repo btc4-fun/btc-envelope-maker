@@ -21,7 +21,11 @@
         <p class="result-label">آدرس دریافت در شبکهٔ اصلی بیت‌کوین</p>
         <p class="public-address ltr-block" dir="ltr">{{ wallet.address }}</p>
         <figure class="qr-block"><img src="/api/wallets/{{ wallet.serial }}/qr.svg" alt="کد تصویری آدرس عمومی برای دریافت بیت‌کوین" width="192" height="192"><figcaption>فقط برای دریافت؛ کلمات بازیابی در این تصویر نیست.</figcaption></figure>
-        <a class="explorer-link" href="{{ wallet.explorer_url }}" target="_blank" rel="noopener noreferrer">مشاهدهٔ تراکنش‌ها در کاوشگر خارجی ↗</a>
+        <div class="explorer-links">
+          <a class="explorer-link" href="https://mempool.space/address/{{ wallet.address }}" target="_blank" rel="noopener noreferrer">کاوشگر مم‌پول ↗</a>
+          <a class="explorer-link" href="https://blockstream.info/address/{{ wallet.address }}" target="_blank" rel="noopener noreferrer">کاوشگر بلاک‌استریم ↗</a>
+          <a class="explorer-link" href="https://www.blockchain.com/explorer/addresses/btc/{{ wallet.address }}" target="_blank" rel="noopener noreferrer">کاوشگر بلاک‌چین ↗</a>
+        </div>
         <p>نمایش آدرس، تضمین موجودی یا تأیید تراکنش نیست. پیوند خارجی فقط با انتخاب شما باز می‌شود.</p>
       </section>
       {% elif lookup_error %}
@@ -31,7 +35,7 @@
       {% endif %}
     </noscript>
   </div>
-  <aside class="lookup-aside"><span class="aside-symbol" aria-hidden="true">↗</span><h2>چه چیزی نمایش داده می‌شود؟</h2><p>آدرس عمومی ثبت‌شده، کد تصویری محلی برای دریافت و یک پیوند اختیاری برای دیدن تراکنش‌ها.</p><p>هیچ درخواست خودکاری به مرورگر بلاک فرستاده نمی‌شود. فقط اگر پیوند خارجی را خودتان باز کنید، آن سرویس از آدرس و اطلاعات اتصال شما باخبر می‌شود.</p><p>سریال و آدرس، مالکیت، موجودی یا تأیید تراکنش را ثابت نمی‌کنند.</p><a class="text-link" href="/guide">پیش از واریز، راهنما را بخوانید <span aria-hidden="true">←</span></a></aside>
+  <aside class="lookup-aside"><span class="aside-symbol" aria-hidden="true">↗</span><h2>چه چیزی نمایش داده می‌شود؟</h2><p>آدرس عمومی ثبت‌شده، کد تصویری محلی برای دریافت و سه پیوند اختیاری برای دیدن تراکنش‌ها.</p><p>مرورگر هیچ درخواست خودکاری به کاوشگرهای بلاک نمی‌فرستد. فقط اگر پیوند خارجی را خودتان باز کنید، آن سرویس از آدرس و اطلاعات اتصال شما باخبر می‌شود.</p><p>سریال و آدرس، مالکیت، موجودی یا تأیید تراکنش را ثابت نمی‌کنند.</p><a class="text-link" href="/guide">پیش از واریز، راهنما را بخوانید <span aria-hidden="true">←</span></a></aside>
 </section>
 <section class="article-end shell"><p>اگر کسی برای استعلام از شما کلمات بازیابی خواست، متوقف شوید.</p><a class="text-link" href="/terms">شرایط و مسئولیت‌ها <span aria-hidden="true">←</span></a></section>
 {% endblock %}

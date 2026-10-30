@@ -12,4 +12,44 @@
 @media(min-width:1500px){.hero{padding-block:105px 115px}}
 @media(max-width:1000px){.shell{width:calc(100% - 64px)}.site-header{gap:20px}.site-header nav{gap:18px}.hero{gap:25px;padding-block:65px}.hero h1{font-size:3.6rem}.envelope{width:280px;height:200px}.scene-orbit{width:280px;height:280px}.paper-scene{height:370px}.intro-strip{flex-wrap:wrap}.intro-strip .text-link{margin-inline-start:69px}.path-grid{gap:23px}.closing-note{padding:35px;gap:25px}.site-footer{grid-template-columns:1fr 1fr}.footer-contact{grid-column:1/-1}}
 @media(max-width:700px){.shell{width:calc(100% - 40px)}.site-header{flex-direction:column;align-items:stretch;gap:20px;padding-block:22px;min-height:0}.brand{align-self:flex-start}.site-header nav{justify-content:space-between;gap:12px;font-size:.76rem}.nav-lookup{padding:7px 10px}.nav-lookup span{margin-inline-start:5px}.hero{grid-template-columns:minmax(0,1fr);gap:18px;padding-block:43px 40px}.hero h1{font-size:3.65rem;line-height:1.35;margin-bottom:22px}.hero-description{font-size:1.08rem}.hero-detail{font-size:.88rem}.eyebrow{font-size:.77rem}.hero .actions{gap:20px}.hero .button{gap:16px;padding-inline:17px}.paper-scene{height:330px;margin-top:25px}.envelope{width:260px;height:182px}.paper-card{inset:-48px 23px 24px;padding:15px}.card-symbol{font-size:62px}.scene-orbit{height:268px;width:268px}.scene-caption{top:0;left:0;font-size:.7rem}.scene-caption::after{font-size:26px}.scene-spark{font-size:35px;right:7px;bottom:44px}.scene-footnote{font-size:.73rem;bottom:0}.intro-strip{gap:13px;align-items:flex-start;padding-block:25px}.strip-number{width:32px;height:32px;font-size:22px}.intro-strip>div{flex:1;min-width:0}.intro-strip h2{font-size:.94rem;line-height:1.9}.intro-strip p{font-size:.8rem}.intro-strip .text-link{margin-inline-start:45px;font-size:.8rem}.home-paths{padding-block:49px}.section-heading h2{font-size:1.55rem}.path-grid{grid-template-columns:minmax(0,1fr);gap:26px}.path-card{padding-top:17px}.path-index{margin-bottom:16px}.path-card h3{margin-bottom:12px}.path-card p{margin-bottom:20px}.closing-note{grid-template-columns:auto 1fr;padding:25px 22px;gap:17px;margin-bottom:50px}.closing-note>span{font-size:44px}.closing-note h2{font-size:1.4rem}.closing-note p{grid-column:1/-1;font-size:.86rem}.site-footer{grid-template-columns:minmax(0,1fr);gap:23px;padding-top:27px}.footer-contact{grid-column:auto}.footer-note{line-height:2}.actions{gap:16px}h2{font-size:1.5rem}}
+/* Public calculators share the local paper-and-ink palette. */
+.site-header nav{flex-wrap:wrap;justify-content:flex-end;gap:12px 22px}
+.calculator-card{padding:28px;background:var(--white);border:1px solid var(--line);border-radius:var(--radius)}
+.converter-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.converter-fields>div{min-width:0}.converter-fields label{display:block;font-weight:700;font-size:.91rem;margin-bottom:9px}
+.converter-fields input{width:100%;min-width:0;border:1px solid #aba594;border-radius:var(--radius);background:var(--paper);padding:13px;font:1rem/1.6 monospace;color:var(--ink)}
+.converter-fields input[aria-invalid=true]{border:2px solid var(--accent)}
+.market-section{padding-block:45px 55px;min-width:0}.market-section>h2{font-size:1.65rem}.rate-timestamp{font-size:.85rem;color:var(--muted);margin-block:26px 0}
+#market-fetched-at{font:.86rem/1.8 monospace;margin-block:4px 22px}.rate-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-block:25px 35px}
+.rate-grid>div{border:1px solid var(--line);background:var(--white);padding:17px;min-width:0}.rate-grid dt{font-size:.75rem;color:var(--muted)}
+.rate-grid dd{margin:12px 0 0;font:1rem/1.8 monospace;overflow-wrap:anywhere;text-align:left}
+.stale-banner{border:1px solid var(--accent);border-inline-start-width:4px}.lookup-status[data-state=stale]{color:var(--accent-dark)}
+.quote-scroll{overflow-x:auto;max-width:100%;border:1px solid var(--line);border-radius:var(--radius)}
+.quote-table{border-collapse:collapse;width:100%;table-layout:fixed;background:var(--white);font-size:.86rem}
+.quote-table caption{text-align:start;padding:18px;color:var(--muted);font-size:.83rem;background:var(--paper)}
+.quote-table th,.quote-table td{padding:18px 16px;text-align:start;vertical-align:top;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.quote-table thead th{background:var(--soft);font-size:.8rem}.quote-table th{font-weight:400}.quote-table th:first-child{width:25%}.quote-table th:nth-child(2){width:27%}
+.numeric-block{direction:ltr;unicode-bidi:isolate;font-family:monospace;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+span.numeric-block,strong.numeric-block{display:block}.quote-note{display:block;font-size:.7rem;color:var(--accent);margin-top:9px}
+.quote-details{margin-top:15px;font-size:.75rem}.quote-details summary{cursor:pointer;color:var(--accent-dark);text-underline-offset:4px;line-height:1.9}
+summary:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.quote-details dl{margin-block:14px 0}.quote-details dl>div{padding-block:8px;border-top:1px dashed var(--line)}
+.quote-details dt{color:var(--muted)}.quote-details dd{margin:3px 0 0;text-align:left}.cost-explanation{max-width:860px;padding-bottom:25px}.cost-explanation>.technical-label,.cost-explanation section>.technical-label{margin-bottom:20px}
+.contact-section{max-width:780px;padding-block:50px 65px}.contact-email{width:fit-content;max-width:100%;font:clamp(1rem,3vw,1.4rem)/2 monospace;color:var(--accent-dark);margin-bottom:28px;overflow-wrap:anywhere}
+.explorer-links{display:flex;flex-direction:column;align-items:flex-start;gap:9px}
+@media(max-width:1000px){.site-header{flex-wrap:wrap;padding-block:24px}.site-header nav{justify-content:flex-start}.rate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.site-header nav{justify-content:flex-start;gap:12px 20px}.calculator-card{padding:20px}.converter-fields{grid-template-columns:minmax(0,1fr);gap:20px}.market-section{padding-block:30px 40px}.rate-grid{gap:10px}.rate-grid>div{padding:12px}.rate-grid dd{font-size:.84rem}.quote-table{font-size:.73rem}.quote-table th,.quote-table td{padding:12px 8px}.quote-table thead th{font-size:.71rem}.quote-table caption{padding:13px}.quote-table th:first-child{width:26%}.quote-table th:nth-child(2){width:30%}.quote-details{font-size:.7rem}.contact-section{padding-block:32px 42px}.cost-explanation{padding-bottom:15px}}
+/* Contact stays native, locally styled, and usable without scripts. */
+.nav-terms{font-weight:700;border-block-end:2px solid var(--accent);padding-block:8px;color:var(--accent-dark)}
+.contact-social{display:flex;flex-wrap:wrap;gap:12px 25px;margin-block:22px 10px}
+.contact-social a{display:inline-flex;align-items:center;gap:10px;min-height:44px;color:var(--accent-dark)}
+.contact-form{margin-block:35px;padding:28px;border:1px solid var(--line);border-radius:var(--radius);background:var(--white);min-width:0}
+.contact-form fieldset{min-width:0;margin:0;padding:0;border:0}.contact-form fieldset:disabled .button{opacity:.6;cursor:not-allowed}
+.contact-field{margin-block:24px;min-width:0}.contact-field label{display:block;font-weight:700;margin-bottom:9px}
+.contact-field :is(input,textarea){display:block;width:100%;min-width:0;border:1px solid #aba594;border-radius:var(--radius);background:var(--paper);padding:12px 14px;font:inherit;color:var(--ink)}
+.contact-field :is(input,textarea):focus-visible{outline:3px solid var(--accent);outline-offset:4px}
+.contact-field input[dir=ltr]{unicode-bidi:isolate;text-align:left}.contact-field textarea{resize:vertical;min-height:170px}
+.contact-section .field-hint{font-size:.8rem;line-height:2;margin-block:9px 18px;color:var(--muted)}
+.contact-status{padding:16px 20px;border:1px solid var(--ink);border-inline-start-width:4px;border-radius:var(--radius);background:var(--soft);overflow-wrap:anywhere}
+.contact-status[data-state=error]{color:var(--accent-dark);border-color:var(--accent)}
+@media(max-width:700px){.contact-form{padding:20px}.contact-form .button{width:100%}.contact-social{gap:8px 20px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}

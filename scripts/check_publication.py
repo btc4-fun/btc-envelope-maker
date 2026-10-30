@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-FORBIDDEN_PARTS = {'.venv', 'venv', 'out', 'secrets', '__pycache__', 'backups', 'data'}
+FORBIDDEN_PARTS = {'.venv', 'venv', 'out', 'secrets', '__pycache__', 'backups', 'data', 'state'}
 FORBIDDEN_SUFFIXES = {'.db', '.sqlite', '.sqlite3', '.pdf', '.pem', '.key', '.kdbx', '.csv'}
 PRIVATE_KEY = re.compile(rb'-----BEGIN (?:[A-Z ]+)?PRIVATE KEY-----')
 
@@ -23,7 +23,8 @@ def check_index():
     for name in filter(None, names):
         path = Path(name)
         if (set(path.parts) & FORBIDDEN_PARTS or path.suffix.lower() in FORBIDDEN_SUFFIXES
-                or path.name in {'config.toml', 'todo'}
+                or re.search(r'\.(?:db|sqlite|sqlite3)-(?:wal|shm|journal)$', path.name, re.IGNORECASE)
+                or path.name in {'config.toml', 'todo', 'todo.txt'} or path.suffix == '.env'
                 or (path.name.startswith('.env') and path.name != '.env.example')):
             failures.append((name, 'forbidden publication path'))
             continue

@@ -11,7 +11,12 @@ The web service has no wallet-generation or signing code. Its dedicated
 PostgreSQL role is granted SELECT on serial and address only. Queries bind the
 serial, output addresses must pass mainnet P2WPKH Bech32 checksum validation,
 and all QR generation is local. No third-party scripts, analytics, fonts or
-automatic mempool requests are used. The serial is public and guessable; knowing
+automatic external browser requests are used. Only the server retrieves market
+prices and economy-fee suggestions with bounded responses/timeouts, no redirects
+and a short cache. The exchange token stays in a private envfile outside Git
+and the build context; only selected public numeric values reach the browser.
+Stale cached quotes are marked and expire; unavailable data is not fabricated.
+The serial is public and guessable; knowing
 it is not authorization to spend and does not prove payment or ownership.
 
 The public lookup intentionally reveals the associated public Bitcoin address.
@@ -19,6 +24,17 @@ Never put buyer names, notes, transaction secrets or recovery material in its
 response. PostgreSQL and deployment credentials must remain outside Git and
 outside the container image. The readonly database connection is defense in
 depth; the database role must also have no write privileges.
+
+The optional contact form never uploads files and submits only to this server.
+Its publisher credential must have write-only permission to the private
+notification topic, never administrator or read access. Signed expiring tokens,
+durable replay prevention, request-size bounds and cross-worker rate limits
+reduce abuse; they are not a guarantee against distributed spam. The server's
+small SQLite state must not contain message text or raw client IPs. Submitted
+contact content is held by the notification service under its retention policy.
+Do not send recovery phrases, keys, passwords or confidential wallet images in
+any contact channel. Missing notification configuration must fail closed without
+revealing credentials or falsely claiming successful delivery.
 
 ## Existing offline generator: unresolved review findings
 

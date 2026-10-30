@@ -3,10 +3,12 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 import unittest
+import sys
 from unittest.mock import Mock
 from jinja2 import DictLoader
 
 APP_PATH = Path(__file__).resolve().parents[1] / 'app.py'
+sys.path.insert(0, str(APP_PATH.parent))
 
 
 class ApplicationContract(unittest.TestCase):
@@ -128,6 +130,91 @@ class ApplicationContract(unittest.TestCase):
             cursor.execute.assert_called_once_with('SELECT serial, address FROM public.wallets WHERE serial = %s LIMIT 1', ('abc',))
             self.assertTrue(connection.read_only)
             self.assertIn('default_transaction_read_only=on', connect.call_args.kwargs['options'])
+
+    def test_new_public_pages_work_without_market_access(self):
+        market = Mock()
+        app = self.module.create_app({'TESTING': True, 'MARKET_SERVICE': market})
+        app.jinja_loader = DictLoader({name + '.html': name for name in ('satoshi', 'costs', 'contact')})
+        for path in ['/satoshi', '/costs', '/contact']:
+            self.assertEqual(app.test_client().get(path).status_code, 200)
+        market.snapshot.assert_not_called()
+
+    def test_market_unavailable_returns_no_fabricated_quote_or_secrets(self):
+        service = Mock()
+        service.snapshot.side_effect = RuntimeError('SYNTHETIC_PRIVATE_TOKEN')
+        app = self.module.create_app({'TESTING': True, 'MARKET_SERVICE': service})
+        response = app.test_client().get('/api/market')
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json, {'error': 'market_unavailable'})
+        self.assertNotIn('SYNTHETIC', response.text)
+
+    def test_terms_short_alias_is_the_same_page(self):
+        client = self.module.create_app({'TESTING': True}).test_client()
+        self.assertEqual(client.get('/t').data, client.get('/terms').data)
+
+    def test_market_endpoint_integrates_exact_quotes_and_only_public_fields(self):
+        service = Mock()
+        service.snapshot.return_value = {
+            'status': 'stale', 'fetched_at': '2026-10-29T20:00:00+00:00',
+            'raw_prices': {'btc_toman': '21000000000', 'usdt_toman': '270000'},
+            'fee_rate': '1', 'source': {'prices': 'https://swapwallet.app/api/v1/market/prices', 'fees': 'https://mempool.space/api/v1/fees/recommended'},
+            'private_unused': 'SYNTHETIC_PRIVATE_TOKEN',
+        }
+        app = self.module.create_app({'TESTING': True, 'MARKET_SERVICE': service})
+        response = app.test_client().get('/api/market')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['status'], 'stale')
+        self.assertEqual(response.json['rates']['btc_toman'], '21105000000')
+        self.assertEqual(response.json['rows'][0]['principal_sats'], 500)
+        self.assertEqual(response.json['rows'][0]['total_rial'], response.json['rows'][0]['total_toman'] * 10)
+        self.assertNotIn('SYNTHETIC', response.text)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+
+    def test_contact_forwarded_ip_uses_last_proxy_hop_not_spoofed_first(self):
+        service = Mock()
+        app = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service})
+        client = app.test_client()
+        client.post('/contact', data={'message': 'Public test'}, headers={'X-Forwarded-For': '198.51.100.66, 203.0.113.4'})
+        self.assertEqual(service.submit.call_args.args[1], '203.0.113.4')
+        service.reset_mock()
+        client.post('/contact', data={'message': 'Public test'}, headers={'X-Forwarded-For': '198.51.100.66'}, environ_overrides={'REMOTE_ADDR': '8.8.8.8'})
+        self.assertEqual(service.submit.call_args.args[1], '8.8.8.8')
+
+    def test_contact_normalizes_native_textarea_newlines_before_validation(self):
+        service = Mock()
+        app = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service})
+        response = app.test_client().post('/contact', data={'name': 'TEST', 'mobile': '', 'message': 'Line one\r\nLine two', 'csrf_token': 'SYNTHETIC', 'website': ''})
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(service.submit.call_args.args[0]['message'], 'Line one\nLine two')
+
+    def test_contact_referrer_policy_keeps_native_same_origin_post_working(self):
+        client = self.module.create_app({'TESTING': True}).test_client()
+        self.assertEqual(client.get('/contact').headers['Referrer-Policy'], 'same-origin')
+        self.assertEqual(client.get('/lookup').headers['Referrer-Policy'], 'no-referrer')
+
+    def test_contact_post_uses_server_service_and_redirects_after_success(self):
+        service = Mock()
+        service.token.return_value = 'SYNTHETIC_FORM_TOKEN'
+        service.submit.return_value = {'id': 'SYNTHETIC_MESSAGE_ID'}
+        app = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service})
+        client = app.test_client()
+        form = {'name': 'TEST-DO-NOT-FUND', 'mobile': '', 'message': 'Public test only', 'csrf_token': 'SYNTHETIC_FORM_TOKEN', 'website': ''}
+        response = client.post('/contact', data=form, headers={'Origin': 'https://btc4.fun', 'X-Forwarded-For': '198.51.100.23'})
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers['Location'], '/contact?sent=1')
+        service.submit.assert_called_once()
+        self.assertEqual(dict(service.submit.call_args.args[0]), form)
+        self.assertEqual(service.submit.call_args.args[1], '198.51.100.23')
+        self.assertNotIn('SYNTHETIC_MESSAGE_ID', response.text)
+
+    def test_contact_rejects_foreign_origin_nonform_and_oversize_before_notification(self):
+        service = Mock()
+        app = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service})
+        client = app.test_client()
+        self.assertEqual(client.post('/contact', data={'message': 'x'}, headers={'Origin': 'https://evil.invalid'}).status_code, 403)
+        self.assertEqual(client.post('/contact', json={'message': 'x'}).status_code, 415)
+        self.assertEqual(client.post('/contact', data={'message': 'x' * 20000}).status_code, 413)
+        service.submit.assert_not_called()
 
 
 if __name__ == '__main__':

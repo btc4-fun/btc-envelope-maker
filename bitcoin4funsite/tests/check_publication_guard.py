@@ -22,6 +22,14 @@ def main():
         result = subprocess.run(['python3', str(temp / 'scripts/check_publication.py')], capture_output=True, text=True)
         assert result.returncode == 1 and 'forbidden publication path' in result.stdout
         subprocess.run(['git', '-C', temp, 'rm', '--cached', '-q', 'wallets.db'], check=True)
+        for name in ('contact.sqlite3-wal', 'contact.sqlite3-shm', 'wallets.db-wal', 'market.env', 'todo.txt', 'state/admission'):
+            target = temp / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text('SYNTHETIC')
+            subprocess.run(['git', '-C', temp, 'add', name], check=True)
+            result = subprocess.run(['python3', str(temp / 'scripts/check_publication.py')], capture_output=True, text=True)
+            assert result.returncode == 1 and 'forbidden publication path' in result.stdout, name
+            subprocess.run(['git', '-C', temp, 'rm', '--cached', '-q', name], check=True)
         (temp / 'safe.txt').write_text('public documentation')
         subprocess.run(['git', '-C', temp, 'add', 'safe.txt'], check=True)
         result = subprocess.run(['python3', str(temp / 'scripts/check_publication.py')], capture_output=True, text=True)

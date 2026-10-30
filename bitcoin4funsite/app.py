@@ -3,13 +3,15 @@ from __future__ import annotations
 import os
 import io
 import re
+import ipaddress
 from pathlib import Path
 
 from bech32 import decode as decode_segwit
-from flask import Flask, Response, abort, jsonify, render_template, request
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request
 import psycopg
 import qrcode
 import qrcode.image.svg
+from market import MarketService
 
 SERIAL_RE = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}')
 
@@ -38,6 +40,8 @@ def create_app(config=None):
     app = Flask(__name__, root_path=str(Path(__file__).resolve().parent))
     if config:
         app.config.update(config)
+    app.extensions['market_service'] = app.config.get('MARKET_SERVICE') or MarketService()
+    app.config['MAX_CONTENT_LENGTH'] = 16384
 
     @app.before_request
     def validate_api_serial():
@@ -55,7 +59,9 @@ def create_app(config=None):
         )
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
-        response.headers['Referrer-Policy'] = 'no-referrer'
+        # Native POSTs from no-referrer pages can carry Origin:null in Chromium.
+        # Keep same-origin metadata for the contact form, never for external links.
+        response.headers['Referrer-Policy'] = 'same-origin' if request.endpoint == 'contact' else 'no-referrer'
         response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=(), payment=()'
         response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
         if not request.path.startswith('/static/'):
@@ -77,8 +83,83 @@ def create_app(config=None):
         return render_template('kids.html')
 
     @app.get('/terms')
+    @app.get('/t')
     def terms():
         return render_template('terms.html')
+
+    @app.get('/satoshi')
+    def satoshi():
+        return render_template('satoshi.html')
+
+    @app.get('/costs')
+    def costs():
+        return render_template('costs.html')
+
+    def contact_service():
+        if 'contact_service' not in app.extensions:
+            service = app.config.get('CONTACT_SERVICE')
+            if service is None:
+                from contact import ContactService
+                service = ContactService()
+            app.extensions['contact_service'] = service
+        return app.extensions['contact_service']
+
+    def contact_client_ip():
+        peer = ipaddress.ip_address(request.remote_addr or '127.0.0.1')
+        # Caddy appends the real connecting IP. Never trust a user-supplied first hop.
+        forwarded = request.headers.get('X-Forwarded-For', '')
+        if (peer.is_private or peer.is_loopback) and forwarded:
+            try:
+                return str(ipaddress.ip_address(forwarded.split(',')[-1].strip()))
+            except ValueError:
+                pass
+        return str(peer)
+
+    @app.route('/contact', methods=['GET', 'POST'])
+    def contact():
+        if request.method == 'POST':
+            origin = request.headers.get('Origin')
+            if origin and origin not in {'https://btc4.fun', 'https://go.btc4.fun'}:
+                abort(403)
+            if request.mimetype != 'application/x-www-form-urlencoded':
+                abort(415)
+            if any(len(request.form.getlist(key)) != 1 for key in request.form):
+                abort(400)
+            if set(request.form) - {'name', 'mobile', 'message', 'csrf_token', 'website'}:
+                abort(400)
+            form = request.form.to_dict()
+            if 'message' in form:
+                form['message'] = form['message'].replace('\r\n', '\n')
+            try:
+                contact_service().submit(form, contact_client_ip())
+                return redirect('/contact?sent=1', code=303)
+            except Exception as error:
+                code = getattr(error, 'code', 'unavailable')
+                messages = {
+                    'invalid': 'نام، راه تماس و متن پیام را بررسی کنید؛ فقط پرسش عمومی و بدون اطلاعات محرمانه بفرستید.',
+                    'csrf': 'اعتبار فرم تمام شده یا معتبر نیست. صفحه را دوباره باز کنید.',
+                    'replayed': 'این فرم قبلاً استفاده شده است؛ برای جلوگیری از پیام تکراری دوباره ارسال نمی‌شود.',
+                    'rate_limited': 'تعداد پیام‌ها زیاد است؛ لطفاً بعداً تلاش کنید یا ایمیل بفرستید.',
+                }
+                message = messages.get(code, 'نتیجهٔ ارسال مشخص نیست؛ پیام خودکار تکرار نمی‌شود. برای پیگیری از ایمیل استفاده کنید.')
+                status = 429 if code == 'rate_limited' else 400 if code in messages else 503
+                return render_template('contact.html', contact_error=message, contact_token=None), status
+        try:
+            token = contact_service().token()
+            return render_template('contact.html', contact_token=token, contact_sent=request.args.get('sent') == '1')
+        except Exception:
+            return render_template('contact.html', contact_token=None, contact_error='فرم فعلاً در دسترس نیست؛ از ایمیل استفاده کنید.')
+
+    @app.get('/api/market')
+    def market_data():
+        try:
+            snapshot = app.extensions['market_service'].snapshot()
+            from pricing import quote_table
+            quote = quote_table(snapshot['raw_prices']['btc_toman'], snapshot['raw_prices']['usdt_toman'], snapshot['fee_rate'])
+            return jsonify(**quote, status=snapshot['status'], fetched_at=snapshot['fetched_at'], source=snapshot['source'])
+        except Exception:
+            app.logger.warning('Public market information unavailable')
+            return jsonify(error='market_unavailable'), 503
 
     @app.get('/lookup')
     def lookup_page():

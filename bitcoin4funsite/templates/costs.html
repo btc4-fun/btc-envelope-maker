@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% set page = 'costs' %}
+{% block title %}قیمت و هزینه‌های شفاف پاکت بیت‌کوین{% endblock %}
+{% block scripts %}<script src="/static/calculator.js" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading shell">
+  <a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> قیمت و هزینه‌ها</a>
+  <p class="eyebrow">اصل مبلغ، جدا از هزینه‌ها</p>
+  <h1>داخل پاکت چقدر است؟<br>جمع پرداختی چقدر؟</h1>
+  <p class="page-deck">قیمت‌ها و جدول از سرور همین سایت دریافت می‌شوند؛ مرورگر به بازار یا سرویس کارمزد خارجی درخواست خودکار نمی‌فرستد. این‌ها برآورد هستند، نه وعدهٔ نرخ یا زمان تأیید.</p>
+</header>
+<section id="market-panel" class="market-section shell" aria-labelledby="market-title">
+  <h2 id="market-title">نرخ مرجع و جدول برآورد</h2>
+  <p id="market-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true">برای دریافت برآورد، جاوااسکریپت باید فعال باشد؛ هنوز نرخی بارگیری نشده است.</p>
+  <div id="market-stale" class="callout stale-banner" role="status" hidden><strong>نرخ تازه در دسترس نیست.</strong><p>این جدول از آخرین دادهٔ ذخیره‌شده ساخته شده و ممکن است با بازار فعلی فرق داشته باشد. زمان دریافت را ببینید؛ پیش از پرداخت دوباره قیمت را بررسی کنید.</p></div>
+  <div id="market-data" hidden>
+    <p class="rate-timestamp">زمان دریافت داده از منابع:</p><p id="market-fetched-at" class="ltr-block" dir="ltr"></p>
+    <dl class="rate-grid">
+      <div><dt>هر بیت‌کوین؛ تومان</dt><dd id="btc-price" dir="ltr"></dd></div>
+      <div><dt>هر تتر؛ تومان</dt><dd id="usdt-price" dir="ltr"></dd></div>
+      <div><dt>هر ساتوشی؛ تومان</dt><dd id="sat-price" dir="ltr"></dd></div>
+      <div><dt>کارمزد اقتصادی؛ ساتوشی بر بایت مجازی</dt><dd id="network-fee-rate" dir="ltr"></dd></div>
+    </dl>
+    <div class="quote-scroll" role="region" aria-label="جدول برآورد هزینهٔ پاکت" tabindex="0">
+      <table class="quote-table">
+        <caption>اصل ساتوشی، معادل بیت‌کوین و جمع پرداختی؛ جزئیات هر ردیف را باز کنید.</caption>
+        <thead><tr><th scope="col">اصل مبلغ؛ ساتوشی</th><th scope="col">بیت‌کوین</th><th scope="col">جمع پرداختی؛ تومان</th></tr></thead>
+        <tbody id="quote-rows"></tbody>
+      </table>
+    </div>
+  </div>
+  <noscript><div class="callout"><strong>جدول زنده بدون جاوااسکریپت بارگیری نمی‌شود.</strong><p>هیچ نرخ جایگزین یا صفر فرض نمی‌کنیم. روش محاسبه را پایین بخوانید و برای برآورد تازه از <a href="/contact">راه تماس</a> استفاده کنید؛ کلمات بازیابی لازم نیست.</p></div></noscript>
+</section>
+<section class="cost-explanation shell prose" aria-labelledby="formula-title">
+  <h2 id="formula-title">روش محاسبه، بدون هزینهٔ پنهان.</h2>
+  <p>اولین ردیف، ۵۰۰ ساتوشی اصل مبلغ و حداقل بستهٔ پیشنهادی این پروژه است؛ نه حداقل همگانی پروتکل بیت‌کوین. ردیف‌های بعدی برای بودجه‌های صد هزار تومانی تا دو میلیون تومان هستند، اگر آن بودجه هزینهٔ بسته را پوشش دهد. جمع واقعی از بودجه بیشتر نمی‌شود؛ باقی‌ماندهٔ مصرف‌نشده در جزئیات همان ردیف نمایش داده می‌شود و بیت‌کوینِ واریزی محسوب نمی‌شود.</p>
+  <ol class="formula-list">
+    <li>نرخ خام بیت‌کوین و تتر، هر دو با ۰٫۵ درصد کارمزد تبدیل تعدیل می‌شوند؛ یعنی ضرب در یک و پنج هزارم. قیمت هر ساتوشی، نرخ تعدیل‌شدهٔ بیت‌کوین تقسیم بر صد میلیون است.</li>
+    <li>هزینهٔ شبکه برابر است با نرخ اقتصادی پیشنهادی ضرب در ۱۴۱ بایت مجازی، رو به بالا تا یک ساتوشی کامل. این اندازه یک تخمین برای یک ورودی سگویت بومی و دو خروجی است؛ اندازه و هزینهٔ تراکنش واقعی می‌تواند متفاوت باشد.</li>
+    <li>چاپ، معادل ۰٫۱۵ دلار است؛ با نرخ تعدیل‌شدهٔ تتر به‌عنوان تقریب دلار، تقسیم بر قیمت تعدیل‌شدهٔ ساتوشی و گرد کردن رو به بالا به ساتوشی.</li>
+    <li>کارمزد گرداننده ۱۵ درصدِ مجموع اصل مبلغ، هزینهٔ شبکه و چاپ است؛ رو به بالا تا ساتوشی کامل.</li>
+    <li>جمع ساتوشیِ چهار جزء در نرخ تعدیل‌شدهٔ ساتوشی ضرب و برای پرداخت به تومان رو به بالا گرد می‌شود. معادل ریال ده برابر تومان است؛ ریال و تومان را اشتباه نگیرید.</li>
+  </ol>
+  <div class="callout"><strong>کم‌هزینه، به معنی فوری یا قطعی نیست.</strong><p>نرخ اقتصادی تضمین پذیرش یا تأیید نیست. تراکنش تأییدنشده ممکن است روزها یا بیشتر معطل شود، از صف حذف شود یا جایگزین شود؛ هیچ زمان تأییدی تضمین نمی‌شود. پیش از تحویل، آدرس، مقدار و وضعیت تراکنش را بررسی کنید.</p></div>
+  <section aria-labelledby="source-title"><h2 id="source-title">منابع و تازگی داده</h2>
+    <p>سرور سایت نرخ‌ها را با احراز هویت از منبع قیمت و کارمزد عمومی اقتصادی را از منبع شبکه می‌گیرد. هیچ کلید دسترسی به مرورگر ارسال نمی‌شود. داده تا ۶۰ ثانیه تازه شمرده می‌شود؛ در خطای منبع، نسخهٔ ذخیره‌شده حداکثر تا ۳۰۰ ثانیه با هشدار قدیمی بودن نشان داده می‌شود. پس از آن، برآورد در دسترس نیست. زمان دریافت و وضعیت نمایش‌داده‌شده را ملاک قرار دهید؛ نرخ ذخیره‌شده نرخ تضمین‌شده نیست.</p>
+    <p>منبع نرخ‌ها؛ پیوند خارجی اختیاری:</p>
+    <a class="technical-label" dir="ltr" href="https://swapwallet.app/api/v1/market/prices" target="_blank" rel="noopener noreferrer">https://swapwallet.app/api/v1/market/prices</a>
+    <p>منبع کارمزد اقتصادی؛ پیوند خارجی اختیاری:</p>
+    <a class="technical-label" dir="ltr" href="https://mempool.space/api/v1/fees/recommended" target="_blank" rel="noopener noreferrer">https://mempool.space/api/v1/fees/recommended</a>
+    <p>مرورگر فقط یک بار از سرور همین سایت داده می‌گیرد؛ جدول به‌طور خودکار تازه نمی‌شود. برای درخواست دوباره صفحه را بازخوانی کنید. سرویس خارجی تنها با باز کردن پیوند اختیاری شما در مرورگر باز می‌شود.</p>
+  </section>
+</section>
+<section class="article-end shell"><p>نسبت بیت‌کوین و ساتوشی ثابت است؛ قیمت تومانی ثابت نیست.</p><a class="text-link" href="/satoshi">تبدیل دقیق و آفلاین <span aria-hidden="true">←</span></a></section>
+{% endblock %}

@@ -40,12 +40,18 @@ class UIContract(unittest.TestCase):
         self.assertIn('href="#main-content"', source)
         self.assertIn('id="main-content"', source)
         links = {attrs.get("href") for tag, attrs in document.elements if tag == "a"}
-        self.assertTrue({"/", "/guide", "/kids", "/terms", "/lookup"} <= links)
+        self.assertTrue({"/", "/guide", "/kids", "/terms", "/lookup", "/satoshi", "/costs", "/contact"} <= links)
         self.assertIn("بیت‌کوین،", source)
         self.assertIn("در یک پاکت", source)
         self.assertIn("کلمات بازیابی", source)
+        self.assertIn("btc4fun", source)
+        self.assertIn("btc4.fun", source)
         self.assertIn("09113458375@btc4.fun", source)
-        self.assertIn("https://github.com/sae13/bitcoin4fun", source)
+        self.assertIn("https://github.com/sae13/btc4fun", source)
+        self.assertNotIn("bitcoin4fun", source)
+        self.assertNotIn("bitcoin4.fun", source)
+        self.assertNotIn("/api/market", source)
+        self.assertNotIn("calculator.js", source)
         for tag, attrs in document.elements:
             self.assertFalse(any(key.startswith("on") for key in attrs), attrs)
             for key in ("src", "poster"):
@@ -67,6 +73,36 @@ class UIContract(unittest.TestCase):
         self.assertNotRegex(css, r"https?://|@import")
         for script in re.findall(r"<script[^>]*>(.*?)</script>", source, re.S):
             self.assertFalse(script.strip(), "Scripts must be external for strict CSP")
+
+    def test_header_prominently_links_to_short_terms_route(self):
+        for template in ("index.html", "kids.html", "terms.html", "contact.html"):
+            with self.subTest(template=template):
+                source = self.render(template)
+                header = source.split('<header class="site-header shell">', 1)[1].split('</header>', 1)[0]
+                links = [attrs for tag, attrs in Document(header).elements
+                         if tag == "a" and attrs.get("href") == "/t"]
+                self.assertEqual(len(links), 1, "Terms belong in the main header navigation")
+                self.assertIn("nav-terms", links[0].get("class", "").split())
+                self.assertIn("شرایط استفاده", header)
+                self.assertEqual(links[0].get("aria-current"), "page" if template == "terms.html" else None)
+
+    def test_kids_label_is_consistent_in_navigation_home_and_breadcrumb(self):
+        label = "راهنما برای ۷ ساله‌ها"
+        for template in ("index.html", "kids.html"):
+            with self.subTest(template=template):
+                source = self.render(template)
+                header = source.split('<header class="site-header shell">', 1)[1].split('</header>', 1)[0]
+                self.assertRegex(header, r'<a href="/kids"[^>]*>' + label + r'</a>')
+                self.assertNotIn("برای کوچک‌ترها", source)
+                if template == "index.html":
+                    main = source.split('<main id="main-content"', 1)[1].split('</main>', 1)[0]
+                    card = re.search(r'<a class="path-card" href="/kids">(.*?)</a>', main, re.S)
+                    self.assertIsNotNone(card)
+                    self.assertIn("<h3>" + label + "</h3>", card.group(1))
+                else:
+                    self.assertRegex(source, r'<a class="breadcrumb"[^>]*>[^<]*<span[^>]*>/</span> ' + label + r'</a>')
+                    self.assertEqual(next(attrs.get("aria-current") for tag, attrs in Document(header).elements
+                                          if tag == "a" and attrs.get("href") == "/kids"), "page")
 
     def test_adult_guide_explains_safe_full_balance_handover(self):
         source = self.render("guide.html")
@@ -117,6 +153,8 @@ class UIContract(unittest.TestCase):
         self.assertIn("hidden", document.by_id("lookup-result"))
         self.assertIn("<noscript>", source)
         self.assertIn("فقط شمارهٔ سریال", source)
+        self.assertIn("سه پیوند اختیاری", source)
+        self.assertIn("مرورگر هیچ درخواست خودکاری", source)
         self.assertNotRegex(source, r'<(?:img|iframe)[^>]+src="https?://')
         dangerous = '\"><img src=x onerror=alert(1)>'
         initial = Document(self.render("lookup.html", serial=dangerous))
@@ -201,6 +239,16 @@ const link=all().find(node=>node.tagName==='a');
 assert.equal(link.href,'https://mempool.space/address/'+address);
 assert.equal(link.target,'_blank');
 assert.equal(link.rel,'noopener noreferrer');
+const explorers=all().filter(node=>node.tagName==='a');
+assert.deepEqual(explorers.map(node=>node.href),[
+  'https://mempool.space/address/'+address,
+  'https://blockstream.info/address/'+address,
+  'https://www.blockchain.com/explorer/addresses/btc/'+address
+]);
+for (const explorer of explorers) {
+  assert.equal(explorer.target,'_blank');
+  assert.equal(explorer.rel,'noopener noreferrer');
+}
 assert.equal(requests.length,1,'Explorer must not be prefetched');
 ''')
 
@@ -310,8 +358,33 @@ assert.match(ids['lookup-status'].textContent,/شمارهٔ سریال/);
 assert.equal(ids['lookup-status'].dataset.state,'error');
 ''')
 
+    def test_nojavascript_lookup_derives_three_opt_in_explorer_links_from_address(self):
+        address = "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"
+        source = self.render("lookup.html", wallet={"serial": "Demo7", "address": address,
+                                                   "explorer_url": "https://evil.example/not-used"})
+        document = Document(source)
+        expected = {
+            "https://mempool.space/address/" + address,
+            "https://blockstream.info/address/" + address,
+            "https://www.blockchain.com/explorer/addresses/btc/" + address,
+        }
+        found = {attrs.get("href") for tag, attrs in document.elements if tag == "a"}
+        self.assertTrue(expected <= found)
+        self.assertNotIn("https://evil.example/not-used", source)
+        self.assertIn("<noscript>", source)
+        for tag, attrs in document.elements:
+            if tag == "a" and attrs.get("href") in expected:
+                self.assertEqual(attrs.get("target"), "_blank")
+                self.assertEqual(attrs.get("rel"), "noopener noreferrer")
+
+    def test_terms_explain_internet_outages_and_server_market_requests_honestly(self):
+        source = self.render("terms.html")
+        for phrase in ("قطع اینترنت", "هیچ‌کس", "پیگیری", "ناپدید", "مرورگر", "سرور", "احراز هویت", "کارمزد عمومی"):
+            self.assertIn(phrase, source)
+        self.assertNotIn("به سرویس خارجی درخواست خودکار نمی‌فرستد", source)
+
     def test_all_pages_keep_strict_csp_safe_origin_and_hidden_contracts(self):
-        for name in ("index.html", "guide.html", "kids.html", "terms.html", "lookup.html"):
+        for name in ("index.html", "guide.html", "kids.html", "terms.html", "lookup.html", "satoshi.html", "costs.html", "contact.html"):
             with self.subTest(page=name):
                 source = self.render(name)
                 document = Document(source)

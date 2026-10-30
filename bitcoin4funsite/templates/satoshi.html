@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% set page = 'satoshi' %}
+{% block title %}ساتوشی چیست؟ تبدیل دقیق بیت‌کوین و ساتوشی{% endblock %}
+{% block scripts %}<script src="/static/calculator.js" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading shell">
+  <a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> ساتوشی</a>
+  <p class="eyebrow">کوچک‌تر ببینیم، دقیق‌تر بشماریم</p>
+  <h1>یک بیت‌کوین،<br>صد میلیون ساتوشی.</h1>
+  <p class="page-deck">لازم نیست یک بیت‌کوین کامل داشته باشید. ساتوشی نام کوچک‌ترین واحد قابل ثبت بیت‌کوین روی زنجیرهٔ اصلی است؛ نامش از سازندهٔ ناشناس بیت‌کوین گرفته شده است.</p>
+</header>
+<div class="reading-layout shell">
+  <aside class="contents"><span class="contents-label">در این صفحه</span><nav aria-label="فهرست ساتوشی"><a href="#unit">شناخت واحد</a><a href="#satoshi-converter">تبدیل دقیق</a><a href="/costs">قیمت و هزینه‌ها</a></nav></aside>
+  <article class="prose">
+    <section id="unit">
+      <h2>تکه‌ای از بیت‌کوین، نه یک ارز دیگر.</h2>
+      <p>هر یک بیت‌کوین دقیقاً برابر با ۱۰۰٬۰۰۰٬۰۰۰ ساتوشی است. پس یک ساتوشی، یک صد میلیونم بیت‌کوین است. بیت‌کوین را می‌توان با حداکثر هشت رقم پس از ممیز نوشت.</p>
+      <p class="technical-label" dir="ltr" lang="en">1 BTC = 100,000,000 sat<br>1 sat = 0.00000001 BTC</p>
+      <p>این نسبت ثابت است، اما ارزش تومانی ساتوشی با قیمت بیت‌کوین تغییر می‌کند. هزینهٔ شبکه هم جداست؛ مقدار موجودی با مبلغ نهایی خرید پاکت یکی نیست.</p>
+    </section>
+    <section id="satoshi-converter" class="calculator-card" aria-labelledby="converter-title">
+      <h2 id="converter-title">تبدیل دوطرفه، بدون گرد کردن.</h2>
+      <p id="converter-help">یکی از دو کادر را تغییر دهید تا دیگری خودکار به‌روز شود. فقط ارقام انگلیسی و برای بیت‌کوین نقطهٔ اعشار مجاز است؛ بدون فاصله، جداکننده یا نمای علمی. سقف ورودی ۲۱ میلیون بیت‌کوین است.</p>
+      <div class="converter-fields">
+        <div><label for="btc-amount">مقدار بیت‌کوین</label><input id="btc-amount" type="text" dir="ltr" inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="17" aria-describedby="converter-help converter-status"></div>
+        <div><label for="satoshi-amount">تعداد ساتوشی</label><input id="satoshi-amount" type="text" dir="ltr" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="16" aria-describedby="converter-help converter-status"></div>
+      </div>
+      <p id="converter-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true">محاسبه محلی و آفلاین است؛ هیچ مقدار ورودی ارسال نمی‌شود.</p>
+      <noscript><div class="callout"><strong>برای تبدیل خودکار، جاوااسکریپت لازم است.</strong><p>محاسبه بدون شبکه انجام می‌شود. برای تبدیل دستی به ساتوشی، مقدار بیت‌کوین را در صد میلیون ضرب کنید؛ در جهت عکس، تعداد ساتوشی را بر صد میلیون تقسیم کنید.</p></div></noscript>
+    </section>
+    <section><h2>واحد کوچک، هزینهٔ واقعی.</h2><p>کوچک بودن واحد به معنی اقتصادی بودن هر انتقال نیست. هزینهٔ شبکه ممکن است نسبت به اصل مبلغ زیاد باشد و حداقل قابل ارسال به نوع خروجی و سیاست شبکه بستگی دارد. برای دیدن حداقل بستهٔ پیشنهادی همین پروژه و جزئیات برآورد، <a href="/costs">صفحهٔ قیمت و هزینه‌ها</a> را ببینید.</p></section>
+  </article>
+</div>
+{% endblock %}

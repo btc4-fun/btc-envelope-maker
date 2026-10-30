@@ -2,6 +2,10 @@
 !Dockerfile
 !requirements.txt
 !app.py
+!market.py
+!pricing.py
+!contact.py
+!bounded_http.py
 !templates/
 !templates/**
 !static/

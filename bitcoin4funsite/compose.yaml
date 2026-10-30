@@ -26,7 +26,18 @@ services:
       BTC_DB_NAME: ${BTC_DB_NAME:-d_bitcoin4fun}
       BTC_DB_USER: ${BTC_DB_USER:?Set a dedicated read-only database role}
       BTC_DB_PASSWORD_FILE: /run/secrets/db_password
+    env_file:
+      - path: ${BTC_MARKET_ENV_FILE:-./secrets/market.env}
+        required: true
+      - path: ${BTC_CONTACT_ENV_FILE:-./secrets/contact.env}
+        required: true
     volumes:
+      - type: bind
+        source: ${BTC_CONTACT_STATE_DIR:-./state}
+        target: /var/lib/btc4fun
+        read_only: false
+        bind:
+          create_host_path: false
       - type: bind
         source: ${BTC_DB_PASSWORD_FILE:-./secrets/db_password}
         target: /run/secrets/db_password
@@ -35,6 +46,10 @@ services:
           create_host_path: false
     networks:
       - database
+    # Reach this host's existing TLS proxy without public-IP hairpin routing.
+    # URL, hostname verification and publisher credential remain unchanged.
+    extra_hosts:
+      - "ntfy.linxu.ir:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
       interval: 30s

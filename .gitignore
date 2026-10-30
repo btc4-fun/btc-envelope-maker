@@ -1,9 +1,12 @@
 # Local operator notes and credentials
 /todo
+/todo.txt
+*.env
 .env
 .env.*
 !.env.example
 secrets/
+**/state/
 *.pem
 *.key
 *.p12
@@ -18,6 +21,7 @@ secrets/
 **/*.db-*
 **/*.sqlite
 **/*.sqlite3
+**/*.sqlite3-*
 **/*.pdf
 **/data/
 **/backups/

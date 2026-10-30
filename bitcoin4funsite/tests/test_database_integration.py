@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import sys
 from pathlib import Path
 import unittest
 import uuid
@@ -9,6 +10,7 @@ import uuid
 import psycopg
 
 APP_PATH = Path(__file__).resolve().parents[1] / 'app.py'
+sys.path.insert(0, str(APP_PATH.parent))
 PUBLIC_TEST_ADDRESS = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
 
 

@@ -4,7 +4,8 @@
 
 This service serves Persian educational pages and reads a single public wallet
 record by serial. It never creates wallets, signs transactions, stores recovery
-words or calls a blockchain API. A mempool link is an explicit external
+words or fetches a user's blockchain activity. Server-side market prices and
+economy fee suggestions use fixed sources; a mempool address link is an explicit external
 navigation, not an automatically loaded resource. Self-contained assets do not
 mean a live PostgreSQL-backed lookup works without reaching this server.
 
@@ -15,7 +16,7 @@ mean a live PostgreSQL-backed lookup works without reaching this server.
   not database readiness.
 - Public JSON: /api/wallets/SERIAL, local QR: /api/wallets/SERIAL/qr.svg.
 - Direct pages: /s/SERIAL and /SERIAL, including go.btc4.fun/SERIAL.
-- No authentication, serial listing or write endpoint. Serial-address mapping
+- No wallet authentication, serial listing or wallet write endpoint. Serial-address mapping
   is deliberately public; serials are not passwords or proof of ownership.
 
 ## Database
@@ -65,6 +66,34 @@ role's password alone in secrets/db_password, directory mode 0700 and file mode
 credentials in this directory. The password is a readonly bind mount, never a
 build argument or image layer. Keep .env mode 0600 as well.
 
+Create secrets/market.env with SWAPWALLET_API_TOKEN, mode 0600, and
+secrets/contact.env with CONTACT_SECRET (random signing key),
+BTC_CONTACT_NTFY_TOKEN (dedicated topic-only publisher), and
+CONTACT_STATE_FILE=/var/lib/btc4fun/contact.sqlite3. These are runtime envfiles,
+not Docker build inputs. Never print docker compose config or docker inspect
+environment values to logs; use config -q and key-presence checks.
+
+Create state/ with mode 0700 owned by runtime UID/GID 1000 before starting. This
+is the sole writable persistent application mount; it contains contact token
+hashes, keyed client-IP hashes, state and timestamps for cross-worker rate limits
+and replay prevention, not submitted names, phone numbers or messages. Preserve
+it on app-only rollback. Contact text is sent to the private notification topic;
+that service's retention policy applies. No files upload.
+
+Provision a separate regular ntfy user, deny all topics, then allow write-only
+for btc4fun; deny anonymous access to that topic. The public form submits only
+to this app. JSON notifications POST to the ntfy root URL (not the topic URL),
+with a fixed topic and the token held only server-side. Verify anonymous read
+and publish denial, publisher read denial and unrelated-topic denial. Do not
+copy an administrator token into this application.
+
+On this RPi, public-IP hairpin routing reaches a self-signed endpoint. The
+Compose host mapping resolves only ntfy.linxu.ir to Docker's host gateway so
+the existing shared TLS proxy is reached; the client still uses the fixed
+HTTPS hostname with certificate verification enabled. Gateway-local TLS health
+was proven from the exact application container before adding the mapping.
+No Caddy configuration, host DNS or system-wide routing change is required.
+
 ```sh
 cd bitcoin4funsite
 docker compose config -q
@@ -85,6 +114,12 @@ merely copying files or restarting. Use a unique image tag/revision and compare
 app/template/static hashes inside the running container before claiming the
 new revision is live. Compose restart policy is not automatic Git deployment.
 
+The bounded outbound helper must be copied with the application modules in both
+the regular Dockerfile and any offline ARM build recipe. A previous image build
+that predates a helper or transport fix is historical evidence, not verification
+of the current source. Repeat import/route smoke checks and source-hash parity
+after the final image is recreated.
+
 ## RPi installation and shared Caddy
 
 Application root: /home/saeb/bitcoin4fun/bitcoin4funsite.
@@ -93,19 +128,20 @@ Shared Caddy uses host networking and the existing bind-mounted file:
 
 /home/saeb/caddy/Caddyfile
 
-The target hostnames are btc4.fun and go.btc4.fun. Before activation, verify
-hostname DNS and a certificate whose SANs cover both names. The example below
-assumes this certificate lineage; substitute the verified live paths if needed:
+Current certificate lineage covers btc4.fun and go.btc4.fun:
 
 /etc/letsencrypt/live/btc4.fun/
 
-A source rebrand does not issue or verify a certificate. Do not rename an
-existing lineage or assume the old certificate covers the new names. Preserve
-all shared Caddy routes, mounts, global settings and unrelated certificates.
+Before activation, recheck certificate SAN/validity and hostname DNS. Do not
+issue a replacement just because this application is new. Preserve all shared
+Caddy routes, mounts, global settings and unrelated certificates.
 
 User approval is required for the exact domain blocks and reload. The approved
-operation for this task is only adding the two requested hostnames, with a
-backup and validated rollback; no Caddy restart or recreation. Prove the direct
+operation is the two new requested hostnames plus path/query-preserving
+permanent redirects from bitcoin4.fun and go.bitcoin4.fun, with backup and
+validated rollback; no Caddy restart or recreation. The current routes were
+already active when the parallel operator stopped; their bytes were preserved
+by the app deployment. Prove the direct
 application responds and matches this repository before editing the proxy.
 Back up exact live Caddyfile bytes and preserve its bind-mounted inode during
 write; validate inside the live container against its real certificate mounts,
