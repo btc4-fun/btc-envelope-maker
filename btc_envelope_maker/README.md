@@ -59,12 +59,18 @@
 
 ## ۱. نصب (یک بار)
 
-نیاز: Python 3.11 یا بالاتر. پیشنهاد: **۳.۱۳** (روی ۳.۱۴ بستهٔ `coincurve` wheel آماده ندارد و ساخت آن خطا می‌دهد).
+مسیر نصب قفل‌شده فقط روی سکوی زیر آزموده شده است؛ پشتیبانی نسخه‌ها یا سکوهای دیگر از این نتیجه استنباط نمی‌شود:
+
+CPython 3.13.5 / Debian 13 / Linux x86_64 / glibc 2.41
+
+جزئیات بسته‌ها، دریافت مصنوعات و محدودیت اصالت:
+
+DEPENDENCIES.md
 
 ```
 uv venv --python 3.13
 source .venv/bin/activate.fish      # در bash:  source .venv/bin/activate
-uv pip install -r requirements-runtime.txt
+uv pip install --require-hashes --only-binary=:all: -r requirements-runtime.txt
 ```
 
 - **فونت:** وزیرکد (نسخهٔ Hack، v1.1.2) در پوشهٔ `fonts` همراه ابزار است؛ آن پوشه را کنار `btc_envelope_maker.py` نگه دارید. این فونت وزن Bold ندارد؛ تیترها با کمی ضخیم‌سازی چاپ می‌شوند.
@@ -95,12 +101,21 @@ python btc_envelope_maker.py --count 1 --acknowledge-offline
 
 ../SECURITY.md
 
-نصب آفلاین نیز باید از فایل کامل وابستگی‌های اجرا استفاده کند:
+نصب آفلاین باید در محیط تازه، با شبکهٔ واقعاً قطع‌شده و بسته‌های دریافت‌شده و بررسی‌شده طبق راهنمای وابستگی‌ها انجام شود:
 
-pip download -r requirements-runtime.txt -d wheels
-pip install --no-index --find-links wheels -r requirements-runtime.txt
+pip download --require-hashes --only-binary=:all: -r requirements-runtime.txt -d wheels
+pip install --require-hashes --only-binary=:all: --no-index --find-links wheels -r requirements-runtime.txt
 
-واردکنندهٔ دفتر به اعتبارسنج مشترک در پوشهٔ سایت نیاز دارد؛ ساختار مخزن را حفظ کنید و تنها فایل واردکننده را جداگانه کپی نکنید.
+پوشهٔ مولد مستقل از سایت است؛ فایل اعتبارسنج همراه را نیز حفظ کنید. تولید بدون نشانی پایگاه داده، ماژول دیتابیس را وارد نمی‌کند. پیش‌نمایش و راهنما هم به بستهٔ دیتابیس نیاز ندارند.
+
+address_validation.py
+
+فایل قدیمی وابستگی‌ها ممکن است تغییر شخصی گرداننده داشته باشد؛ مسیر نصب تازه آن را وارد نمی‌کند. بسته‌های آزمون و اتصال اختیاری پایگاه داده جدا هستند:
+
+requirements-test.txt
+requirements-db.txt
+
+پاک‌سازی خطا و قطع قابل‌گرفتن کاربر فقط پس از ایجاد انحصاری پوشهٔ تازه فعال است و پوشهٔ اجرای قبلی را حذف نمی‌کند. اگر پاک‌سازی ناقص ماند، خروجی همچنان محرمانه است و نباید استفاده شود. این رفتار، قطع برق، توقف غیرقابل‌گرفتن، تعویض مخرب پوشه یا پاک‌کردن امن از حافظهٔ پایدار را پوشش نمی‌دهد.
 
 ## ۴. پیش از شارژ و فروش (الزامی)
 

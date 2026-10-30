@@ -206,7 +206,7 @@ class UIContract(unittest.TestCase):
                          ['/static/guide-inner-example.png', '/static/guide-outer-example.png'])
         self.assertFalse(any(key.startswith("on") for _, attrs in initial.elements for key in attrs))
 
-    def run_lookup_script(self, scenario, initial="", initial_state=""):
+    def run_lookup_script(self, scenario, initial="", initial_state="", retry_after=""):
         self.assertIsNotNone(shutil.which("node"), "Node is required for the offline JavaScript behavior contract")
         harness = r'''
 const assert = require('node:assert/strict');
@@ -227,6 +227,7 @@ class Element {
 const ids=Object.fromEntries(['lookup-form','serial','lookup-submit','lookup-status','lookup-result'].map(id=>[id,new Element()]));
 ids['lookup-form'].dataset.initialSerial=process.argv[2];
 ids['lookup-form'].dataset.initialState=process.argv[3];
+ids['lookup-form'].dataset.retryAfter=process.argv[5];
 ids['lookup-form'].dataset.initialAddress='bc1qsyntheticpublicfixture';
 ids['lookup-form'].dataset.initialExplorer='https://mempool.space/address/bc1qsyntheticpublicfixture';
 ids.serial.value=process.argv[2];
@@ -252,7 +253,7 @@ vm.runInThisContext(fs.readFileSync(process.argv[1], 'utf8'));
         spec.loader.exec_module(module)
         html = module.create_app({'TESTING': True}).test_client().get('/lookup').text
         pattern = Document(html).by_id('serial')['pattern']
-        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state, pattern], capture_output=True, text=True, timeout=15)
+        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state, pattern, retry_after], capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_lookup_waits_for_intent_and_rejects_invalid_without_network(self):
@@ -344,18 +345,31 @@ assert.ok(all().some(node=>node.textContent==='Serial_710587k45300'));
         self.run_lookup_script(r'''
 await tick();
 assert.equal(requests.length,0,'Do not retry an initial limited lookup');
-assert.match(ids['lookup-status'].textContent,/پانزده ثانیه/);
+assert.match(ids['lookup-status'].textContent,/پنج استعلام در شصت ثانیه/);
 assert.equal(ids['lookup-result'].hidden,true);
-''', initial='Serial_710587k45300', initial_state='rate_limited')
+assert.match(ids['lookup-status'].textContent,/۴۳ ثانیه/);
+''', initial='Serial_710587k45300', initial_state='rate_limited', retry_after='43')
 
     def test_lookup_explains_server_rate_limit_without_automatic_retry(self):
         self.run_lookup_script(r'''
-handler=async()=>({ok:false,status:429});
+handler=async()=>({ok:false,status:429,headers:{get:name=>name==='Retry-After'?'37':null}});
 await submit('Sample70587k45300');
-assert.match(ids['lookup-status'].textContent,/پانزده ثانیه/);
+assert.match(ids['lookup-status'].textContent,/۳۷ ثانیه/);
+assert.match(ids['lookup-status'].textContent,/پنج استعلام در شصت ثانیه/);
 assert.equal(requests.length,1);
 assert.equal(ids['lookup-result'].hidden,true);
 assert.equal(ids['lookup-submit'].disabled,false);
+''')
+
+    def test_rate_wait_header_is_bounded_and_never_rendered_as_markup(self):
+        self.run_lookup_script(r'''
+for (const value of [null, '', '0', '61', '-1', '1.5', 'NaN', '<img src=x>', '9'.repeat(10000)]) {
+  handler=async()=>({ok:false,status:429,headers:{get:()=>value}});
+  await submit('Sample70587k45300');
+  assert.match(ids['lookup-status'].textContent,/کمی صبر کنید/);
+  assert.ok(!ids['lookup-status'].textContent.includes('<img'));
+}
+assert.equal(requests.length,9);
 ''')
 
     def test_lookup_rejects_untrusted_payloads_without_rendering_or_external_urls(self):

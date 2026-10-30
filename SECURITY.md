@@ -31,12 +31,20 @@ column-level grants even when adding schema fields. Public imports/listing and
 ledger outputs do not carry contacts. Never infer contacts from a serial,
 publish a contact export, or connect the public contact form to wallet records.
 
-Serial inquiries are limited to one per 15 seconds per client IP, shared by
+Serial inquiries are limited to five admissions in a rolling 60 seconds per client IP, shared by
 HTML/API aliases and workers through private transactional SQLite admission.
-Same-result QR requests within the admitted interval do not reset the timer.
+QR requests for any serial admitted within that window are free and do not
+refresh it; an unseen or expired QR consumes an ordinary admission. Repeated
+non-QR inquiries count even for the same serial, including not-found results.
 The state uses HMAC-derived identifiers, not raw client IPs or serials; keep its
 directory private and persistent. Invalid configuration or state errors fail
-closed. Shared-IP users share the limit; changing IPs can bypass this defense.
+closed. Shared-IP users share the limit; one can exhaust the group's quota,
+and changing IPs can bypass this defense. This permits a burst of five and a
+long-run rate of five/minute instead of the former one and four/minute; it is
+not equivalent protection. Free QR work is not a total resource-consumption cap.
+Legacy state is retained and conservatively holds each existing IP until its
+last admission plus 60 seconds. Stop all old workers before a future upgrade;
+mixed-version workers and downgrade state compatibility are not supported.
 Trust forwarded client addresses only through the existing local/private peer
 and last appended Caddy hop; keep the app port bound to loopback.
 
@@ -70,8 +78,10 @@ See SECURITY-FOLLOWUP.md for scope and executable checks.
 - Serial suffix width now covers the entire run; duplicate serials fail before
   output. Historical one/two-character suffixes remain unchanged where sufficient.
 - CLI output creation uses a restored restrictive umask; files begin at 0600,
-  batch directories at 0700. Handled permission/write errors fail closed and
-  remove known partial artifacts, warning explicitly when cleanup is incomplete.
+  batch directories at 0700. After exclusive directory creation, output errors
+  and catchable interruptions remove known partial artifacts, warning explicitly
+  when cleanup is incomplete. Unexpected failures are re-raised after cleanup;
+  existing output folders are never owned or removed by the failed run.
 - Real generation requires --acknowledge-offline even with --allow-online.
   Failed probes are not proof of isolation; the latter skips only advisory probes.
 - Preview writes no ledger and never connects to a database. Both project
@@ -93,14 +103,18 @@ See SECURITY-FOLLOWUP.md for scope and executable checks.
 - Second-resolution serials are not globally unique: same-second runs across
   roots/machines, clock reuse and prefix reuse can collide. Exclusive directory
   creation prevents overwriting a batch in the same root, not global collisions.
-- Filesystem output is not a crash-atomic transaction; power loss, SIGKILL and
-  unexpected exceptions may leave partial files. Direct low-level rendering
+- Filesystem output is not a crash-atomic transaction; power loss, SIGKILL,
+  repeated interruptions during rollback or cleanup failures may leave partial
+  files. Direct low-level rendering
   outside the CLI private-creation context does not inherit its mode guarantee.
   Process-wide umask assumes the single-threaded CLI.
 - Physically disconnect networking and use a trusted offline live environment
   and offline printer. Neither acknowledgement nor probes enforce isolation.
-- Generator runtime/test dependencies are not fully hash-locked. The self-test
-  checks a known derivation, not package authenticity or the entropy source.
+- Generator runtime, optional test and PostgreSQL dependencies have complete
+  target-specific version/hash locks; see btc_envelope_maker/DEPENDENCIES.md.
+  The verified target is CPython 3.13/Linux x86_64, not every platform. Hashes
+  establish byte consistency, not publisher authenticity, safe native code or
+  entropy quality. OS libraries/interpreter remain outside the Python locks.
 - Public-vector exclusions cover this project's two preview vectors, not every
   publicly known or compromised wallet. Synthetic website persistence fixtures
   remain separate from production inventory imports.

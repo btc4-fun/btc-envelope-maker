@@ -4,7 +4,8 @@ services:
   web:
     image: ${BITCOIN4FUN_IMAGE:-bitcoin4fun:local}
     build:
-      context: .
+      context: ..
+      dockerfile: bitcoin4funsite/Dockerfile
     restart: unless-stopped
     init: true
     user: "1000:1000"

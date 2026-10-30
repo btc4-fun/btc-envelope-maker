@@ -149,16 +149,39 @@ that predates a helper or transport fix is historical evidence, not verification
 of the current source. Repeat import/route smoke checks and source-hash parity
 after the final image is recreated.
 
+The canonical dependency-free address validator now lives at
+`btc_envelope_maker/address_validation.py`. The site imports only this module,
+not wallet generation/signing code. Build from the repository root:
+
+    docker build -f bitcoin4funsite/Dockerfile -t bitcoin4fun:local .
+
+Compose selects that same root context. `bitcoin4funsite/Dockerfile.dockerignore`
+is the build-specific allowlist; preserve it with the Dockerfile. For an offline
+source transfer, retain root-relative paths for the allowlisted website modules,
+requirements, templates and public static files plus only the canonical helper
+from the generator directory. Transfer compose/deployment control files
+separately as needed; never recursively copy the repository, generator directory
+or unfiltered static directory. The old site-directory-only build is incomplete.
+Local app imports outside Docker need the repository root on the Python path.
+An alternate/offline image recipe must copy the helper into
+`/app/btc_envelope_maker/address_validation.py` and retain the site facade.
+
 ## Serial lookup admission and guide images
 
-Every valid serial inquiry is admitted once per client IP per 15 seconds,
+Up to five valid serial inquiries per client IP are admitted in a rolling
+60-second window,
 across /lookup?serial=..., /s/SERIAL, /SERIAL and /api/wallets/SERIAL.
 Invalid serials and an empty form do not query the wallet database. Admission
 is enforced before database access, with HTTP 429 and Retry-After on denial;
 state failure returns a sanitized 503 rather than bypassing the limiter.
-The same admitted serial's local QR within that 15-second window is a companion
-request and does not reset the timer. A different/direct QR uses the same gate.
+Every admitted serial's local QR remains a free companion until that admission
+expires, even after other serials are accepted. It does not refresh or append
+history. An unseen/expired direct QR consumes an ordinary slot. Non-QR repeats,
+not-found results and downstream database failures consume admission too.
 The server-rendered page is hydrated without a duplicate API inquiry.
+The sixth inquiry receives the rounded-up wait until the oldest live admission
+expires; browser and native-form responses display that wait without automatic
+retry. At the exact expiry boundary the slot is available again.
 
 The limiter uses the existing CONTACT_SECRET and a separate SQLite file:
 
@@ -168,10 +191,29 @@ Keep the existing state directory mounted writable and UID/GID 1000, mode 0700.
 Both Gunicorn workers share transactional state; restarting the application
 must not remove it. Only HMAC-derived client/serial identifiers and timestamps
 are retained, not raw IPs, serials, wallet addresses or contact data. Clients
-behind a shared public IP share the interval. This is not a distributed-attack
+behind a shared public IP share the quota. This is not a distributed-attack
 defense or a replacement for upstream capacity controls. Caddy appends the
 connecting client IP; never expose the upstream listener publicly or accept
 arbitrary forwarded headers from an untrusted proxy.
+
+This policy is more permissive than the old one-per-15-seconds gate: burst five
+instead of one; long-run five/minute instead of four/minute. With instantaneous
+lookups and no competing traffic, ten cards can be admitted at times
+0,0,0,0,0,60,60,60,60,60 seconds instead of 0,15,30,45,60,75,90,105,120,135.
+These are idealized admission schedules, not real-world response-time promises.
+A same-IP attacker can still consume the group's entire quota; the longer free
+QR interval does not cap QR database/CPU work. Gunicorn and query timeouts do not
+replace admission or upstream resource protection.
+
+Upgrade retains `lookup_admissions` and adds bounded five-slot `lookup_window`
+state transactionally. Since the old table discarded older admissions, an IP
+with a live legacy row waits conservatively until its last admission plus
+60 seconds; its matching QR remains free. Do not delete the state or rotate the
+key to upgrade. Stop all old workers before starting the new version; mixed old
+and new workers do not coordinate quotas. Downgrade cannot preserve the new
+history automatically: require a separate approved rollback plan rather than
+assuming an old image reads new state. Any operational upgrade/migration needs
+fresh permission; this change was tested only with disposable local state.
 
 Only guide-inner-example.png and guide-outer-example.png are public guide
 illustrations. The inner card keeps its original design while all twelve words

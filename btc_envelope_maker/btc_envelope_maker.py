@@ -59,7 +59,8 @@ try:
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.pdfgen import canvas
 except ImportError as e:
-    sys.exit(f"Missing Python package '{e.name}'.\nInstall with:  pip install -r requirements.txt")
+    sys.exit(f"Missing Python package '{e.name}'.\nSee DEPENDENCIES.md for the offline "
+             "--require-hashes installation of requirements-runtime.txt.")
 
 # --------------------------------------------------------------------------------------
 # constants
@@ -312,7 +313,8 @@ def now_local(cfg: dict) -> dt.datetime:
         if name == "Asia/Tehran":
             tz = dt.timezone(dt.timedelta(hours=3, minutes=30))   # Iran has no DST since 2022
         else:
-            sys.exit(f"Time zone '{name}' not available. Run:  pip install tzdata")
+            sys.exit(f"Time zone '{name}' not available. See DEPENDENCIES.md for the offline "
+                     "--require-hashes installation of requirements-runtime.txt (includes tzdata).")
     return dt.datetime.now(tz)
 
 
@@ -766,11 +768,13 @@ def main() -> None:
     btc_db = None
     db_url = db_table = ""
     if not args.preview:
-        sys.path.insert(0, str(HERE))
-        import btc_db as _db
-        btc_db = _db
-        db_url = btc_db.resolve_url(args.db, cfg["db_url"])
-        db_table = args.db_table or cfg["db_table"]
+        # Resolve without importing the optional database layer.
+        db_url = (args.db or os.environ.get("BTC_DB_URL") or cfg["db_url"] or "").strip()
+        if db_url:
+            sys.path.insert(0, str(HERE))
+            import btc_db as _db
+            btc_db = _db
+            db_table = args.db_table or cfg["db_table"]
     elif args.db or os.environ.get("BTC_DB_URL") or cfg["db_url"]:
         print("(preview: the database is not touched)")
     if db_url:
@@ -836,21 +840,29 @@ def main() -> None:
                 os.chmod(p, 0o600)
             if not args.preview:
                 write_ledger(folder / "ledger.csv", cfg, wallets, human, created)
-        except (OSError, LayoutError):
+        except BaseException as error:
             cleanup_failed = False
             # Only our named artifacts, never recursive removal of an output tree.
             for p in [*files.values(), folder / "ledger.csv"]:
                 try:
                     p.unlink(missing_ok=True)
-                except OSError:
+                except BaseException:
                     cleanup_failed = True
             try:
                 folder.rmdir()
-            except OSError:
+            except BaseException:
                 cleanup_failed = True
-            sys.exit("Output failed; no successful batch was recorded."
-                     + (" Cleanup incomplete: treat the output folder as SECRET and do not use it."
-                        if cleanup_failed else " Partial files removed."))
+            message = ("Output failed; no successful batch was recorded."
+                       + (" Cleanup incomplete: treat the output folder as SECRET and do not use it."
+                          if cleanup_failed else " Partial files removed."))
+            if (isinstance(error, (OSError, LayoutError))
+                    or isinstance(error, SystemExit) and error.code in (None, 0)):
+                sys.exit(message)
+            try:
+                print(message, file=sys.stderr)
+            except BaseException:
+                pass  # Warning delivery must not replace the primary failure.
+            raise
 
     db_failed = False
     db_msg = ""

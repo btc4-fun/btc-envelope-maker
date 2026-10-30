@@ -2,11 +2,12 @@ ARG PYTHON_IMAGE=python:3.13-slim-bookworm@sha256:281d39ff02e3b389401586134ff9e6
 FROM ${PYTHON_IMAGE}
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
-COPY requirements.txt ./
+COPY bitcoin4funsite/requirements.txt ./
 RUN pip install --no-cache-dir --require-hashes -r requirements.txt
-COPY app.py market.py pricing.py contact.py bounded_http.py lookup_limit.py address_validation.py ./
-COPY templates/ ./templates/
-COPY static/ ./static/
+COPY bitcoin4funsite/app.py bitcoin4funsite/market.py bitcoin4funsite/pricing.py bitcoin4funsite/contact.py bitcoin4funsite/bounded_http.py bitcoin4funsite/lookup_limit.py bitcoin4funsite/address_validation.py ./
+COPY btc_envelope_maker/address_validation.py ./btc_envelope_maker/
+COPY bitcoin4funsite/templates/ ./templates/
+COPY bitcoin4funsite/static/ ./static/
 USER 1000:1000
 EXPOSE 8080
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "2", "--timeout", "15", "--worker-tmp-dir", "/tmp", "--error-logfile", "-", "app:create_app()"]

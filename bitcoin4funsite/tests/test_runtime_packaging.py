@@ -1,14 +1,42 @@
-"""Runtime helpers must survive the explicit image context allowlist."""
+"""Runtime helpers survive the repository-root, explicit image allowlist."""
 from pathlib import Path
+import shutil
+import subprocess
+import sys
 import unittest
+import tempfile
 
 SITE = Path(__file__).resolve().parents[1]
+ROOT = SITE.parent
 
 
 class RuntimePackagingTests(unittest.TestCase):
     def test_shared_address_validator_is_in_image_and_context(self):
         dockerfile = (SITE / 'Dockerfile').read_text()
-        copied = [line.split()[1:-1] for line in dockerfile.splitlines()
-                  if line.startswith('COPY ')]
-        self.assertTrue(any('address_validation.py' in names for names in copied))
-        self.assertIn('!address_validation.py', (SITE / '.dockerignore').read_text().splitlines())
+        self.assertIn('COPY btc_envelope_maker/address_validation.py ./btc_envelope_maker/', dockerfile)
+        self.assertNotIn('COPY btc_envelope_maker/ ./', dockerfile)
+        ignore = SITE / 'Dockerfile.dockerignore'
+        self.assertTrue(ignore.exists())
+        lines = ignore.read_text().splitlines()
+        self.assertIn('!btc_envelope_maker/address_validation.py', lines)
+        self.assertNotIn('!btc_envelope_maker/**', lines)
+        self.assertIn('bitcoin4funsite/static/privatekey.png', lines)
+        self.assertIn('bitcoin4funsite/static/publickey.png', lines)
+        compose = (SITE / 'compose.yaml').read_text()
+        self.assertIn('context: ..', compose)
+        self.assertIn('dockerfile: bitcoin4funsite/Dockerfile', compose)
+
+    def test_helper_only_image_shape_imports_without_generator_or_packages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'btc_envelope_maker').mkdir()
+            shutil.copyfile(ROOT / 'btc_envelope_maker/address_validation.py',
+                            root / 'btc_envelope_maker/address_validation.py')
+            shutil.copyfile(SITE / 'address_validation.py', root / 'address_validation.py')
+            result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c',
+                                     'import sys; sys.path.insert(0, sys.argv[1]); '
+                                     'from address_validation import valid_address; '
+                                     'assert valid_address("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"); '
+                                     'assert "btc_envelope_maker.btc_envelope_maker" not in sys.modules',
+                                     directory], cwd=directory, env={}, capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)

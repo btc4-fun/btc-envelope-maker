@@ -1,0 +1,7 @@
+# Independent generator inputs: committed legacy requirements, pinned to the
+# existing exercised environment without upgrades. See DEPENDENCIES.md.
+bip-utils==2.12.3
+reportlab==5.1.0
+arabic-reshaper==3.0.1
+python-bidi==0.6.12
+tzdata==2026.6

@@ -18,7 +18,13 @@ class LookupLimitUnavailable(Exception):
 
 
 class LookupLimiter:
-    """One inquiry per canonical IP every fifteen seconds, across workers."""
+    """Five admissions per canonical IP in the preceding sixty seconds.
+
+    QR companions for any admitted serial are free until that admission expires;
+    they never refresh its timestamp. A direct/expired QR consumes a normal slot.
+    Legacy single-row state conservatively holds the IP until last admission +60:
+    its discarded history cannot safely be reconstructed during an upgrade.
+    """
 
     def __init__(self, state_file=None, secret=None, clock=time.time):
         try:
@@ -68,19 +74,34 @@ class LookupLimiter:
                     raise ValueError
                 db.execute('DELETE FROM lookup_admissions WHERE admitted_at <= ?',
                            (now - EXPIRY_SECONDS,))
-                row = db.execute('SELECT serial_hash, admitted_at FROM lookup_admissions '
-                                 'WHERE ip_hash = ?', (ip_hash,)).fetchone()
-                if row is not None and now < row[1] + 15:
-                    result = (0 if qr and hmac.compare_digest(row[0], serial_hash)
-                              else min(15, max(1, math.ceil(row[1] + 15 - now))))
+                db.execute('CREATE TABLE IF NOT EXISTS lookup_window ('
+                           'ip_hash TEXT NOT NULL, slot INTEGER NOT NULL CHECK(slot BETWEEN 0 AND 4), '
+                           'serial_hash TEXT NOT NULL, admitted_at REAL NOT NULL, '
+                           'PRIMARY KEY(ip_hash, slot)) WITHOUT ROWID')
+                db.execute('DELETE FROM lookup_window WHERE admitted_at <= ?',
+                           (now - EXPIRY_SECONDS,))
+                rows = db.execute('SELECT slot, serial_hash, admitted_at FROM lookup_window '
+                                  'WHERE ip_hash = ? ORDER BY admitted_at', (ip_hash,)).fetchall()
+                legacy = db.execute('SELECT serial_hash, admitted_at FROM lookup_admissions '
+                                    'WHERE ip_hash = ?', (ip_hash,)).fetchone()
+                if ((legacy is not None and now < legacy[1])
+                        or any(now < row[2] for row in rows)):
+                    raise LookupLimitUnavailable('Lookup temporarily unavailable')
+                if legacy is not None:
+                    result = (0 if qr and hmac.compare_digest(legacy[0], serial_hash)
+                              else max(1, math.ceil(legacy[1] + EXPIRY_SECONDS - now)))
+                elif qr and any(hmac.compare_digest(row[1], serial_hash) for row in rows):
+                    result = 0
+                elif len(rows) >= 5:
+                    result = max(1, math.ceil(rows[0][2] + EXPIRY_SECONDS - now))
                 else:
-                    if row is None and db.execute(
-                            'SELECT count(*) FROM lookup_admissions').fetchone()[0] >= MAX_ENTRIES:
+                    if not rows and db.execute(
+                            'SELECT count(*) FROM (SELECT ip_hash FROM lookup_window '
+                            'UNION SELECT ip_hash FROM lookup_admissions)').fetchone()[0] >= MAX_ENTRIES:
                         raise LookupLimitUnavailable('Lookup temporarily unavailable')
-                    db.execute('INSERT INTO lookup_admissions VALUES (?, ?, ?) '
-                               'ON CONFLICT(ip_hash) DO UPDATE SET '
-                               'serial_hash=excluded.serial_hash, admitted_at=excluded.admitted_at',
-                               (ip_hash, serial_hash, now))
+                    slot = next(slot for slot in range(5) if slot not in {row[0] for row in rows})
+                    db.execute('INSERT INTO lookup_window VALUES (?, ?, ?, ?)',
+                               (ip_hash, slot, serial_hash, now))
                     result = 0
                 db.commit()
                 return result

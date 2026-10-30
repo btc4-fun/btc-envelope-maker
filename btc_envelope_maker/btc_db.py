@@ -12,14 +12,16 @@ Connection strings
   SQLite   : sqlite:///wallets.db          (relative path)
              sqlite:////home/me/wallets.db (absolute path: four slashes)
              or just a path ending in .db / .sqlite / .sqlite3
-  Postgres : postgresql://user:password@host:5432/dbname      (needs:  pip install "psycopg[binary]")
+  Postgres : postgresql://user:password@host:5432/dbname
+             See DEPENDENCIES.md for the offline --require-hashes installation
+             of requirements-runtime.txt plus requirements-db.txt (psycopg).
 
 Fresh tables include the three private columns, default NULL. Existing tables
 are NOT upgraded by check() or save_rows(); use the explicit owner/admin
 migrate-contact command. This module does not grant access to private columns:
 keep public database roles restricted to the public columns they need.
 
-Stand-alone use (from this repository; needs bech32, + psycopg for Postgres):
+Stand-alone use (needs psycopg only for Postgres):
   python btc_db.py import out/batch_0587k4530/ledger.csv --db "postgresql://..."
   python btc_db.py list --db "sqlite:///wallets.db"
   python btc_db.py migrate-contact --db "sqlite:///wallets.db"  # owner/admin only
@@ -41,10 +43,11 @@ from urllib.parse import unquote, urlsplit
 DEFAULT_TABLE = "wallets"
 ENV_VAR = "BTC_DB_URL"
 TABLE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
-# Support direct `python btc_db.py` as well as imports from the repository root.
+# Support direct scripts and namespace-package imports without the website.
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from bitcoin4funsite.address_validation import valid_inventory_address
+    from address_validation import valid_inventory_address
+else:
+    from .address_validation import valid_inventory_address
 
 
 class DbError(Exception):
@@ -150,7 +153,9 @@ def _connect(kind: str, target: str):
         try:
             import psycopg2 as pg                 # psycopg 2
         except ImportError:
-            raise DbError('PostgreSQL needs a driver:  pip install "psycopg[binary]"') from None
+            raise DbError('PostgreSQL needs a driver. See DEPENDENCIES.md for the offline '
+                          '--require-hashes installation of requirements-runtime.txt '
+                          'plus requirements-db.txt.') from None
     try:
         return pg.connect(target, connect_timeout=10)
     except Exception:

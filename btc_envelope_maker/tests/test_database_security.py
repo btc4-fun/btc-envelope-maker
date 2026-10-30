@@ -14,8 +14,7 @@ from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "btc_envelope_maker"))
-import btc_db
+from btc_envelope_maker import btc_db
 from bech32 import encode
 
 # Synthetic credentials are assembled at runtime; keep the publication guard
@@ -59,7 +58,8 @@ class SharedAddressValidation(unittest.TestCase):
 
     def test_rejects_shape_before_bech32_work(self):
         validator = self.validator()
-        with patch.object(validator, "decode", side_effect=AssertionError("must not decode")):
+        canonical = importlib.import_module("btc_envelope_maker.address_validation")
+        with patch.object(canonical, "bech32_polymod", side_effect=AssertionError("must not decode")):
             for value in (None, [], "bc1q" + "q" * 999996, "bc1q" + "!" * 38):
                 self.assertFalse(validator.valid_address(value))
 

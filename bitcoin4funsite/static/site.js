@@ -17,6 +17,13 @@
     status.dataset.state = state;
   }
 
+  function limitedMessage(retryAfter) {
+    const seconds = typeof retryAfter === 'string' && /^(?:[1-9]|[1-5][0-9]|60)$/.test(retryAfter)
+      ? retryAfter.replace(/[0-9]/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]) : null;
+    return "برای هر اتصال اینترنتی، پنج استعلام در شصت ثانیه مجاز است؛ " +
+      (seconds ? "پس از " + seconds + " ثانیه دوباره تلاش کنید." : "کمی صبر کنید و دوباره بزنید.");
+  }
+
   function element(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -104,7 +111,7 @@
       });
       if (version !== requestVersion) return;
       if (response.status === 429) {
-        announce("هر پانزده ثانیه فقط یک استعلام مجاز است؛ کمی صبر کنید و دوباره بزنید.", "error");
+        announce(limitedMessage(response.headers?.get("Retry-After")), "error");
         return;
       }
       if (response.status === 404) {
@@ -153,7 +160,7 @@
       showWallet(wallet);
       announce("آدرس عمومی پیدا شد. پیش از واریز، آدرس کامل و شبکه را بررسی کنید.", "success");
     } else if (state === 'rate_limited') {
-      announce("هر پانزده ثانیه فقط یک استعلام مجاز است؛ کمی صبر کنید و دوباره بزنید.", "error");
+      announce(limitedMessage(form.dataset.retryAfter), "error");
     } else if (state === 'not_found') {
       announce("پاکتی با این شمارهٔ سریال پیدا نشد. حروف و ارقام را دوباره با روی پاکت تطبیق دهید.", "error");
     } else if (state) {

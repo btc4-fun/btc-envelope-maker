@@ -1,0 +1,741 @@
+{
+  "target": {
+    "implementation": "CPython",
+    "python": "3.13.5",
+    "os": "Debian 13 Linux",
+    "architecture": "x86_64",
+    "glibc": "2.41"
+  },
+  "resolver": "uv 0.10.6",
+  "source": "HTTPS PyPI release JSON and files.pythonhosted.org; byte digests matched, publisher authenticity not independently established",
+  "artifacts": [
+    {
+      "name": "arabic-reshaper",
+      "version": "3.0.1",
+      "filename": "arabic_reshaper-3.0.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/6e/7d/77752d819ede528c664ecf4de974b17b049e054a14537b74b53c8568014f/arabic_reshaper-3.0.1-py3-none-any.whl",
+      "sha256": "41c5adc2420f85758eada7e880251c4b6a2adbd83377bd27e5d4eba71f648bc7",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/arabic-reshaper/3.0.1/json",
+      "metadata_sha256": "0b3c28bf364e9fa54b616fefa4fbb5633b394a6fd5aa4551d5abc4cc8a2280d9",
+      "requires_dist": [
+        "fonttools>=4.0; extra == 'with-fonttools'"
+      ],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Homepage, https://github.com/mpcabd/python-arabic-reshaper/",
+        "Repository, https://github.com/mpcabd/python-arabic-reshaper/"
+      ]
+    },
+    {
+      "name": "bech32",
+      "version": "1.2.0",
+      "filename": "bech32-1.2.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b6/41/7022a226e5a6ac7091a95ba36bad057012ab7330b9894ad4e14e31d0b858/bech32-1.2.0-py3-none-any.whl",
+      "sha256": "990dc8e5a5e4feabbdf55207b5315fdd9b73db40be294a19b3752cde9e79d981",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/bech32/1.2.0/json",
+      "metadata_sha256": "ca656fc5fa59d47514b332125fca1345a5a05be97f08aea96737570d4c3af230",
+      "requires_dist": [],
+      "requires_python": ">=3.5",
+      "project_urls": []
+    },
+    {
+      "name": "bip-utils",
+      "version": "2.12.3",
+      "filename": "bip_utils-2.12.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c8/98/cd695cbd3925cdfa36973d872312760c3436db65df76eaba2f8206442578/bip_utils-2.12.3-py3-none-any.whl",
+      "sha256": "5413e9a6993fbdf5d288f16a49529571445045085b7025e7ef22abfec3ee504b",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/bip-utils/2.12.3/json",
+      "metadata_sha256": "76daa0eea6b0c512d94e66f562a01c0036244ba76b851610ec2225d054d479db",
+      "requires_dist": [
+        "cbor2<6.0.0,>=5.1.2; python_version < \"3.9\"",
+        "cbor2<7.0.0,>=5.5.0; python_version >= \"3.9\"",
+        "coincurve<19.0.0,>=15.0.1; python_version == \"3.7\"",
+        "coincurve>=15.0.1; python_version > \"3.7\" and python_version < \"3.10\"",
+        "coincurve>=16.0.0; python_version == \"3.10\"",
+        "coincurve>=18.0.0; python_version == \"3.11\"",
+        "coincurve>=19.0.1; python_version >= \"3.12\"",
+        "coincurve>=21.0.0; python_version >= \"3.13\"",
+        "ecdsa~=0.17",
+        "ed25519-blake2b-fork<2.0.0,>=1.4.2",
+        "pycryptodome~=3.15",
+        "pynacl~=1.5",
+        "py-sr25519-bindings<0.2.1,>=0.1.3; python_version < \"3.9\"",
+        "py-sr25519-bindings<1.0.0,>=0.1.3; python_version == \"3.9\"",
+        "py-sr25519-bindings<1.0.0,>=0.1.4; python_version == \"3.10\"",
+        "py-sr25519-bindings<1.0.0,>=0.2.0; python_version >= \"3.11\"",
+        "py-sr25519-bindings<1.0.0,>=0.2.2; python_version >= \"3.13\"",
+        "pytoniq-core-fork<0.2.0,>=0.1.47",
+        "typing_extensions",
+        "coverage>=5.3; extra == \"develop\"",
+        "mypy>=0.900; extra == \"develop\"",
+        "ruff>=0.1; extra == \"develop\"",
+        "pytest>=7.0; extra == \"develop\"",
+        "pytest-cov>=2.10; extra == \"develop\"",
+        "tox>=4; extra == \"develop\""
+      ],
+      "requires_python": ">=3.7",
+      "project_urls": [
+        "Homepage, https://github.com/ebellocchia/bip_utils",
+        "Changelog, https://github.com/ebellocchia/bip_utils/blob/master/CHANGELOG.md",
+        "Repository, https://github.com/ebellocchia/bip_utils",
+        "Download, https://github.com/ebellocchia/bip_utils/archive/v{version}.tar.gz",
+        "Documentation, https://bip-utils.readthedocs.io"
+      ]
+    },
+    {
+      "name": "bitarray",
+      "version": "3.12.3",
+      "filename": "bitarray-3.12.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/67/de/ed554993e18dbde2c256aa57a92c00cb2d172658abef45b723a44503b968/bitarray-3.12.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "e8f2762fdab90ee294cc14192e91d496ea24990ca9fe28d3627775a0d2773c6e",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/bitarray/3.12.3/json",
+      "metadata_sha256": "6c0e74e3673431bbacfeee8c35c1f3a888624db2ca4dde47a3fa1b185b663be1",
+      "requires_dist": [],
+      "requires_python": ">=3.7",
+      "project_urls": []
+    },
+    {
+      "name": "cbor2",
+      "version": "6.1.5",
+      "filename": "cbor2-6.1.5-cp313-cp313-manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/82/92/9d20136a9e3ba31fd2a9073955409b9f9001c86b4149cae4900ac737a820/cbor2-6.1.5-cp313-cp313-manylinux_2_28_x86_64.whl",
+      "sha256": "833db11fbea9808b080e5340d5f96615e28a6a6617618a4331e60082d0dc1ca4",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/cbor2/6.1.5/json",
+      "metadata_sha256": "af9a17e757dac18f37f33b8df7b20db6a238b478638355aac693a1ef3a01ba6e",
+      "requires_dist": [],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Changelog, https://cbor2.readthedocs.io/en/latest/versionhistory.html",
+        "Documentation, https://cbor2.readthedocs.org/en/latest/",
+        "Source Code, https://github.com/agronholm/cbor2",
+        "Issue Tracker, https://github.com/agronholm/cbor2/issues"
+      ]
+    },
+    {
+      "name": "certifi",
+      "version": "2026.10.23",
+      "filename": "certifi-2026.10.23-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl",
+      "sha256": "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/certifi/2026.10.23/json",
+      "metadata_sha256": "546ce90e02c152f5ff565baca6bc2a8f43c355855f637756f49a0143e312bdb2",
+      "requires_dist": [],
+      "requires_python": ">=3.7",
+      "project_urls": [
+        "Source, https://github.com/certifi/python-certifi"
+      ]
+    },
+    {
+      "name": "cffi",
+      "version": "2.1.1",
+      "filename": "cffi-2.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/95/95/86342356ff5953b3fb06f7ef7c5bee212d45e770abc7218d451b9148313c/cffi-2.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "sha256": "a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/cffi/2.1.1/json",
+      "metadata_sha256": "2255e530e3f80593a354e3d84a29966924d0e10309d1e3a6d50f845ab7d8df66",
+      "requires_dist": [
+        "pycparser; implementation_name != \"PyPy\""
+      ],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Documentation, https://cffi.readthedocs.io/",
+        "Changelog, https://cffi.readthedocs.io/en/latest/whatsnew.html",
+        "Download, https://github.com/python-cffi/cffi/releases",
+        "Contact, https://groups.google.com/forum/#!forum/python-cffi",
+        "Source Code, https://github.com/python-cffi/cffi",
+        "Issue Tracker, https://github.com/python-cffi/cffi/issues"
+      ]
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.5.2",
+      "filename": "charset_normalizer-3.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/4b/85/41d27f234b82e47c167a5f6c0f62501dc0c640585ff4aba79e08a390336a/charset_normalizer-3.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "7218e8f32b0956cfcd048fd42d9d5779809745ca1d86113ca56f66e7ae1549c4",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/charset-normalizer/3.5.2/json",
+      "metadata_sha256": "9fda300857ae6a0486b4cd2d2fec7817ed2d45657249a6dfc0c2bbd1a44267b6",
+      "requires_dist": [],
+      "requires_python": ">=3.7",
+      "project_urls": [
+        "Changelog, https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md",
+        "Documentation, https://charset-normalizer.readthedocs.io/",
+        "Code, https://github.com/jawah/charset_normalizer",
+        "Issue tracker, https://github.com/jawah/charset_normalizer/issues"
+      ]
+    },
+    {
+      "name": "coincurve",
+      "version": "21.0.0",
+      "filename": "coincurve-21.0.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/f0/05/eaa7f36a03376ced1c19e0cb563341cc83fe48f5734b2effe8f16d0ee0ab/coincurve-21.0.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "d09ba4fd9d26b00b06645fcd768c5ad44832a1fa847ebe8fb44970d3204c3cb7",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/coincurve/21.0.0/json",
+      "metadata_sha256": "df8332d38aafb239b1bf3c36fe587fc343bef0b038d6eb5407e6c15612d0f65e",
+      "requires_dist": [],
+      "requires_python": ">=3.9",
+      "project_urls": [
+        "Homepage, https://ofek.dev/coincurve/",
+        "Sponsor, https://github.com/sponsors/ofek",
+        "History, https://ofek.dev/coincurve/history/",
+        "Tracker, https://github.com/ofek/coincurve/issues",
+        "Source, https://github.com/ofek/coincurve"
+      ]
+    },
+    {
+      "name": "ecdsa",
+      "version": "0.19.2",
+      "filename": "ecdsa-0.19.2-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/51/79/119091c98e2bf49e24ed9f3ae69f816d715d2904aefa6a2baa039a2ba0b0/ecdsa-0.19.2-py2.py3-none-any.whl",
+      "sha256": "840f5dc5e375c68f36c1a7a5b9caad28f95daa65185c9253c0c08dd952bb7399",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/ecdsa/0.19.2/json",
+      "metadata_sha256": "9803de12765003365a528f9b80919d2509ff60568799663fe43f4bc7c782fa4b",
+      "requires_dist": [
+        "six>=1.9.0",
+        "gmpy; extra == \"gmpy\"",
+        "gmpy2; extra == \"gmpy2\""
+      ],
+      "requires_python": ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*",
+      "project_urls": []
+    },
+    {
+      "name": "ed25519-blake2b-fork",
+      "version": "1.4.2",
+      "filename": "ed25519_blake2b_fork-1.4.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/ec/2a/42bf1d7feb3f0fcf54daa03b9a679172c23908f809c6d6f8f766e00b889a/ed25519_blake2b_fork-1.4.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "c4acd33f697be04526da5fe5f91effe6f2cd6f6f8c6d03e230ab4d75794e22f1",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/ed25519-blake2b-fork/1.4.2/json",
+      "metadata_sha256": "ca5dba8f634bec8771059d6989ea039078a19f65b41992fe512cc8ce1565c4c8",
+      "requires_dist": [],
+      "requires_python": null,
+      "project_urls": [
+        "Homepage, https://github.com/ebellocchia/python-ed25519-blake2b"
+      ]
+    },
+    {
+      "name": "idna",
+      "version": "3.20",
+      "filename": "idna-3.20-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl",
+      "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/idna/3.20/json",
+      "metadata_sha256": "e7cbd26e23ce60f6cb3a151d2adf3b1b087bb8f10ac2d9d6db70fdccbf3bb041",
+      "requires_dist": [
+        "ruff >= 0.16.0 ; extra == \"all\"",
+        "mypy >= 1.11.2 ; extra == \"all\"",
+        "ty >= 0.0.37 ; extra == \"all\"",
+        "pytest >= 8.3.2 ; extra == \"all\"",
+        "hypothesis >= 6.141.1 ; extra == \"all\"",
+        "coverage >= 7.10.0 ; extra == \"all\""
+      ],
+      "requires_python": ">=3.9",
+      "project_urls": [
+        "Changelog, https://github.com/kjd/idna/blob/master/HISTORY.md",
+        "Issue tracker, https://github.com/kjd/idna/issues",
+        "Source, https://github.com/kjd/idna"
+      ]
+    },
+    {
+      "name": "iniconfig",
+      "version": "2.3.0",
+      "filename": "iniconfig-2.3.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl",
+      "sha256": "f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/iniconfig/2.3.0/json",
+      "metadata_sha256": "10a4699a386b2309a98d4c368b6696e80562cefebe20107610337447d7f13f65",
+      "requires_dist": [],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Homepage, https://github.com/pytest-dev/iniconfig"
+      ]
+    },
+    {
+      "name": "packaging",
+      "version": "26.3",
+      "filename": "packaging-26.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/packaging/26.3/json",
+      "metadata_sha256": "4f190d2f0b312b3086058cee64ab4333bf3ce67fb78b4c2bdb43899049b29f4d",
+      "requires_dist": [],
+      "requires_python": ">=3.9",
+      "project_urls": [
+        "Documentation, https://packaging.pypa.io/",
+        "Source, https://github.com/pypa/packaging"
+      ]
+    },
+    {
+      "name": "pillow",
+      "version": "13.0.0",
+      "filename": "pillow-13.0.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/ef/fe/f5cdaa2d1c4086e757430f368c271a58ee29cfe7378e7ae7b9d964015c25/pillow-13.0.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "5f56499c1a74d2b862beb0c33b8016f99d095858455df9d21583bbbc1c15b582",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pillow/13.0.0/json",
+      "metadata_sha256": "183d4151cbc909acf39d4d5d48469d6bc66d5516e7f506854241839d0611b69e",
+      "requires_dist": [
+        "furo; extra == \"docs\"",
+        "olefile; extra == \"docs\"",
+        "sphinx>=8.2; extra == \"docs\"",
+        "sphinx-autobuild; extra == \"docs\"",
+        "sphinx-copybutton; extra == \"docs\"",
+        "sphinx-inline-tabs; extra == \"docs\"",
+        "sphinxext-opengraph; extra == \"docs\"",
+        "olefile; extra == \"fpx\"",
+        "olefile; extra == \"mic\"",
+        "arro3-compute; extra == \"test-arrow\"",
+        "arro3-core; extra == \"test-arrow\"",
+        "nanoarrow; extra == \"test-arrow\"",
+        "pyarrow; extra == \"test-arrow\"",
+        "coverage>=7.4.2; extra == \"tests\"",
+        "defusedxml; extra == \"tests\"",
+        "markdown2; extra == \"tests\"",
+        "olefile; extra == \"tests\"",
+        "packaging; extra == \"tests\"",
+        "psutil; (sys_platform == \"linux\" or sys_platform == \"darwin\") and extra == \"tests\"",
+        "pytest; extra == \"tests\"",
+        "pytest-cov; extra == \"tests\"",
+        "pytest-timeout; extra == \"tests\"",
+        "pytest-xdist; extra == \"tests\"",
+        "setuptools; extra == \"tests\"",
+        "trove-classifiers>=2024.10.12; extra == \"tests\"",
+        "defusedxml; extra == \"xmp\""
+      ],
+      "requires_python": ">=3.11",
+      "project_urls": [
+        "Release notes, https://pillow.readthedocs.io/en/stable/releasenotes/index.html",
+        "Changelog, https://github.com/python-pillow/Pillow/releases",
+        "Documentation, https://pillow.readthedocs.io",
+        "Funding, https://tidelift.com/lifter/search/pypi/pillow",
+        "Homepage, https://python-pillow.org",
+        "Mastodon, https://fosstodon.org/@pillow",
+        "Security, https://pillow.readthedocs.io/en/stable/handbook/security.html",
+        "Source, https://github.com/python-pillow/Pillow"
+      ]
+    },
+    {
+      "name": "pluggy",
+      "version": "1.7.0",
+      "filename": "pluggy-1.7.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/40/9e/2b38731e0fc536806f16490e1a12d7f0dc2a1235aa8cc07bcc75416a7daa/pluggy-1.7.0-py3-none-any.whl",
+      "sha256": "7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pluggy/1.7.0/json",
+      "metadata_sha256": "9e8f441bba8382eabf6febf386a5b9610cfe0c16b60b96e7b4b1831bd6d96361",
+      "requires_dist": [],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Homepage, https://github.com/pytest-dev/pluggy",
+        "Documentation, https://pluggy.readthedocs.io/",
+        "Changelog, https://pluggy.readthedocs.io/en/latest/changelog.html",
+        "Repository, https://github.com/pytest-dev/pluggy",
+        "Issues, https://github.com/pytest-dev/pluggy/issues",
+        "Funding, https://tidelift.com/subscription/pkg/pypi-pluggy"
+      ]
+    },
+    {
+      "name": "psycopg",
+      "version": "3.3.6",
+      "filename": "psycopg-3.3.6-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/4e/de/748bd7609c71cae5d737f0ba9192f19329f70180ecda8fff3cac02c5abe3/psycopg-3.3.6-py3-none-any.whl",
+      "sha256": "a1db9f7148b06a28606767efaca51fa6f9398c5c0a3810519be69d7000bdb631",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/psycopg/3.3.6/json",
+      "metadata_sha256": "67267f5b63adf658b4d04848e36f70fc4b32ffc31e3bc6ea9086117bce8cc96a",
+      "requires_dist": [
+        "typing-extensions>=4.6; python_version < \"3.13\"",
+        "tzdata; sys_platform == \"win32\"",
+        "psycopg-c==3.3.6; implementation_name != \"pypy\" and extra == \"c\"",
+        "psycopg-binary==3.3.6; implementation_name != \"pypy\" and extra == \"binary\"",
+        "psycopg-pool; extra == \"pool\"",
+        "anyio>=4.0; extra == \"test\"",
+        "mypy>=2.1.0; implementation_name != \"pypy\" and extra == \"test\"",
+        "pproxy>=2.7; extra == \"test\"",
+        "pytest>=6.2.5; extra == \"test\"",
+        "pytest-cov>=3.0; extra == \"test\"",
+        "pytest-randomly>=3.5; extra == \"test\"",
+        "ast-comments>=1.1.2; extra == \"dev\"",
+        "black>=26.1.0; extra == \"dev\"",
+        "codespell>=2.2; extra == \"dev\"",
+        "cython-lint>=0.21; extra == \"dev\"",
+        "dnspython>=2.1; extra == \"dev\"",
+        "flake8>=4.0; extra == \"dev\"",
+        "isort[colors]>=6.0; extra == \"dev\"",
+        "isort-psycopg>=0.0.3; extra == \"dev\"",
+        "mypy>=2.1.0; extra == \"dev\"",
+        "pre-commit>=4.0.1; extra == \"dev\"",
+        "types-setuptools>=57.4; extra == \"dev\"",
+        "types-shapely>=2.0; extra == \"dev\"",
+        "wheel>=0.37; extra == \"dev\"",
+        "Sphinx>=9.1; extra == \"docs\"",
+        "furo==2025.12.19; extra == \"docs\"",
+        "sphinx-autobuild>=2025.8.25; extra == \"docs\"",
+        "sphinx-autodoc-typehints>=3.10.2; extra == \"docs\""
+      ],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Homepage, https://psycopg.org/",
+        "Documentation, https://psycopg.org/psycopg3/docs/",
+        "Changes, https://psycopg.org/psycopg3/docs/news.html",
+        "Code, https://github.com/psycopg/psycopg",
+        "Issue Tracker, https://github.com/psycopg/psycopg/issues",
+        "Funding, https://github.com/sponsors/dvarrazzo"
+      ]
+    },
+    {
+      "name": "psycopg-binary",
+      "version": "3.3.6",
+      "filename": "psycopg_binary-3.3.6-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/de/b0/c6f8a0585a5dacbea74e130bcfc66629390e8f5bbc79d2a8e806e8952150/psycopg_binary-3.3.6-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "sha256": "cec5ea900390897d0b46130f60bc2883bf19c314f9044235217c8be88b0ef269",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/psycopg-binary/3.3.6/json",
+      "metadata_sha256": "73c5e31cb3c5d454391b3e218a5c7f2d1e693c2cd338e1b63a65cc667a83bfaf",
+      "requires_dist": [],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Homepage, https://psycopg.org/",
+        "Documentation, https://psycopg.org/psycopg3/docs/",
+        "Changes, https://psycopg.org/psycopg3/docs/news.html",
+        "Code, https://github.com/psycopg/psycopg",
+        "Issue Tracker, https://github.com/psycopg/psycopg/issues",
+        "Funding, https://github.com/sponsors/dvarrazzo"
+      ]
+    },
+    {
+      "name": "py-sr25519-bindings",
+      "version": "0.2.4",
+      "filename": "py_sr25519_bindings-0.2.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/f8/44/7375e8467a815e025a56adac381118e1b3956832bd1b25dbbeb78e8489de/py_sr25519_bindings-0.2.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "3db513efab9b29586f6c0efe8352b3395eb52688eef39926a8c169d0fda12432",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/py-sr25519-bindings/0.2.4/json",
+      "metadata_sha256": "36b2e800cf9d18f304117ee3c3d956082c9eddb42296335f343a935eb6df6692",
+      "requires_dist": [],
+      "requires_python": ">=3.7",
+      "project_urls": [
+        "homepage, https://github.com/polkascan/py-sr25519-bindings",
+        "repository, https://github.com/polkascan/py-sr25519-bindings"
+      ]
+    },
+    {
+      "name": "pycparser",
+      "version": "3.12",
+      "filename": "pycparser-3.12-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl",
+      "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pycparser/3.12/json",
+      "metadata_sha256": "e919b291615d54a2328a0da6128cd9d95601ad04d27cec48eeb75e0d57c3b6ad",
+      "requires_dist": [],
+      "requires_python": ">=3.11",
+      "project_urls": [
+        "Homepage, https://github.com/eliben/pycparser"
+      ]
+    },
+    {
+      "name": "pycryptodome",
+      "version": "3.24.1",
+      "filename": "pycryptodome-3.24.1-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/a0/3f/e6a6b5d261746378a9267af50463d6aa01f88f88c98bedfd404c94eb7ec6/pycryptodome-3.24.1-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "sha256": "93619c3117a8f14ea1267b427e465d152a66c89c3d3c643262070c05b2855aae",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pycryptodome/3.24.1/json",
+      "metadata_sha256": "3fe2a0d8d819e5d15f382d9d79708be62440fe0647a86380a658361a56a569cd",
+      "requires_dist": [],
+      "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*",
+      "project_urls": [
+        "Source, https://github.com/Legrandin/pycryptodome/",
+        "Changelog, https://www.pycryptodome.org/src/changelog"
+      ]
+    },
+    {
+      "name": "pycryptodomex",
+      "version": "3.24.1",
+      "filename": "pycryptodomex-3.24.1-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/cf/93/a954b7a8746980e31648943e29772aca0311d0d8a407a3adf5788083b693/pycryptodomex-3.24.1-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "sha256": "9b94a8c647c1f80b4c82c7ac9642dda94a71abbb4efa29ad652c410ad7a39879",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pycryptodomex/3.24.1/json",
+      "metadata_sha256": "dbff844f4738920e518a84ea0f8b9e9300fe21c97f6688325112cb79cc259e32",
+      "requires_dist": [],
+      "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*",
+      "project_urls": [
+        "Source, https://github.com/Legrandin/pycryptodome/",
+        "Changelog, https://www.pycryptodome.org/src/changelog"
+      ]
+    },
+    {
+      "name": "pygments",
+      "version": "2.21.0",
+      "filename": "pygments-2.21.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl",
+      "sha256": "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pygments/2.21.0/json",
+      "metadata_sha256": "330104a10adc8a587e3f98f4e207557125ca0c1d489e129334da5acb2b813a03",
+      "requires_dist": [
+        "colorama>=0.4.6; extra == 'windows-terminal'"
+      ],
+      "requires_python": ">=3.9",
+      "project_urls": [
+        "Homepage, https://pygments.org",
+        "Documentation, https://pygments.org/docs",
+        "Source, https://github.com/pygments/pygments",
+        "Bug Tracker, https://github.com/pygments/pygments/issues",
+        "Changelog, https://github.com/pygments/pygments/blob/master/CHANGES"
+      ]
+    },
+    {
+      "name": "pynacl",
+      "version": "1.6.2",
+      "filename": "pynacl-1.6.2-cp38-abi3-manylinux_2_34_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/c9/a8/b917096b1accc9acd878819a49d3d84875731a41eb665f6ebc826b1af99e/pynacl-1.6.2-cp38-abi3-manylinux_2_34_x86_64.whl",
+      "sha256": "c8a231e36ec2cab018c4ad4358c386e36eede0319a0c41fed24f840b1dac59f6",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pynacl/1.6.2/json",
+      "metadata_sha256": "a0f8d5d1795869eaf0dfad7e00896b9902dd691cb0b64b792aaeae14649934c0",
+      "requires_dist": [
+        "cffi>=1.4.1; platform_python_implementation != \"PyPy\" and python_version < \"3.9\"",
+        "cffi>=2.0.0; platform_python_implementation != \"PyPy\" and python_version >= \"3.9\"",
+        "pytest>=7.4.0; extra == \"tests\"",
+        "pytest-cov>=2.10.1; extra == \"tests\"",
+        "pytest-xdist>=3.5.0; extra == \"tests\"",
+        "hypothesis>=3.27.0; extra == \"tests\"",
+        "sphinx<7; extra == \"docs\"",
+        "sphinx_rtd_theme; extra == \"docs\""
+      ],
+      "requires_python": ">=3.8",
+      "project_urls": [
+        "Homepage, https://github.com/pyca/pynacl",
+        "Bug Tracker, https://github.com/pyca/pynacl/issues",
+        "Documentation, https://pynacl.readthedocs.io"
+      ]
+    },
+    {
+      "name": "pytest",
+      "version": "8.4.2",
+      "filename": "pytest-8.4.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a8/a4/20da314d277121d6534b3a980b29035dcd51e6744bd79075a6ce8fa4eb8d/pytest-8.4.2-py3-none-any.whl",
+      "sha256": "872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pytest/8.4.2/json",
+      "metadata_sha256": "4160e7ff2349347b2cd538efdc3a66e25e5d6a02cd9b3b6fbf2312a4e3d23e94",
+      "requires_dist": [
+        "colorama>=0.4; sys_platform == \"win32\"",
+        "exceptiongroup>=1; python_version < \"3.11\"",
+        "iniconfig>=1",
+        "packaging>=20",
+        "pluggy<2,>=1.5",
+        "pygments>=2.7.2",
+        "tomli>=1; python_version < \"3.11\"",
+        "argcomplete; extra == \"dev\"",
+        "attrs>=19.2; extra == \"dev\"",
+        "hypothesis>=3.56; extra == \"dev\"",
+        "mock; extra == \"dev\"",
+        "requests; extra == \"dev\"",
+        "setuptools; extra == \"dev\"",
+        "xmlschema; extra == \"dev\""
+      ],
+      "requires_python": ">=3.9",
+      "project_urls": [
+        "Changelog, https://docs.pytest.org/en/stable/changelog.html",
+        "Contact, https://docs.pytest.org/en/stable/contact.html",
+        "Funding, https://docs.pytest.org/en/stable/sponsor.html",
+        "Homepage, https://docs.pytest.org/en/latest/",
+        "Source, https://github.com/pytest-dev/pytest",
+        "Tracker, https://github.com/pytest-dev/pytest/issues"
+      ]
+    },
+    {
+      "name": "python-bidi",
+      "version": "0.6.12",
+      "filename": "python_bidi-0.6.12-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/38/c9/ebc3a67639f358fc2bf76e112bbbd8875772458a2e5793fb6d969600aa85/python_bidi-0.6.12-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "862d4c6035f9b75f86ba450d42bebf8cca1ed97a2badb07b5638877fc95bdc97",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/python-bidi/0.6.12/json",
+      "metadata_sha256": "10c26bebaa3801a62b06c16f9db71bc6f753a9aafc50441a93cd0e1c7beb8598",
+      "requires_dist": [
+        "filelock>=3.20.1 ; extra == 'dev'",
+        "nox ; extra == 'dev'",
+        "pytest>=9.0.3 ; extra == 'dev'"
+      ],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Changelog, https://github.com/MeirKriheli/python-bidi/blob/master/CHANGELOG.rst",
+        "Documentation, https://python-bidi.readthedocs.io/en/latest/",
+        "Homepage, https://github.com/MeirKriheli/python-bidi",
+        "Issues, https://github.com/MeirKriheli/python-bidi/issues",
+        "Repository, https://github.com/MeirKriheli/python-bidi"
+      ]
+    },
+    {
+      "name": "pytoniq-core-fork",
+      "version": "0.1.48",
+      "filename": "pytoniq_core_fork-0.1.48-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2b/5f/b967b7812438fd72b06c2a0d68299167d5d96147fb1af38ed65c91f00fbc/pytoniq_core_fork-0.1.48-py3-none-any.whl",
+      "sha256": "248b0d0b2deffd6935599208ae587dc703fccf2756d735420e95804b5738177f",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/pytoniq-core-fork/0.1.48/json",
+      "metadata_sha256": "19b6d67f74b991de1dc17d2cec3c6a7095cb065cded922945ca431b333ad3803",
+      "requires_dist": [
+        "bitarray>=2.6.0",
+        "x25519>=0.0.2",
+        "PyNaCl>=1.5.0",
+        "pycryptodomex>=3.18.0",
+        "requests>=2.31.0",
+        "typing_extensions"
+      ],
+      "requires_python": ">=3.7",
+      "project_urls": [
+        "Homepage, https://github.com/ebellocchia/pytoniq-core"
+      ]
+    },
+    {
+      "name": "reportlab",
+      "version": "5.1.0",
+      "filename": "reportlab-5.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/4a/3c/bf68d44f160b44685fc714f746a954c71d0091b3dc4fd3c8670154b44841/reportlab-5.1.0-py3-none-any.whl",
+      "sha256": "59fdbaec5efe437095ad1d7292ec9a271c8ca2d3ec75e889c6e61400929b90df",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/reportlab/5.1.0/json",
+      "metadata_sha256": "0ac17bfa32fa76d6e8924422ad066dfdbb84e861c330840e3d0cac4faede5037",
+      "requires_dist": [
+        "pillow>=9.0.0",
+        "charset-normalizer",
+        "rl_accel<1.1,>=0.9.0; extra == \"accel\"",
+        "rlPyCairo<1,>=0.2.0; extra == \"pycairo\"",
+        "freetype-py<2.4,>=2.3.0; extra == \"pycairo\"",
+        "rlbidi; extra == \"bidi\"",
+        "uharfbuzz; extra == \"shaping\""
+      ],
+      "requires_python": ">=3.9,<4",
+      "project_urls": []
+    },
+    {
+      "name": "requests",
+      "version": "2.34.2",
+      "filename": "requests-2.34.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
+      "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/requests/2.34.2/json",
+      "metadata_sha256": "8622e50ffd295ed759ec793f2a009172a4ed0204bbc5e948de23111bc3d2aeae",
+      "requires_dist": [
+        "charset_normalizer<4,>=2",
+        "idna<4,>=2.5",
+        "urllib3<3,>=1.26",
+        "certifi>=2023.5.7",
+        "PySocks!=1.5.7,>=1.5.6; extra == \"socks\"",
+        "chardet<8,>=3.0.2; extra == \"use-chardet-on-py3\""
+      ],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Documentation, https://requests.readthedocs.io",
+        "Source, https://github.com/psf/requests"
+      ]
+    },
+    {
+      "name": "six",
+      "version": "1.17.0",
+      "filename": "six-1.17.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/six/1.17.0/json",
+      "metadata_sha256": "d8de39dd52b73048d81a8fd78022ee2bc72f8b568bcf0d88e5d5069c302b1208",
+      "requires_dist": [],
+      "requires_python": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*",
+      "project_urls": []
+    },
+    {
+      "name": "typing-extensions",
+      "version": "4.16.0",
+      "filename": "typing_extensions-4.16.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/typing-extensions/4.16.0/json",
+      "metadata_sha256": "2140da00d62dde967f52d0be0ae28444f1d6a3fe603f52c83c23988c32122d5a",
+      "requires_dist": [],
+      "requires_python": ">=3.9",
+      "project_urls": [
+        "Bug Tracker, https://github.com/python/typing_extensions/issues",
+        "Changes, https://github.com/python/typing_extensions/blob/main/CHANGELOG.md",
+        "Documentation, https://typing-extensions.readthedocs.io/",
+        "Home, https://github.com/python/typing_extensions",
+        "Q & A, https://github.com/python/typing/discussions",
+        "Repository, https://github.com/python/typing_extensions"
+      ]
+    },
+    {
+      "name": "tzdata",
+      "version": "2026.6",
+      "filename": "tzdata-2026.6-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/0a/66/9a06c2227fedfd4919f0eaaa8b94377d9730882a7e4f95823c9a331ab5e1/tzdata-2026.6-py2.py3-none-any.whl",
+      "sha256": "0a10eec6e13ef16b627fabed9a5f2ba61a62b1c67f327305f4e7e412a70b4aec",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/tzdata/2026.6/json",
+      "metadata_sha256": "82888ae1ccdc2ed984ce983353520631122c4504e5af2dc40b8eddf8398206a0",
+      "requires_dist": [],
+      "requires_python": ">=2",
+      "project_urls": [
+        "Bug Reports, https://github.com/python/tzdata/issues",
+        "Source, https://github.com/python/tzdata",
+        "Documentation, https://tzdata.python.org"
+      ]
+    },
+    {
+      "name": "urllib3",
+      "version": "2.8.0",
+      "filename": "urllib3-2.8.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl",
+      "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/urllib3/2.8.0/json",
+      "metadata_sha256": "5315e7401db3cacccd0c2ce5daf81f752a9cc3614b18c37f2b79930b7159ce2f",
+      "requires_dist": [
+        "brotli>=1.2.0; (platform_python_implementation == 'CPython') and extra == 'brotli'",
+        "brotlicffi>=1.2.0.0; (platform_python_implementation != 'CPython') and extra == 'brotli'",
+        "h2<5,>=4; extra == 'h2'",
+        "pysocks!=1.5.7,<2.0,>=1.5.6; extra == 'socks'",
+        "backports-zstd>=1.0.0; (python_version < '3.14') and extra == 'zstd'"
+      ],
+      "requires_python": ">=3.10",
+      "project_urls": [
+        "Changelog, https://github.com/urllib3/urllib3/blob/main/CHANGES.rst",
+        "Documentation, https://urllib3.readthedocs.io",
+        "Code, https://github.com/urllib3/urllib3",
+        "Issue tracker, https://github.com/urllib3/urllib3/issues",
+        "Security policy, https://urllib3.readthedocs.io/en/latest/security.html"
+      ]
+    },
+    {
+      "name": "x25519",
+      "version": "0.0.2",
+      "filename": "x25519-0.0.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/f2/d1/66c637eb8e7a9601675bf7f04bb9a3015358a0f49e4c31d29a2b9a9d72d9/x25519-0.0.2-py3-none-any.whl",
+      "sha256": "5c0833260a548bea9137a5a1b5c30334b751a59d148a62832df0c9e7b919ce99",
+      "pypi_digest_match": true,
+      "metadata_url": "https://pypi.org/pypi/x25519/0.0.2/json",
+      "metadata_sha256": "6d3a23580770d5cf68ccc93ea23c2c2b0d39c044922e5da16e6f581184185025",
+      "requires_dist": [],
+      "requires_python": null,
+      "project_urls": []
+    }
+  ]
+}

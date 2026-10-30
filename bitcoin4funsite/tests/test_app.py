@@ -97,7 +97,8 @@ class ApplicationContract(unittest.TestCase):
             response = client.get(path)
             self.assertEqual(response.status_code, 429)
             self.assertIn('Retry-After', response.headers)
-            self.assertIn('پانزده ثانیه', response.text)
+            self.assertIn('پنج استعلام در شصت ثانیه', response.text)
+            self.assertIn('data-retry-after="' + response.headers['Retry-After'] + '"', response.text)
         lookup.assert_called_once_with('First0587k45300')
         self.assertEqual(limiter.admit.call_count, 4)
 
@@ -150,7 +151,10 @@ class ApplicationContract(unittest.TestCase):
         for address in [None, 42, 'bc1q' + 'q' * 999996, 'bc1q' + 'q' * 39, 'bc1q' + '!' * 38]:
             with self.subTest(address_type=type(address).__name__):
                 app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: {'serial': serial, 'address': address}})
-                with patch('address_validation.decode', return_value=(None, None)) as decoder:
+                decoder = Mock(return_value=0)
+                # Patch the actual shared function's checksum seam, independent
+                # of standalone/package import names and discovery sys.path order.
+                with patch.dict(self.module.valid_address.__globals__, bech32_polymod=decoder):
                     response = app.test_client().get('/api/wallets/TEST-DO-NOT-FUND-0587k45300')
                 self.assertEqual(response.status_code, 503)
                 decoder.assert_not_called()

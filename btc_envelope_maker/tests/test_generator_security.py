@@ -272,6 +272,196 @@ def test_base36_rejects_overflow_instead_of_wrapping(n, width):
         gen.to_b36(n, width)
 
 
+@pytest.mark.parametrize('exception', [RuntimeError, KeyboardInterrupt, SystemExit])
+@pytest.mark.parametrize('layout', ['pairs', 'separate'])
+def test_unexpected_output_failure_cleans_and_preserves_primary(cli, monkeypatch, capsys, exception, layout):
+    cli.cfg['layout'] = layout
+    primary = exception('SYNTHETIC primary failure')
+    render = gen.render_sheets
+    def fail(*args):
+        render(*args)
+        if any(not isinstance(p, io.BytesIO) for p in args[3].values()):
+            raise primary
+    monkeypatch.setattr(gen, 'render_sheets', fail)
+    previous = os.umask(0o022)
+    try:
+        with pytest.raises(exception) as caught:
+            cli.run('--count', '1', '--acknowledge-offline')
+        assert caught.value is primary
+        assert os.umask(0o022) == 0o022
+    finally:
+        os.umask(previous)
+    assert not list(cli.root.iterdir())
+    output = capsys.readouterr()
+    assert 'Output failed' in output.err
+    assert 'Created ' not in output.out
+
+
+@pytest.mark.parametrize('exception', [RuntimeError, KeyboardInterrupt])
+@pytest.mark.parametrize('stderr_error', [BrokenPipeError, ValueError, KeyboardInterrupt])
+@pytest.mark.parametrize('layout', ['pairs', 'separate'])
+def test_broken_stderr_preserves_primary_and_output_ownership(cli, monkeypatch, capsys,
+                                                             exception, stderr_error, layout):
+    cli.cfg['layout'] = layout
+    primary = exception('SYNTHETIC primary failure')
+    previous_batch = cli.root / 'previous-batch'
+    previous_batch.mkdir(parents=True)
+    sentinel = previous_batch / 'sheets.pdf'
+    sentinel.write_bytes(b'EXISTING SYNTHETIC BATCH MUST SURVIVE')
+    written = []
+    warnings = []
+
+    def fail_after_first_write(cfg, plan, wallets, targets, preview):
+        for target in targets.values():
+            if not isinstance(target, io.BytesIO):
+                target.write_bytes(b'SYNTHETIC PARTIAL PDF; NO WALLET MATERIAL')
+                assert target.stat().st_mode & 0o777 == 0o600
+                assert target.parent.stat().st_mode & 0o777 == 0o700
+                written.append(target)
+                raise primary
+
+    class BrokenStderr:
+        def write(self, value):
+            warnings.append(value)
+            raise stderr_error('SYNTHETIC warning channel failure')
+
+    monkeypatch.setattr(gen, 'render_sheets', fail_after_first_write)
+    previous = os.umask(0o022)
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(sys, 'stderr', BrokenStderr())
+            with pytest.raises(BaseException) as caught:
+                cli.run('--count', '1', '--acknowledge-offline')
+        assert caught.value is primary
+        assert os.umask(0o022) == 0o022
+    finally:
+        os.umask(previous)
+    assert len(written) == 1 and not written[0].parent.exists()
+    assert list(cli.root.iterdir()) == [previous_batch]
+    assert list(previous_batch.iterdir()) == [sentinel]
+    assert sentinel.read_bytes() == b'EXISTING SYNTHETIC BATCH MUST SURVIVE'
+    assert warnings and 'Output failed' in warnings[0]
+    assert 'Created ' not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('fault', ['unlink', 'rmdir'])
+@pytest.mark.parametrize('cleanup_exception', [RuntimeError, KeyboardInterrupt])
+@pytest.mark.parametrize('layout', ['pairs', 'separate'])
+def test_cleanup_exception_never_masks_primary(cli, monkeypatch, capsys, fault, cleanup_exception, layout):
+    cli.cfg['layout'] = layout
+    primary = RuntimeError('SYNTHETIC primary')
+    ledger = gen.write_ledger
+    def fail_ledger(*args):
+        ledger(*args)
+        raise primary
+    monkeypatch.setattr(gen, 'write_ledger', fail_ledger)
+    original = getattr(Path, fault)
+    def fail_cleanup(path, *args, **kwargs):
+        if path.is_relative_to(cli.root):
+            raise cleanup_exception('SYNTHETIC rollback failure')
+        return original(path, *args, **kwargs)
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, fault, fail_cleanup)
+        previous = os.umask(0o022)
+        try:
+            with pytest.raises(RuntimeError) as caught:
+                cli.run('--count', '1', '--acknowledge-offline')
+            assert caught.value is primary
+            assert os.umask(0o022) == 0o022
+        finally:
+            os.umask(previous)
+    output = capsys.readouterr()
+    assert 'Cleanup incomplete' in output.err and 'SECRET' in output.err
+    assert 'Created ' not in output.out
+    for path in cli.root.rglob('*'):
+        assert path.stat().st_mode & 0o077 == 0
+
+
+@pytest.mark.parametrize('layout', ['pairs', 'separate'])
+@pytest.mark.parametrize('checkpoint', ['write', 'existing'])
+def test_actual_sigint_owned_output_and_existing_folder(tmp_path, layout, checkpoint):
+    import select
+    import signal
+    output = tmp_path / 'signal-output'
+    output.mkdir()
+    now = gen.dt.datetime(2026, 10, 30, 12, 0, 0)
+    stem, _ = gen.serial_stem(now, gen.DEFAULTS['serial_minsec'])
+    folder = output / ('batch_' + stem)
+    if checkpoint == 'existing':
+        folder.mkdir()
+        (folder / 'sheets.pdf').write_bytes(b'EXISTING SYNTHETIC BATCH MUST SURVIVE')
+    before = {p.name: p.read_bytes() for p in folder.iterdir()} if folder.exists() else {}
+    read_fd, ready_fd = os.pipe()
+    wait_fd, release_fd = os.pipe()
+    worker = Path(__file__).with_name('signal_worker.py')
+    process = subprocess.Popen([sys.executable, '-B', str(worker), str(SOURCE), str(output),
+                                layout, checkpoint, str(ready_fd), str(wait_fd)],
+                               cwd=tmp_path, env={'TMPDIR': tempfile.gettempdir(), 'PYTHONDONTWRITEBYTECODE': '1'},
+                               pass_fds=(ready_fd, wait_fd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    os.close(ready_fd)
+    os.close(wait_fd)
+    try:
+        assert select.select([read_fd], [], [], 20)[0], 'signal checkpoint timeout'
+        assert os.read(read_fd, 1) == b'R'
+        if checkpoint == 'write':
+            assert list(folder.glob('*.pdf'))
+            assert folder.stat().st_mode & 0o777 == 0o700
+        process.send_signal(signal.SIGINT)
+        stdout, stderr = process.communicate(timeout=10)
+        assert process.returncode == 130, stderr
+        assert 'UMASK_RESTORED' in stdout
+        assert 'Created ' not in stdout
+        if checkpoint == 'write':
+            assert not folder.exists()
+            assert 'Output failed' in stderr
+        else:
+            assert {p.name: p.read_bytes() for p in folder.iterdir()} == before
+            assert 'Output failed' not in stderr
+    finally:
+        os.close(read_fd)
+        os.close(release_fd)
+        if process.poll() is None:
+            process.kill()
+        process.communicate()
+
+
+@pytest.mark.parametrize('cli_url,env_url,config_url,expected', [
+    (' cli.sqlite3 ', 'env.sqlite3', 'config.sqlite3', 'cli.sqlite3'),
+    (None, ' env.sqlite3 ', 'config.sqlite3', 'env.sqlite3'),
+    (None, '', ' config.sqlite3 ', 'config.sqlite3'),
+    (' ', 'env.sqlite3', 'config.sqlite3', ''),
+])
+def test_database_resolution_precedence_without_early_import(cli, monkeypatch, cli_url, env_url, config_url, expected):
+    cli.cfg['db_url'] = config_url
+    monkeypatch.setenv('BTC_DB_URL', env_url)
+    seen = []
+    cli.db.DbError = RuntimeError
+    cli.db.check_table = lambda _: None
+    cli.db.describe = lambda url: seen.append(url) or 'synthetic database'
+    cli.db.check = lambda *args: None
+    class Guard(Exception):
+        pass
+    monkeypatch.setattr(gen, 'make_wallets', lambda *args: (_ for _ in ()).throw(Guard()))
+    with pytest.raises(Guard):
+        cli.run('--count', '1', '--acknowledge-offline', *(['--db', cli_url] if cli_url is not None else []))
+    assert seen == ([expected] if expected else [])
+    assert not cli.root.exists()
+
+
+def test_output_system_exit_zero_is_still_failure(cli, monkeypatch, capsys):
+    render = gen.render_sheets
+    def fail(*args):
+        render(*args)
+        if any(not isinstance(p, io.BytesIO) for p in args[3].values()):
+            raise SystemExit(0)
+    monkeypatch.setattr(gen, 'render_sheets', fail)
+    with pytest.raises(SystemExit) as caught:
+        cli.run('--count', '1', '--acknowledge-offline')
+    assert caught.value.code != 0
+    assert not list(cli.root.iterdir())
+    assert 'Created ' not in capsys.readouterr().out
+
+
 @pytest.mark.parametrize('fault', ['word-count', 'address-shape', 'duplicate-wallet'])
 def test_wallet_validation_failure_leaves_no_output(cli, monkeypatch, fault):
     monkeypatch.setattr(gen, 'make_wallets', REAL_MAKE_WALLETS)

@@ -2,16 +2,19 @@
 {% set page = 'lookup' %}
 {% block title %}استعلام آدرس عمومی با سریال | بیت‌کوین برای سرگرمی{% endblock %}
 {% block content %}
+{% set wait_seconds = lookup_retry_after|default('', true)|string %}
+{% set wait_fa = wait_seconds|replace('0', '۰')|replace('1', '۱')|replace('2', '۲')|replace('3', '۳')|replace('4', '۴')|replace('5', '۵')|replace('6', '۶')|replace('7', '۷')|replace('8', '۸')|replace('9', '۹') %}
+{% set limit_message = 'برای هر اتصال اینترنتی، پنج استعلام در شصت ثانیه مجاز است؛ ' + ('پس از ' + wait_fa + ' ثانیه دوباره تلاش کنید.' if wait_seconds else 'کمی صبر کنید و دوباره بزنید.') %}
 <header class="page-heading shell"><a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> استعلام سریال</a><p class="eyebrow">فقط بخش عمومی پاکت</p><h1>یک سریال.<br>یک آدرس عمومی.</h1><p class="page-deck">شمارهٔ سریال روی پاکت را وارد کنید تا آدرس دریافت آن را ببینید. اینجا جای کلمات بازیابی نیست؛ برای این کار نیازی به باز کردن راز پاکت ندارید.</p></header>
 <section class="lookup-layout shell" aria-label="استعلام عمومی پاکت">
   <div class="lookup-main">
     <form id="lookup-form" action="/lookup" method="get" data-initial-serial="{{ serial|default('', true) }}" data-initial-state="{{ 'found' if wallet else lookup_error|default('', true) }}" data-initial-address="{{ wallet.address if wallet else '' }}" data-initial-explorer="{{ 'https://mempool.space/address/' + wallet.address if wallet else '' }}" data-retry-after="{{ lookup_retry_after|default('', true) }}">
       <label for="serial">شمارهٔ سریال پاکت</label>
       <p id="serial-hint" class="field-hint">فقط شمارهٔ سریال؛ با حروف و ارقام انگلیسی، خط تیره یا زیرخط. فاصله وارد نکنید.</p>
-      <p class="field-hint">برای هر اتصال اینترنتی، هر پانزده ثانیه یک استعلام مجاز است؛ کد تصویری همان نتیجه استعلام جداگانه محسوب نمی‌شود.</p>
+      <p class="field-hint">برای هر اتصال اینترنتی، پنج استعلام در شصت ثانیه مجاز است؛ سهمیه میان کاربران همان اتصال مشترک است. کد تصویری هر نتیجه تا شصت ثانیه پس از استعلام آن، سهمیهٔ جداگانه مصرف نمی‌کند.</p>
       <div class="lookup-controls"><input id="serial" name="serial" type="text" value="{{ serial|default('', true) }}" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" pattern="{{ serial_pattern }}" aria-describedby="serial-hint" required><button id="lookup-submit" class="button" type="submit">نمایش آدرس <span aria-hidden="true">←</span></button></div>
     </form>
-    <p id="lookup-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true">{% if lookup_error == 'rate_limited' %}هر پانزده ثانیه فقط یک استعلام مجاز است؛ کمی صبر کنید و دوباره بزنید.{% elif lookup_error == 'unavailable' %}سرویس استعلام فعلاً در دسترس نیست.{% endif %}</p>
+    <p id="lookup-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true">{% if lookup_error == 'rate_limited' %}{{ limit_message }}{% elif lookup_error == 'unavailable' %}سرویس استعلام فعلاً در دسترس نیست.{% endif %}</p>
     <div id="lookup-result" class="lookup-result" hidden></div>
     <noscript>
       {% if wallet %}
@@ -30,7 +33,7 @@
         <p>نمایش آدرس، تضمین موجودی یا تأیید تراکنش نیست. پیوند خارجی فقط با انتخاب شما باز می‌شود.</p>
       </section>
       {% elif lookup_error %}
-      <p role="status">{% if lookup_error == 'not_found' %}پاکتی با این شمارهٔ سریال پیدا نشد.{% elif lookup_error == 'rate_limited' %}هر پانزده ثانیه فقط یک استعلام مجاز است؛ کمی صبر کنید.{% else %}سرویس استعلام فعلاً در دسترس نیست.{% endif %}</p>
+      <p role="status">{% if lookup_error == 'not_found' %}پاکتی با این شمارهٔ سریال پیدا نشد.{% elif lookup_error == 'rate_limited' %}{{ limit_message }}{% else %}سرویس استعلام فعلاً در دسترس نیست.{% endif %}</p>
       {% else %}
       <div class="callout"><strong>جاوااسکریپت غیرفعال است.</strong><p>با فرستادن شمارهٔ سریال، آدرس و کد تصویری در همین صفحه نمایش داده می‌شوند؛ هرگز کلمات بازیابی را وارد نکنید.</p></div>
       {% endif %}

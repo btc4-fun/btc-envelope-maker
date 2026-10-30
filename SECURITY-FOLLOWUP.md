@@ -39,13 +39,14 @@
    serial grammar now gates every alias before limiter/database construction.
    Browser/native/server share that grammar. Legacy, compact and wider serials
    remain accepted within the pre-existing ASCII/64-character website envelope.
-   Persistent 15-second admission and companion QR behavior remain tested.
+   The original follow-up tested 15-second admission; round 2 below replaces
+   that policy with a tested five-per-60-second sliding window.
 
 ## Executable gates
 
 Install site dependencies using its hash-locked requirements. For generator tests:
 
-    python -m pip install -r btc_envelope_maker/requirements-runtime.txt -r btc_envelope_maker/requirements-test.txt
+    python -m pip install --require-hashes --only-binary=:all: -r btc_envelope_maker/requirements-runtime.txt -r btc_envelope_maker/requirements-test.txt
 
 Install native poppler-utils and libzbar0. Set TMPDIR to a private scratch
 location, then run from repository root:
@@ -57,9 +58,47 @@ location, then run from repository root:
 The generator job is included in .github/workflows/verify.yml and fails rather
 than skipping missing PDF/QR dependencies. The website image explicitly copies
 and allowlists the shared address validator. No generator/signing code is added
-to that image. requirements-runtime.txt adds bech32 without replacing an
-operator's existing requirements.txt changes. Preserve the repository directory
-structure for standalone btc_db.py imports.
+to that image. The canonical dependency-free helper is now in the generator
+directory; the website facade imports it. Build from the repository root with
+`docker build -f bitcoin4funsite/Dockerfile -t bitcoin4fun:ci .` and retain the
+Dockerfile-specific allowlist. The generator directory itself is standalone;
+its importer no longer needs the website or external bech32 package.
+Runtime/test/optional-DB installation uses complete separate target-specific
+hash locks without reading the operator's legacy requirements.txt changes.
+See btc_envelope_maker/DEPENDENCIES.md for acquisition, offline verification,
+target limits and the distinction between hash integrity and authenticity.
+
+## Round 2 changes and regression scope
+
+- No-DB generation resolves CLI/environment/config precedence before optional
+  database import. A minimal generator-only copy reaches a guard immediately
+  before random mnemonic creation; this is admission proof, not generated-wallet
+  evidence. Help/preview and standard-library-only SQLite import are separate
+  checks. The narrow reference checksum validator retains lowercase mainnet
+  witness-v0/20-byte acceptance and both preview exclusions; official vectors
+  and a separately installed reference-derived oracle exercise equivalence.
+- Unexpected output exceptions and catchable user interruption now clean known
+  files only after exclusive creation. Tests cover actual synchronized SIGINT,
+  paired/separate layouts, existing-folder preservation, ledger/permission and
+  cleanup failures, unsuccessful exits and restored umask. Signal regression
+  was additionally checked against the original implementation; initial
+  exception RED preceded the fix. This is not crash atomicity or secure erasure.
+- Quota state is atomic across workers/restarts and counts five admissions in
+  the preceding 60 seconds. QR companions for all admitted serials remain free
+  only until their own admission expires; they do not refresh history. Legacy
+  rows impose a conservative last-admission-plus-60-second hold without reset.
+  More burst capacity and a higher sustained rate are intentional, not claims
+  of identical protection. Read DEPLOYMENT.md before any separately authorized
+  upgrade; mixed old/new workers and transparent downgrade are unsupported.
+- Runtime/optional installations are exercised from empty environments with
+  OS-disabled networking, exact wheel hashes and no cache/index fallback.
+  One-byte tampering and missing-wheel controls fail before installing packages.
+  Published-vector derivation and real printed PDF/QR recovery are distinct from
+  guarded generation tests. Only the documented target has been verified.
+
+These changes are local remediation, not permission to publish or deploy.
+Current test/review manifests and results belong to the new external handoff;
+the following counts describe the earlier follow-up only.
 
 Parent local verification before independent review: 60 generator/database
 security tests passed; 183 website tests passed with two credential-gated skips.
@@ -82,6 +121,8 @@ certified. No real wallet was generated, inspected or funded for these tests.
 No real config/database/recovery output/original wallet images were opened or
 uploaded. Historical live-migration notes remain historical, not new evidence.
 The website's two accepted URL aliases are unchanged; no shared proxy reload
-or database migration is required by this release. Publication/review/deployment
+or wallet-database migration is required. Round 2 adds local quota-state schema
+on admission and requires an explicitly approved, old-workers-stopped upgrade.
+Publication/review/deployment
 status must be verified against the exact final commit, not inferred from this
 pre-release test summary.
