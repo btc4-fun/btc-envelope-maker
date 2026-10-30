@@ -169,8 +169,10 @@ connecting client IP; never expose the upstream listener publicly or accept
 arbitrary forwarded headers from an untrusted proxy.
 
 Only guide-inner-example.png and guide-outer-example.png are public guide
-illustrations. Their words, QR codes, address and serial were replaced with
-nonfunctional placeholders and the PNGs have no source metadata. User originals
+illustrations. The inner card keeps its original design while all twelve words
+and the entire recovery QR are covered. The owner-authorized outer card retains
+public address/QR/serial pixels and has a no-deposit caption; do not describe
+its public codes as nonfunctional. Both PNGs have no source metadata. User originals
 privatekey.png/publickey.png must remain local: Git ignore, forced-index guard,
 Docker exclusions, transfer allowlist and Flask static refusal protect them.
 Never copy the full static directory without filtering operator originals.

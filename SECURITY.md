@@ -40,11 +40,14 @@ closed. Shared-IP users share the limit; changing IPs can bypass this defense.
 Trust forwarded client addresses only through the existing local/private peer
 and last appended Caddy hop; keep the app port bound to loopback.
 
-Guide images are nonfunctional educational derivatives. Original privatekey.png
-and publickey.png files must never enter Git, Docker contexts or remote uploads:
-they can expose recovery material even if a text secret scanner reports clean.
-Remove every recovery word/QR, address and serial with opaque replacement before
-publication; retain the originals only in a trusted local private environment.
+The inner guide image preserves the original design but replaces all twelve
+recovery words and the entire recovery QR with opaque pixels. Partial word/QR
+redaction is not sufficient. The explicitly authorized public outer example
+retains its actual public address/QR/serial, with a conspicuous no-deposit
+caption; it is not the visitor's wallet. Never claim that image is nonfunctional.
+Original input filenames privatekey.png/publickey.png remain excluded from Git,
+Docker contexts, uploads and static serving. Export metadata-free derivatives;
+a text secret scanner cannot establish that a wallet image is safe.
 
 The optional contact form never uploads files and submits only to this server.
 Its publisher credential must have write-only permission to the private

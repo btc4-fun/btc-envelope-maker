@@ -118,6 +118,14 @@ class UIContract(unittest.TestCase):
                        'تأییدنشده نهایی نیست', 'جعل', 'حقوق آمره'):
             self.assertIn(phrase, terms)
 
+    def test_example_captions_match_original_design_with_secret_only_redaction(self):
+        source = self.render('guide.html')
+        self.assertIn('طرح اصلی پاکت', source)
+        self.assertIn('همهٔ دوازده کلمه و کد بازیابی پوشانده شده‌اند', source)
+        self.assertIn('آدرس و کدهای عمومی واقعی', source)
+        self.assertIn('به آدرس این تصویر پول واریز نکنید', source)
+        self.assertNotIn('آدرس، شمارهٔ سریال و کدهای تصویری حذف شده‌اند', source)
+
     def test_guide_starts_with_plain_inner_outer_and_stranger_warnings(self):
         source = self.render("guide.html")
         self.assertIn('<section id="quick-guide">', source)

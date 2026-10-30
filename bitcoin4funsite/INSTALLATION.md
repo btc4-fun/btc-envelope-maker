@@ -38,8 +38,10 @@ sha256:20a898614d9d724a141017af1d682021be205bc682d4e71d134900e8a7811803
 
 The guide release adds shared plain-language inner/outer examples on home,
 lookup and guide, a camera/stranger/forged-address warning, and clarified
-initial-deposit terms. Images use nonfunctional opaque replacements; original
-wallet images are excluded from Git, builds, transfer and static serving.
+initial-deposit terms. The original inner design is retained with all recovery
+words and its QR covered; the explicitly authorized outer design retains public
+deposit/lookup information and warns not to fund the example. Source input
+filenames remain excluded from Git, builds, transfer and static serving.
 The pre-existing /s/SERIAL and /SERIAL handlers are exercised as equivalent
 public-only routes; no shared-Caddy change is required.
 
