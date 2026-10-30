@@ -25,20 +25,20 @@ class LookupAdmissionFlow(unittest.TestCase):
             lookup = Mock(side_effect=lambda serial: {'serial': serial, 'address': ADDRESS})
             app = module.create_app({'TESTING': True, 'WALLET_LOOKUP': lookup, 'LOOKUP_LIMITER': limiter})
             client = app.test_client()
-            response = client.get('/s/TEST-DO-NOT-FUND-ONE', base_url='https://btc4.fun')
+            response = client.get('/s/TEST-DO-NOT-FUND-0587k45300', base_url='https://btc4.fun')
             self.assertEqual(response.status_code, 200)
             self.assertIn('data-initial-state="found"', response.text)
             self.assertIn(ADDRESS, response.text)
-            self.assertEqual(client.get('/api/wallets/TEST-DO-NOT-FUND-ONE/qr.svg').status_code, 200)
+            self.assertEqual(client.get('/api/wallets/TEST-DO-NOT-FUND-0587k45300/qr.svg').status_code, 200)
             self.assertEqual(lookup.call_count, 2)
-            for path in ('/TEST-DO-NOT-FUND-TWO', '/lookup?serial=TEST-DO-NOT-FUND-TWO',
-                         '/api/wallets/TEST-DO-NOT-FUND-TWO', '/api/wallets/TEST-DO-NOT-FUND-TWO/qr.svg'):
+            for path in ('/TEST-DO-NOT-FUND-0587k45301', '/lookup?serial=TEST-DO-NOT-FUND-0587k45301',
+                         '/api/wallets/TEST-DO-NOT-FUND-0587k45301', '/api/wallets/TEST-DO-NOT-FUND-0587k45301/qr.svg'):
                 response = client.get(path, base_url='https://go.btc4.fun')
                 self.assertEqual(response.status_code, 429)
                 self.assertEqual(response.headers['Retry-After'], '15')
             self.assertEqual(lookup.call_count, 2)
             now[0] += 15
-            self.assertEqual(client.get('/TEST-DO-NOT-FUND-TWO').status_code, 200)
+            self.assertEqual(client.get('/TEST-DO-NOT-FUND-0587k45301').status_code, 200)
             self.assertEqual(lookup.call_count, 3)
 
     def test_default_production_factory_enforces_limit_without_test_bypass(self):
@@ -51,6 +51,6 @@ class LookupAdmissionFlow(unittest.TestCase):
             with patch.dict(os.environ, env):
                 app = module.create_app({'WALLET_LOOKUP': lambda serial: None})
                 client = app.test_client()
-                self.assertEqual(client.get('/api/wallets/TEST-DO-NOT-FUND').status_code, 404)
-                self.assertEqual(client.get('/api/wallets/TEST-DO-NOT-FUND').status_code, 429)
+                self.assertEqual(client.get('/api/wallets/TEST-DO-NOT-FUND-0587k45300').status_code, 404)
+                self.assertEqual(client.get('/api/wallets/TEST-DO-NOT-FUND-0587k45300').status_code, 429)
                 self.assertTrue(Path(env['LOOKUP_STATE_FILE']).is_file())

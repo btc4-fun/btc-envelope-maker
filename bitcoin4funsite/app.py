@@ -6,14 +6,24 @@ import re
 import ipaddress
 from pathlib import Path
 
-from bech32 import decode as decode_segwit
+from address_validation import valid_address
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request
 import psycopg
 import qrcode
 import qrcode.image.svg
 from market import MarketService
 
-SERIAL_RE = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}')
+# Generator serial_stem: YY + month (1..b) + day (1..u) + hour
+# (midnight=z, otherwise 1..m) + decimal MMSS or case-sensitive base60 MS.
+# Prefix is operator-defined; retain the existing website's ASCII/64-char
+# envelope, accepting any prefix within it and any positive base36 index width.
+# This is shape admission, not a proof of issuance or a unique parse.
+SERIAL_PATTERN = (
+    r'(?=[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$)[A-Za-z0-9_\-]*'
+    r'[0-9]{2}[0-9ab][0-9a-u][0-9a-mz]'
+    r'(?:[0-5][0-9][0-5][0-9]|[0-9a-zA-X]{2})[0-9a-z]+'
+)
+SERIAL_RE = re.compile(SERIAL_PATTERN)
 
 
 def database_lookup(serial):
@@ -195,7 +205,7 @@ def create_app(config=None):
             else:
                 wallet = response.get_json()
         html = render_template('lookup.html', serial=serial, wallet=wallet, lookup_error=error,
-                               lookup_retry_after=retry_after)
+                               lookup_retry_after=retry_after, serial_pattern=SERIAL_PATTERN)
         return html, status, ({'Retry-After': retry_after} if retry_after else {})
 
     @app.get('/healthz')
@@ -225,10 +235,7 @@ def create_app(config=None):
             if record is None:
                 return jsonify(error='not_found'), 404
             address = record['address']
-            if not isinstance(address, str) or len(address) != 42 or re.fullmatch(r'bc1q[02-9ac-hj-np-z]{38}', address) is None:
-                raise ValueError('Malformed public Bitcoin address')
-            version, program = decode_segwit('bc', address)
-            if version != 0 or program is None or len(program) != 20 or not address.startswith('bc1q'):
+            if not valid_address(address):
                 raise ValueError('Invalid public Bitcoin address')
             return jsonify(serial=serial, address=address, explorer_url='https://mempool.space/address/' + address)
         except Exception:

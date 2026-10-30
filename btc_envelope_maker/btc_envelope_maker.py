@@ -25,6 +25,7 @@ import os
 import re
 import socket
 import sys
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
@@ -280,6 +281,8 @@ def enc_ms(v: int, mode: str) -> str:
 
 
 def to_b36(n: int, width: int) -> str:
+    if width < 1 or n < 0 or n >= 36 ** width:
+        raise ValueError("base36 value does not fit the requested width")
     s = ""
     for _ in range(width):
         n, r = divmod(n, 36)
@@ -288,6 +291,12 @@ def to_b36(n: int, width: int) -> str:
 
 
 def serial_stem(now: dt.datetime, mode: str = "digits") -> tuple[str, str]:
+    """Second-resolution identifier, NOT globally unique across runs.
+
+    Same-second runs with the same prefix/mode can collide, especially with
+    separate output roots or machines. Exclusive batch-folder creation only
+    protects a shared output root; keep distinct prefixes for independent runs.
+    """
     jy, jm, jd = gregorian_to_jalali(now.year, now.month, now.day)
     stem = f"{jy % 100:02d}{enc1(jm)}{enc1(jd)}{enc_hour(now.hour)}{enc_ms(now.minute, mode)}{enc_ms(now.second, mode)}"
     human = f"{jy:04d}/{jm:02d}/{jd:02d} {now:%H:%M:%S}"
@@ -307,8 +316,16 @@ def now_local(cfg: dict) -> dt.datetime:
     return dt.datetime.now(tz)
 
 
+def serial_width(total: int) -> int:
+    """Keep historical widths, extending only when the entire batch needs it."""
+    width = 1
+    while total > 36 ** width:
+        width += 1
+    return width
+
+
 def make_wallets(cfg: dict, total: int, stem: str) -> list[Wallet]:
-    width = 1 if total <= 36 else 2
+    width = serial_width(total)
     wallets: list[Wallet] = []
     seen_addr: set[str] = set()
     seen_words: set[str] = set()
@@ -697,20 +714,47 @@ def write_ledger(path: Path, cfg: dict, wallets: list[Wallet], human_dt: str, no
             w.writerow([r.serial, r.address, human_dt, now, r.sheet, r.slot, link, "", "", "", ""])
 
 
+@contextmanager
+def private_creation():
+    """Restrict creation from the first write; CLI is single-threaded.
+
+    Process-wide umask is restored even on failure. This is NOT a defense
+    against a hostile output parent being renamed/replaced with a symlink.
+    """
+    previous = os.umask(0o077)
+    try:
+        yield
+    finally:
+        os.umask(previous)
+
+
+class _PrivateArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        # argparse messages can contain credential-bearing argument values.
+        super().error("invalid command-line arguments; use --help")
+
+
 # --------------------------------------------------------------------------------------
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Offline bitcoin card sheet generator")
+    ap = _PrivateArgumentParser(description="Offline bitcoin card sheet generator")
     ap.add_argument("--config", default=str(HERE / "config.toml"))
     ap.add_argument("--count", type=int, help="number of SHEETS to make (each is filled completely)")
     ap.add_argument("--out", default="out", help="output folder (default ./out)")
     ap.add_argument("--preview", action="store_true",
                     help="make ONE sample sheet with a PUBLIC test phrase to check the design")
     ap.add_argument("--allow-online", action="store_true",
-                    help="skip the offline check (NOT recommended for real wallets)")
+                    help="skip advisory connectivity probes; still requires --acknowledge-offline")
+    ap.add_argument("--acknowledge-offline", action="store_true",
+                    help="confirm you disconnected networking and use a trusted offline machine/printer")
     ap.add_argument("--db", help="database connection string: sqlite:///wallets.db or postgresql://user:pass@host/db "
                                  "(stores serial + public address only). Also read from env BTC_DB_URL or config db_url")
     ap.add_argument("--db-table", help="table name (default from config: wallets)")
     args = ap.parse_args()
+
+    if not args.preview and not args.acknowledge_offline:
+        sys.exit("Real generation requires --acknowledge-offline after disconnecting networking.\n"
+                 "Failed connectivity probes do NOT prove isolation. Use a trusted offline live environment "
+                 "and an offline printer; this is not a guarantee of security.")
 
     cfg = load_config(Path(args.config))
     register_fonts(cfg)
@@ -738,7 +782,7 @@ def main() -> None:
 
     now = now_local(cfg)
     stem, human = serial_stem(now, cfg["serial_minsec"])
-    width = 1 if plan.per_sheet <= 36 else 2
+    width = serial_width(plan.per_sheet)
 
     def samples(n: int) -> list[Wallet]:
         mn = TEST_MNEMONIC if cfg["words"] == 12 else TEST_MNEMONIC_24
@@ -759,8 +803,9 @@ def main() -> None:
         if not args.count or not (1 <= args.count <= 500):
             sys.exit("Give the number of sheets, e.g.  --count 1")
         if not args.allow_online and looks_online():
-            sys.exit("This computer is ONLINE. Real keys must be made offline.\n"
+            sys.exit("Connectivity detected. Real keys must be made offline.\n"
                      "Disconnect Wi-Fi / unplug the network cable and run again.")
+        print("Offline acknowledgement received; probes cannot prove network isolation.")
         n_sheets_wanted = args.count
         if db_url:   # pre-flight: a remote database is normally NOT reachable from an offline computer
             try:
@@ -771,32 +816,41 @@ def main() -> None:
                       f"  The wallets will still be created; load them later with btc_db.py import.")
         wallets = make_wallets(cfg, args.count * plan.per_sheet, stem)
         folder = Path(args.out) / f"batch_{stem}"
+    if len({r.serial for r in wallets}) != len(wallets):
+        sys.exit("Duplicate serial in batch - aborting, nothing was written.")
     for i, r in enumerate(wallets):
         r.sheet, r.slot = i // plan.per_sheet + 1, i % plan.per_sheet + 1
 
-    try:
-        folder.mkdir(parents=True, exist_ok=False)
-    except FileExistsError:
-        sys.exit(f"Folder already exists, refusing to overwrite: {folder}")
-    try:
-        os.chmod(folder, 0o700)
-    except OSError:
-        pass
-
     files = ({"public": folder / "public_sheets.pdf", "private": folder / "private_sheets.pdf"}
              if separate else {"sheet": folder / "sheets.pdf"})
-    try:
-        render_sheets(cfg, plan, wallets, files, args.preview)
-    except LayoutError as e:
-        sys.exit(f"Layout problem: {e}")
-    created = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    write_ledger(folder / "ledger.csv", cfg, wallets, human, created)
-    for key, p in files.items():
-        if key != "public":
-            try:
+    with private_creation():
+        try:
+            folder.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            sys.exit(f"Folder already exists, refusing to overwrite: {folder}")
+        try:
+            os.chmod(folder, 0o700)
+            render_sheets(cfg, plan, wallets, files, args.preview)
+            created = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            for p in files.values():
                 os.chmod(p, 0o600)
+            if not args.preview:
+                write_ledger(folder / "ledger.csv", cfg, wallets, human, created)
+        except (OSError, LayoutError):
+            cleanup_failed = False
+            # Only our named artifacts, never recursive removal of an output tree.
+            for p in [*files.values(), folder / "ledger.csv"]:
+                try:
+                    p.unlink(missing_ok=True)
+                except OSError:
+                    cleanup_failed = True
+            try:
+                folder.rmdir()
             except OSError:
-                pass
+                cleanup_failed = True
+            sys.exit("Output failed; no successful batch was recorded."
+                     + (" Cleanup incomplete: treat the output folder as SECRET and do not use it."
+                        if cleanup_failed else " Partial files removed."))
 
     db_failed = False
     db_msg = ""
@@ -823,7 +877,8 @@ def main() -> None:
     else:
         print("\n  sheets.pdf : SECRET (contains the recovery words) - print on an offline printer (USB), "
               "then delete the file")
-    print("  ledger.csv : your record, contains no secrets")
+    if not args.preview:
+        print("  ledger.csv : your record, contains no secrets")
     if db_msg:
         print("\n" + db_msg)
     print()

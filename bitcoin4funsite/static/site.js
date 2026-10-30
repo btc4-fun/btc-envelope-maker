@@ -7,7 +7,9 @@
   const status = document.getElementById("lookup-status");
   const result = document.getElementById("lookup-result");
   const submit = document.getElementById("lookup-submit");
-  const validSerial = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+  // The native form and JS use the server's generator-derived grammar.
+  // (?![\s\S]) is an absolute end assertion; $ alone permits a final newline.
+  const validSerial = new RegExp("^(?:" + (field.getAttribute("pattern") || "(?!)") + ")(?![\\s\\S])");
   let requestVersion = 0;
 
   function announce(message, state) {

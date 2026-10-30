@@ -11,6 +11,11 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from bech32 import encode
+
+# Synthetic witness bytes, not generated wallets or public preview vectors.
+SYNTHETIC_ADDRESS = encode("bc", 0, list(range(20)))
+SYNTHETIC_ADDRESS_2 = encode("bc", 0, list(range(1, 21)))
 
 GENERATOR_PATH = Path(__file__).resolve().parents[2] / "btc_envelope_maker"
 sys.path.insert(0, str(GENERATOR_PATH))
@@ -46,7 +51,7 @@ class SQLiteMetadataSchema(unittest.TestCase):
                 self.assertEqual(columns[name][2].upper(), "TEXT")
                 self.assertEqual(columns[name][3], 0)
                 self.assertIn(columns[name][4], (None, "NULL"))
-        btc_db.save_rows(self.url, "wallets", [btc_db.Row("fixture-1", "public-fixture-address")])
+        btc_db.save_rows(self.url, "wallets", [btc_db.Row("fixture-1", SYNTHETIC_ADDRESS)])
         with self.database() as conn:
             self.assertEqual(conn.execute("SELECT contact_type, contact_value, notes FROM wallets").fetchall(),
                              [(None, None, None)])
@@ -191,7 +196,7 @@ class SQLiteMetadataSchema(unittest.TestCase):
         self.create_old_table()
         with patch.object(btc_db, "migrate_contact_columns", side_effect=AssertionError("must be explicit")):
             btc_db.check(self.url)
-            self.assertEqual(btc_db.save_rows(self.url, "wallets", [btc_db.Row("fixture-3", "public-address-3")]),
+            self.assertEqual(btc_db.save_rows(self.url, "wallets", [btc_db.Row("fixture-3", SYNTHETIC_ADDRESS)]),
                              (1, 0))
         self.assertEqual(tuple(self.columns()), PUBLIC_COLUMNS)
 
@@ -200,7 +205,7 @@ class SQLiteMetadataSchema(unittest.TestCase):
         with self.assertRaises(TypeError):
             btc_db.Row("fixture-1", "public-address-1", contact_type="email")
         btc_db.check(self.url)
-        public_address = "bc1q" + "q" * 38  # synthetic syntax-only fixture; no wallet generation
+        public_address = SYNTHETIC_ADDRESS
         btc_db.save_rows(self.url, "wallets", [btc_db.Row("fixture-1", public_address)])
         private = ("email", "synthetic-private-contact@example.invalid", "synthetic private notes")
         with self.database() as conn:
@@ -208,9 +213,9 @@ class SQLiteMetadataSchema(unittest.TestCase):
         ledger = Path(self.directory.name) / "public-ledger.csv"
         ledger.write_text("serial,address,jalali_datetime,created_utc,contact_type,contact_value,notes\n"
                           f"fixture-1,{public_address},,,phone,synthetic-overwrite,synthetic-overwrite\n"
-                          f"fixture-2,bc1q{'p' * 38},,,phone,synthetic-overwrite,synthetic-overwrite\n", encoding="utf-8")
+                          f"fixture-2,{SYNTHETIC_ADDRESS_2},,,phone,synthetic-overwrite,synthetic-overwrite\n", encoding="utf-8")
         rows = btc_db.read_ledger(ledger)
-        self.assertEqual(rows, [btc_db.Row("fixture-1", public_address), btc_db.Row("fixture-2", "bc1q" + "p" * 38)])
+        self.assertEqual(rows, [btc_db.Row("fixture-1", public_address), btc_db.Row("fixture-2", SYNTHETIC_ADDRESS_2)])
         self.assertNotIn("synthetic-overwrite", repr(rows))
         self.assertEqual(btc_db.save_rows(self.url, "wallets", rows, skip_existing=True), (1, 1))
         self.migrate()

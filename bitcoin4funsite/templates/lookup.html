@@ -9,7 +9,7 @@
       <label for="serial">شمارهٔ سریال پاکت</label>
       <p id="serial-hint" class="field-hint">فقط شمارهٔ سریال؛ با حروف و ارقام انگلیسی، خط تیره یا زیرخط. فاصله وارد نکنید.</p>
       <p class="field-hint">برای هر اتصال اینترنتی، هر پانزده ثانیه یک استعلام مجاز است؛ کد تصویری همان نتیجه استعلام جداگانه محسوب نمی‌شود.</p>
-      <div class="lookup-controls"><input id="serial" name="serial" type="text" value="{{ serial|default('', true) }}" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,63}" aria-describedby="serial-hint" required><button id="lookup-submit" class="button" type="submit">نمایش آدرس <span aria-hidden="true">←</span></button></div>
+      <div class="lookup-controls"><input id="serial" name="serial" type="text" value="{{ serial|default('', true) }}" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" pattern="{{ serial_pattern }}" aria-describedby="serial-hint" required><button id="lookup-submit" class="button" type="submit">نمایش آدرس <span aria-hidden="true">←</span></button></div>
     </form>
     <p id="lookup-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true">{% if lookup_error == 'rate_limited' %}هر پانزده ثانیه فقط یک استعلام مجاز است؛ کمی صبر کنید و دوباره بزنید.{% elif lookup_error == 'unavailable' %}سرویس استعلام فعلاً در دسترس نیست.{% endif %}</p>
     <div id="lookup-result" class="lookup-result" hidden></div>

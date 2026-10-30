@@ -230,6 +230,7 @@ ids['lookup-form'].dataset.initialState=process.argv[3];
 ids['lookup-form'].dataset.initialAddress='bc1qsyntheticpublicfixture';
 ids['lookup-form'].dataset.initialExplorer='https://mempool.space/address/bc1qsyntheticpublicfixture';
 ids.serial.value=process.argv[2];
+ids.serial.setAttribute('pattern', process.argv[4]);
 ids['lookup-result'].hidden=true;
 global.document={getElementById:id=>ids[id] || null, createElement:tag=>new Element(tag)};
 global.window={isSecureContext:true, location:{origin:'http://localhost'}};
@@ -242,7 +243,16 @@ const all=()=>{const found=[]; const walk=node=>{found.push(node);node.children.
 const submit=async serial=>{ids.serial.value=serial; await ids['lookup-form'].emit('submit'); await tick();};
 vm.runInThisContext(fs.readFileSync(process.argv[1], 'utf8'));
 '''
-        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state], capture_output=True, text=True, timeout=15)
+        # Use the rendered production field, not a copied JS grammar.
+        import importlib.util
+        import sys
+        sys.path.insert(0, str(ROOT))
+        spec = importlib.util.spec_from_file_location('ui_serial_app', ROOT / 'app.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        html = module.create_app({'TESTING': True}).test_client().get('/lookup').text
+        pattern = Document(html).by_id('serial')['pattern']
+        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state, pattern], capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_lookup_waits_for_intent_and_rejects_invalid_without_network(self):
@@ -261,26 +271,26 @@ assert.equal(ids['lookup-result'].hidden,true);
         self.run_lookup_script(r'''
 let finish;
 handler=()=>new Promise(resolve=>{finish=resolve;});
-ids.serial.value='Demo_7-2';
+ids.serial.value='Demo_7-20587k45300';
 const pending=ids['lookup-form'].emit('submit');
 await tick();
 assert.equal(requests.length,1,'Submitting a valid serial must call the public API');
-assert.equal(requests[0].url,'/api/wallets/Demo_7-2');
+assert.equal(requests[0].url,'/api/wallets/Demo_7-20587k45300');
 assert.equal(requests[0].options.credentials,'same-origin');
 assert.equal(requests[0].options.redirect,'error');
 assert.equal(ids['lookup-status'].dataset.state,'loading');
 assert.equal(ids['lookup-result'].getAttribute('aria-busy'),'true');
 const address='bc1qsyntheticpublicfixture';
-finish({ok:true,status:200,json:async()=>({serial:'Demo_7-2',address,explorer_url:'https://mempool.space/address/'+address})});
+finish({ok:true,status:200,json:async()=>({serial:'Demo_7-20587k45300',address,explorer_url:'https://mempool.space/address/'+address})});
 await pending;
 await tick();
 assert.equal(ids['lookup-result'].hidden,false);
 assert.equal(ids['lookup-result'].getAttribute('aria-busy'),'false');
 assert.equal(ids['lookup-status'].dataset.state,'success');
-assert.ok(all().some(node=>node.textContent==='Demo_7-2' && node.dir==='ltr'));
+assert.ok(all().some(node=>node.textContent==='Demo_7-20587k45300' && node.dir==='ltr'));
 assert.ok(all().some(node=>node.textContent===address && node.dir==='ltr'));
 const image=all().find(node=>node.tagName==='img');
-assert.equal(image.src,'/api/wallets/Demo_7-2/qr.svg');
+assert.equal(image.src,'/api/wallets/Demo_7-20587k45300/qr.svg');
 assert.ok(image.alt.length>8);
 const link=all().find(node=>node.tagName==='a');
 assert.equal(link.href,'https://mempool.space/address/'+address);
@@ -303,14 +313,14 @@ assert.equal(requests.length,1,'Explorer must not be prefetched');
         self.run_lookup_script(r'''
 for (const [code,pattern] of [[404,/پیدا نشد/],[400,/معتبر نیست/],[503,/دسترس نیست/]]) {
   handler=async()=>({ok:false,status:code});
-  await submit('Sample7');
+  await submit('Sample70587k45300');
   assert.equal(ids['lookup-status'].dataset.state,'error');
   assert.match(ids['lookup-status'].textContent,pattern);
   assert.equal(ids['lookup-result'].hidden,true);
   assert.equal(ids['lookup-submit'].disabled,false);
 }
 handler=async()=>{throw new TypeError('Network unavailable');};
-await submit('Sample7');
+await submit('Sample70587k45300');
 assert.match(ids['lookup-status'].textContent,/دسترس نیست/);
 assert.equal(ids['lookup-result'].hidden,true);
 ''')
@@ -319,9 +329,9 @@ assert.equal(ids['lookup-result'].hidden,true);
         self.run_lookup_script(r'''
 await tick();
 assert.equal(requests.length,1,'An explicit serial page should start one lookup');
-assert.equal(requests[0].url,'/api/wallets/Serial_71');
+assert.equal(requests[0].url,'/api/wallets/Serial_710587k45300');
 assert.equal(ids['lookup-submit'].disabled,false);
-''', initial="Serial_71")
+''', initial="Serial_710587k45300")
 
     def test_server_rendered_lookup_is_hydrated_without_duplicate_admission(self):
         self.run_lookup_script(r'''
@@ -329,19 +339,19 @@ await tick();
 assert.equal(requests.length,0,'Server already looked up the initial serial');
 assert.equal(ids['lookup-result'].hidden,false);
 assert.equal(ids['lookup-status'].dataset.state,'success');
-assert.ok(all().some(node=>node.textContent==='Serial_71'));
-''', initial='Serial_71', initial_state='found')
+assert.ok(all().some(node=>node.textContent==='Serial_710587k45300'));
+''', initial='Serial_710587k45300', initial_state='found')
         self.run_lookup_script(r'''
 await tick();
 assert.equal(requests.length,0,'Do not retry an initial limited lookup');
 assert.match(ids['lookup-status'].textContent,/پانزده ثانیه/);
 assert.equal(ids['lookup-result'].hidden,true);
-''', initial='Serial_71', initial_state='rate_limited')
+''', initial='Serial_710587k45300', initial_state='rate_limited')
 
     def test_lookup_explains_server_rate_limit_without_automatic_retry(self):
         self.run_lookup_script(r'''
 handler=async()=>({ok:false,status:429});
-await submit('Sample7');
+await submit('Sample70587k45300');
 assert.match(ids['lookup-status'].textContent,/پانزده ثانیه/);
 assert.equal(requests.length,1);
 assert.equal(ids['lookup-result'].hidden,true);
@@ -353,13 +363,13 @@ assert.equal(ids['lookup-submit'].disabled,false);
 const address='bc1q'+'q'.repeat(38);
 for (const payload of [
   {serial:'OtherSerial',address,explorer_url:'https://mempool.space/address/'+address},
-  {serial:'Safe7',address:'<img src=x onerror=alert(1)>',explorer_url:'https://mempool.space/'},
-  {serial:'Safe7',address,explorer_url:'javascript:alert(1)'},
-  {serial:'Safe7',address,explorer_url:'https://evil.example/address/'+address},
+  {serial:'Safe70587k45300',address:'<img src=x onerror=alert(1)>',explorer_url:'https://mempool.space/'},
+  {serial:'Safe70587k45300',address,explorer_url:'javascript:alert(1)'},
+  {serial:'Safe70587k45300',address,explorer_url:'https://evil.example/address/'+address},
   null
 ]) {
   handler=async()=>({ok:true,status:200,json:async()=>payload});
-  await submit('Safe7');
+  await submit('Safe70587k45300');
   assert.equal(ids['lookup-result'].hidden,true,'Malformed public data must not be displayed');
   assert.equal(all().filter(node=>['a','img'].includes(node.tagName)).length,0);
   assert.equal(ids['lookup-status'].dataset.state,'error');
@@ -371,8 +381,8 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source),'Untrust
     def test_copy_address_handles_unsupported_denied_and_successful_clipboard(self):
         self.run_lookup_script(r'''
 const address='bc1q'+'q'.repeat(38);
-handler=async()=>({ok:true,status:200,json:async()=>({serial:'Copy7',address,explorer_url:'https://mempool.space/address/'+address})});
-await submit('Copy7');
+handler=async()=>({ok:true,status:200,json:async()=>({serial:'Copy70587k45300',address,explorer_url:'https://mempool.space/address/'+address})});
+await submit('Copy70587k45300');
 const copy=all().find(node=>node.tagName==='button');
 assert.ok(copy,'Provide a copy-address control');
 await copy.emit('click');
@@ -393,24 +403,24 @@ assert.equal(requests.length,1,'Clipboard must not trigger a request');
 const pending=[];
 handler=()=>new Promise(resolve=>pending.push(resolve));
 const response=serial=>({ok:true,status:200,json:async()=>({serial,address:'bc1q'+'q'.repeat(38),explorer_url:'https://mempool.space/address/bc1q'+'q'.repeat(38)})});
-ids.serial.value='First';
+ids.serial.value='First0587k45300';
 const first=ids['lookup-form'].emit('submit');
-ids.serial.value='Second';
+ids.serial.value='Second0587k45300';
 const second=ids['lookup-form'].emit('submit');
-pending[1](response('Second'));
+pending[1](response('Second0587k45300'));
 await second;
-assert.ok(all().some(node=>node.textContent==='Second'));
-pending[0](response('First'));
+assert.ok(all().some(node=>node.textContent==='Second0587k45300'));
+pending[0](response('First0587k45300'));
 await first;
-assert.ok(all().some(node=>node.textContent==='Second'),'An earlier response must not replace the latest serial');
-assert.ok(!all().some(node=>node.textContent==='First'));
+assert.ok(all().some(node=>node.textContent==='Second0587k45300'),'An earlier response must not replace the latest serial');
+assert.ok(!all().some(node=>node.textContent==='First0587k45300'));
 ''')
 
     def test_failed_local_qr_keeps_public_address_readable(self):
         self.run_lookup_script(r'''
 const address='bc1q'+'q'.repeat(38);
-handler=async()=>({ok:true,status:200,json:async()=>({serial:'Qr7',address,explorer_url:'https://mempool.space/address/'+address})});
-await submit('Qr7');
+handler=async()=>({ok:true,status:200,json:async()=>({serial:'Qr70587k45300',address,explorer_url:'https://mempool.space/address/'+address})});
+await submit('Qr70587k45300');
 const qr=all().find(node=>node.tagName==='img');
 await qr.emit('error');
 assert.equal(qr.hidden,true,'Hide a broken QR image');

@@ -1,0 +1,6 @@
+# Install alongside requirements-runtime.txt; never replace local requirements.
+pytest>=8.4,<9
+ecdsa>=0.19,<0.20
+# Native test prerequisites: poppler-utils (pdftotext, pdftoppm), libzbar0.
+# Pillow and real bip_utils/reportlab are runtime dependencies.
+# Set TMPDIR to a private scratch directory and put --basetemp beneath it.

@@ -60,28 +60,50 @@ Do not send recovery phrases, keys, passwords or confidential wallet images in
 any contact channel. Missing notification configuration must fail closed without
 revealing credentials or falsely claiming successful delivery.
 
-## Existing offline generator: unresolved review findings
+## Generator security follow-up
 
-Website publication does NOT fix or certify the offline generator. Its initial
-review identified these issues, still pending unless a later change explicitly
-closes them with tests:
+The follow-up adds public-vector tests, including actual PDF text extraction,
+pixel QR decoding and independent recovery of the printed address. Admission
+tests mock key generation; they do not establish cryptographic correctness.
+See SECURITY-FOLLOWUP.md for scope and executable checks.
 
-- A shared writable output parent permits directory-replacement/symlink races,
-  redirecting secret PDFs or aliasing private output onto public filenames.
-- Permission-hardening failures are ignored; file permissions are restricted
-  only after PDF and ledger output. Use a private trusted filesystem and parent.
-- Failed TCP probes to three destinations do not prove a machine is offline.
-  Physically disconnect and use a clean offline environment; do not rely on the
-  check as network isolation. Do not use --allow-online with real keys.
-- Batch serial suffixes wrap above 1,296 wallets. Keep batches below that
-  capacity until dynamic suffix sizing and uniqueness checks are implemented.
-- Preview ledgers have no intrinsic preview marker. Never fund a preview/test
-  address or import sample records as real inventory.
-- Database URL query-password redaction and imported-address checksum
-  validation need hardening. Never put credentials on the command line or
-  share raw configuration/logs. Validate public addresses independently.
-- The generator's original requirements are lower bounds without artifact
-  hashes. Its self-test checks derivation correctness, not package authenticity.
+- Serial suffix width now covers the entire run; duplicate serials fail before
+  output. Historical one/two-character suffixes remain unchanged where sufficient.
+- CLI output creation uses a restored restrictive umask; files begin at 0600,
+  batch directories at 0700. Handled permission/write errors fail closed and
+  remove known partial artifacts, warning explicitly when cleanup is incomplete.
+- Real generation requires --acknowledge-offline even with --allow-online.
+  Failed probes are not proof of isolation; the latter skips only advisory probes.
+- Preview writes no ledger and never connects to a database. Both project
+  public preview addresses are rejected by production CSV import/direct save.
+- Shared bounded mainnet P2WPKH checksum validation rejects invalid inventory
+  before database access. Connection descriptions omit userinfo/query/fragment;
+  driver errors are value-free. Never pass credentials on the command line.
+- Generated serial shapes are checked before website admission/database access;
+  browser and server use the same grammar, retaining the existing ASCII/64-char
+  website envelope and optional prefix, compact time and extended suffixes.
+
+## Remaining generator limitations (not fixed by this follow-up)
+
+- A shared writable output parent still permits directory-replacement/symlink
+  races and public/private aliasing. Umask does NOT fix this. Use an output root
+  and filesystem controlled exclusively by the offline operator; path-based
+  cleanup also assumes that trusted parent. Descriptor-relative exclusive,
+  no-follow output handling remains separate work.
+- Second-resolution serials are not globally unique: same-second runs across
+  roots/machines, clock reuse and prefix reuse can collide. Exclusive directory
+  creation prevents overwriting a batch in the same root, not global collisions.
+- Filesystem output is not a crash-atomic transaction; power loss, SIGKILL and
+  unexpected exceptions may leave partial files. Direct low-level rendering
+  outside the CLI private-creation context does not inherit its mode guarantee.
+  Process-wide umask assumes the single-threaded CLI.
+- Physically disconnect networking and use a trusted offline live environment
+  and offline printer. Neither acknowledgement nor probes enforce isolation.
+- Generator runtime/test dependencies are not fully hash-locked. The self-test
+  checks a known derivation, not package authenticity or the entropy source.
+- Public-vector exclusions cover this project's two preview vectors, not every
+  publicly known or compromised wallet. Synthetic website persistence fixtures
+  remain separate from production inventory imports.
 
 Use only dedicated offline printers and encrypted/ephemeral storage. Deleting
 files is not guaranteed secure erasure on SSD/flash, backups or printer storage.

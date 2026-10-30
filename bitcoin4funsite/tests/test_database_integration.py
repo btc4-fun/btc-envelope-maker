@@ -26,7 +26,7 @@ class ReadonlyDatabaseIntegration(unittest.TestCase):
             password=Path(os.environ['BTC_TEST_OWNER_PASSWORD_FILE']).read_text().rstrip('\r\n'),
             connect_timeout=4,
         )
-        self.serial = 'TEST-DO-NOT-FUND-' + uuid.uuid4().hex[:16]
+        self.serial = 'TEST-DO-NOT-FUND-' + uuid.uuid4().hex[:16] + '-0587k45300'
         with psycopg.connect(**self.owner) as conn:
             conn.execute('INSERT INTO public.wallets (serial,address) VALUES (%s,%s)', (self.serial, PUBLIC_TEST_ADDRESS))
         spec = importlib.util.spec_from_file_location('bitcoin4fun_integration_app', APP_PATH)

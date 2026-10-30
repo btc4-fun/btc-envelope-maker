@@ -61,7 +61,7 @@ class ApplicationContract(unittest.TestCase):
                                 self.assertEqual(response.status_code, 404)
 
     def test_both_public_serial_url_forms_render_same_safe_record_without_js(self):
-        serial = 'TEST-DO-NOT-FUND-ROUTE'
+        serial = 'TEST-DO-NOT-FUND-0587k45300'
         address = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
         lookup = Mock(return_value={'serial': serial, 'address': address, 'notes': 'PRIVATE_SENTINEL'})
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lookup})
@@ -92,13 +92,13 @@ class ApplicationContract(unittest.TestCase):
         lookup = Mock(return_value=None)
         app = self.real_create_app({'TESTING': True, 'WALLET_LOOKUP': lookup, 'LOOKUP_LIMITER': limiter})
         client = app.test_client()
-        self.assertEqual(client.get('/api/wallets/First').status_code, 404)
-        for path in ('/s/Second', '/Second', '/lookup?serial=Second'):
+        self.assertEqual(client.get('/api/wallets/First0587k45300').status_code, 404)
+        for path in ('/s/Second0587k45300', '/Second0587k45300', '/lookup?serial=Second0587k45300'):
             response = client.get(path)
             self.assertEqual(response.status_code, 429)
             self.assertIn('Retry-After', response.headers)
             self.assertIn('پانزده ثانیه', response.text)
-        lookup.assert_called_once_with('First')
+        lookup.assert_called_once_with('First0587k45300')
         self.assertEqual(limiter.admit.call_count, 4)
 
     def test_api_rate_limit_and_failure_are_sanitized_and_fail_closed(self):
@@ -106,12 +106,12 @@ class ApplicationContract(unittest.TestCase):
         limiter.admit.return_value = 15
         lookup = Mock()
         app = self.real_create_app({'TESTING': True, 'WALLET_LOOKUP': lookup, 'LOOKUP_LIMITER': limiter})
-        response = app.test_client().get('/api/wallets/First')
+        response = app.test_client().get('/api/wallets/First0587k45300')
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.json, {'error': 'rate_limited', 'retry_after': 15})
         self.assertEqual(response.headers['Retry-After'], '15')
         limiter.admit.side_effect = RuntimeError('PRIVATE_RATE_STATE')
-        response = app.test_client().get('/api/wallets/First')
+        response = app.test_client().get('/api/wallets/First0587k45300')
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('PRIVATE_RATE_STATE', response.text)
         lookup.assert_not_called()
@@ -119,25 +119,29 @@ class ApplicationContract(unittest.TestCase):
     def test_lookup_rate_identity_uses_trusted_last_proxy_hop_and_qr_flag(self):
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
         client = app.test_client()
-        client.get('/api/wallets/First', headers={'X-Forwarded-For': '192.0.2.99, 198.51.100.8'})
-        self.no_limit.admit.assert_called_with('198.51.100.8', 'First', qr=False)
-        client.get('/api/wallets/First/qr.svg', headers={'X-Forwarded-For': '198.51.100.8'})
-        self.no_limit.admit.assert_called_with('198.51.100.8', 'First', qr=True)
-        client.get('/api/wallets/First', environ_overrides={'REMOTE_ADDR': '8.8.8.8'},
+        client.get('/api/wallets/First0587k45300', headers={'X-Forwarded-For': '192.0.2.99, 198.51.100.8'})
+        self.no_limit.admit.assert_called_with('198.51.100.8', 'First0587k45300', qr=False)
+        client.get('/api/wallets/First0587k45300/qr.svg', headers={'X-Forwarded-For': '198.51.100.8'})
+        self.no_limit.admit.assert_called_with('198.51.100.8', 'First0587k45300', qr=True)
+        client.get('/api/wallets/First0587k45300', environ_overrides={'REMOTE_ADDR': '8.8.8.8'},
                    headers={'X-Forwarded-For': '192.0.2.99'})
-        self.no_limit.admit.assert_called_with('8.8.8.8', 'First', qr=False)
+        self.no_limit.admit.assert_called_with('8.8.8.8', 'First0587k45300', qr=False)
 
     def test_missing_serial_and_database_failure_are_distinct(self):
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
-        self.assertEqual(app.test_client().get('/api/wallets/unknown').status_code, 404)
+        self.assertEqual(app.test_client().get('/api/wallets/unknown0587k45300').status_code, 404)
         app.config['WALLET_LOOKUP'] = Mock(side_effect=RuntimeError('PRIVATE_DSN_AND_PASSWORD'))
-        response = app.test_client().get('/api/wallets/unknown')
+        response = app.test_client().get('/api/wallets/unknown0587k45300')
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('PRIVATE_DSN_AND_PASSWORD', response.text)
 
+    def test_website_uses_the_shared_address_validation_contract(self):
+        import address_validation
+        self.assertIs(getattr(self.module, 'valid_address', None), address_validation.valid_address)
+
     def test_invalid_address_in_database_is_not_advertised_for_deposit(self):
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: {'serial': serial, 'address': 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyq'}})
-        response = app.test_client().get('/api/wallets/invalidaddress')
+        response = app.test_client().get('/api/wallets/invalidaddress0587k45300')
         self.assertEqual(response.status_code, 503)
 
 
@@ -146,8 +150,8 @@ class ApplicationContract(unittest.TestCase):
         for address in [None, 42, 'bc1q' + 'q' * 999996, 'bc1q' + 'q' * 39, 'bc1q' + '!' * 38]:
             with self.subTest(address_type=type(address).__name__):
                 app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: {'serial': serial, 'address': address}})
-                with patch.object(self.module, 'decode_segwit', return_value=(None, None)) as decoder:
-                    response = app.test_client().get('/api/wallets/TEST-DO-NOT-FUND')
+                with patch('address_validation.decode', return_value=(None, None)) as decoder:
+                    response = app.test_client().get('/api/wallets/TEST-DO-NOT-FUND-0587k45300')
                 self.assertEqual(response.status_code, 503)
                 decoder.assert_not_called()
 
@@ -169,7 +173,7 @@ class ApplicationContract(unittest.TestCase):
     def test_short_serial_pages_are_not_indexed(self):
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
         app.jinja_loader = DictLoader({'lookup.html': 'public lookup'})
-        for path in ['/shortserial', '/lookup', '/lookup?serial=shortserial']:
+        for path in ['/shortserial0587k45300', '/lookup', '/lookup?serial=shortserial0587k45300']:
             with self.subTest(path=path):
                 response = app.test_client().get(path)
                 self.assertEqual(response.headers.get('X-Robots-Tag'), 'noindex, nofollow, noarchive')

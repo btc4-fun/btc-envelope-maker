@@ -19,7 +19,7 @@ are NOT upgraded by check() or save_rows(); use the explicit owner/admin
 migrate-contact command. This module does not grant access to private columns:
 keep public database roles restricted to the public columns they need.
 
-Stand-alone use (works on any computer, needs only the standard library, + psycopg for Postgres):
+Stand-alone use (from this repository; needs bech32, + psycopg for Postgres):
   python btc_db.py import out/batch_0587k4530/ledger.csv --db "postgresql://..."
   python btc_db.py list --db "sqlite:///wallets.db"
   python btc_db.py migrate-contact --db "sqlite:///wallets.db"  # owner/admin only
@@ -34,17 +34,34 @@ import re
 import sqlite3
 import sys
 from dataclasses import dataclass
+from functools import wraps
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 
 DEFAULT_TABLE = "wallets"
 ENV_VAR = "BTC_DB_URL"
 TABLE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
-ADDR_RE = re.compile(r"^bc1q[02-9ac-hj-np-z]{38}$")      # Native SegWit (P2WPKH), bech32 alphabet
+# Support direct `python btc_db.py` as well as imports from the repository root.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from bitcoin4funsite.address_validation import valid_inventory_address
 
 
 class DbError(Exception):
     pass
+
+
+def _safe_errors(function):
+    """Also contain cleanup/driver failures that bypass inner error handlers."""
+    @wraps(function)
+    def guarded(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except DbError:
+            raise
+        except Exception:
+            raise DbError("database operation failed; details withheld") from None
+    return guarded
 
 
 @dataclass(frozen=True)
@@ -78,31 +95,55 @@ def parse_url(url: str) -> tuple[str, str]:
         return "sqlite", path
     m = re.match(r"^(postgres|postgresql)(\+\w+)?://", u, re.I)
     if m:
-        return "postgres", "postgresql://" + u[m.end():]
+        normalized = "postgresql://" + u[m.end():]
+        try:
+            if any(ord(c) < 32 or ord(c) == 127 for c in u):
+                raise ValueError
+            parts = urlsplit(normalized)
+            _ = parts.hostname, parts.port  # force bracket/port validation
+        except ValueError:
+            raise DbError("invalid database connection string") from None
+        return "postgres", normalized
     if "://" not in u and low.endswith((".db", ".sqlite", ".sqlite3")):
         return "sqlite", os.path.expanduser(u)
     raise DbError("unsupported connection string. Use sqlite:///file.db or postgresql://user:pass@host/db")
 
 
 def mask(url: str) -> str:
-    """Hide the password so it never appears on screen / in logs."""
-    return re.sub(r"(://[^:/@\s]+:)[^@\s]*(@)", r"\1***\2", url or "")
+    """Compatibility alias for the safe description, never a masked raw URL."""
+    return describe(url)
 
 
 def describe(url: str) -> str:
+    """Construct display text from safe components, never userinfo/query/fragment."""
     kind, target = parse_url(url)
-    return f"sqlite: {Path(target).resolve()}" if kind == "sqlite" else f"postgres: {mask(target)}"
+    if kind == "sqlite":
+        return "sqlite: local database"
+    try:
+        parts = urlsplit(target)
+        host = parts.hostname or "local"
+        port = parts.port
+        database = parts.path.removeprefix("/")
+        # Unsafe or ambiguous components are omitted, not decoded for display.
+        if re.fullmatch(r"[A-Za-z0-9.:-]{1,253}", host) is None:
+            host = "[host omitted]"
+        if re.fullmatch(r"[A-Za-z0-9_.-]{1,63}", database) is None:
+            database = "[database omitted]"
+        return f"postgres: {host}{':' + str(port) if port is not None else ''}/{database}"
+    except (ValueError, TypeError):
+        raise DbError("invalid database connection string") from None
 
 
+@_safe_errors
 def _connect(kind: str, target: str):
     if kind == "sqlite":
         parent = Path(target).resolve().parent
         if not parent.is_dir():
-            raise DbError(f"folder does not exist: {parent}")
+            raise DbError("SQLite parent folder does not exist")
         try:
             return sqlite3.connect(target, timeout=10)
-        except sqlite3.Error as e:
-            raise DbError(f"cannot open SQLite file: {e}") from None
+        except sqlite3.Error:
+            raise DbError("cannot open SQLite file") from None
     try:
         import psycopg as pg                      # psycopg 3
     except ImportError:
@@ -112,9 +153,8 @@ def _connect(kind: str, target: str):
             raise DbError('PostgreSQL needs a driver:  pip install "psycopg[binary]"') from None
     try:
         return pg.connect(target, connect_timeout=10)
-    except Exception as e:
-        first = str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__
-        raise DbError(f"cannot connect to PostgreSQL: {first}") from None
+    except Exception:
+        raise DbError("cannot connect to PostgreSQL; details withheld") from None
 
 
 def _ddl(kind: str, table: str) -> str:
@@ -124,6 +164,7 @@ def _ddl(kind: str, table: str) -> str:
             "contact_value TEXT DEFAULT NULL, notes TEXT DEFAULT NULL)")
 
 
+@_safe_errors
 def migrate_contact_columns(url: str, table: str = DEFAULT_TABLE) -> None:
     """Explicit administrator-only migration of private metadata on an existing table.
 
@@ -218,6 +259,7 @@ def _created_value(kind: str, text: str):
 
 
 # --------------------------------------------------------------------------------------
+@_safe_errors
 def check(url: str, table: str = DEFAULT_TABLE) -> None:
     """Create a fresh table if absent; never migrate an existing table (pre-flight)."""
     check_table(table)
@@ -226,13 +268,14 @@ def check(url: str, table: str = DEFAULT_TABLE) -> None:
     try:
         conn.cursor().execute(_ddl(kind, table))
         conn.commit()
-    except Exception as e:
+    except Exception:
         conn.rollback()
-        raise DbError(f"database error: {e}") from None
+        raise DbError("database check failed; details withheld") from None
     finally:
         conn.close()
 
 
+@_safe_errors
 def save_rows(url: str, table: str, rows: list[Row], *, skip_existing: bool = False) -> tuple[int, int]:
     """Insert rows in ONE transaction (all or nothing). Returns (inserted, already_present).
 
@@ -243,6 +286,10 @@ def save_rows(url: str, table: str, rows: list[Row], *, skip_existing: bool = Fa
     skip_existing=True : a serial that is already stored with the SAME address is skipped (re-import is safe);
                          the same serial with a DIFFERENT address is an error."""
     check_table(table)
+    # Validate the complete batch before opening/creating any database.
+    for row in rows:
+        if not valid_inventory_address(row.address):
+            raise DbError("invalid inventory address or public test vector; nothing was written")
     kind, target = parse_url(url)
     conn = _connect(kind, target)
     ph = "?" if kind == "sqlite" else "%s"
@@ -264,24 +311,21 @@ def save_rows(url: str, table: str, rows: list[Row], *, skip_existing: bool = Fa
                 cur.execute(f"SELECT address FROM {table} WHERE serial = {ph}", (r.serial,))
                 got = cur.fetchone()
                 if got is None or got[0] != r.address:
-                    raise DbError(f"serial {r.serial} already exists in '{table}' with a DIFFERENT address - "
-                                  f"stopped, nothing was written")
+                    raise DbError("serial already exists with a DIFFERENT address; nothing was written")
                 skipped += 1
         conn.commit()
     except DbError:
         conn.rollback()
         raise
-    except Exception as e:
+    except Exception:
         conn.rollback()
-        first = str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__
-        raise DbError(f"database error: {first}\n"
-                      f"  (the table '{table}' must have the columns serial, address, jalali_datetime, created_utc; "
-                      f"nothing was written)") from None
+        raise DbError("database save failed; transaction rolled back; details withheld") from None
     finally:
         conn.close()
     return inserted, skipped
 
 
+@_safe_errors
 def list_rows(url: str, table: str = DEFAULT_TABLE, limit: int = 20) -> list[tuple]:
     check_table(table)
     kind, target = parse_url(url)
@@ -291,25 +335,26 @@ def list_rows(url: str, table: str = DEFAULT_TABLE, limit: int = 20) -> list[tup
         cur.execute(f"SELECT serial, address, jalali_datetime, created_utc FROM {table} "
                     f"ORDER BY created_utc DESC, serial LIMIT {int(limit)}")
         return cur.fetchall()
-    except Exception as e:
-        raise DbError(f"database error: {str(e).strip().splitlines()[0]}") from None
+    except Exception:
+        raise DbError("database list failed; details withheld") from None
     finally:
         conn.close()
 
 
+@_safe_errors
 def read_ledger(path: Path) -> list[Row]:
     if not Path(path).exists():
-        raise DbError(f"file not found: {path}")
+        raise DbError("ledger file not found")
     rows: list[Row] = []
     with open(path, newline="", encoding="utf-8-sig") as f:
         for n, d in enumerate(csv.DictReader(f), start=2):
             serial, addr = (d.get("serial") or "").strip(), (d.get("address") or "").strip()
-            if not serial or not ADDR_RE.match(addr):
-                raise DbError(f"{path}, line {n}: bad serial/address ('{serial}', '{addr}')")
+            if not serial or not valid_inventory_address(addr):
+                raise DbError(f"ledger line {n}: invalid serial/address or public test vector")
             rows.append(Row(serial, addr, (d.get("jalali_datetime") or "").strip(),
                             (d.get("created_utc") or "").strip()))
     if not rows:
-        raise DbError(f"no rows in {path}")
+        raise DbError("ledger contains no rows")
     return rows
 
 
@@ -319,8 +364,15 @@ def resolve_url(cli: str | None, config_value: str = "") -> str:
 
 
 # --------------------------------------------------------------------------------------
+class _PrivateArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        # argparse normally echoes unknown tokens and invalid argument values.
+        self.print_usage(sys.stderr)
+        self.exit(2, "error: invalid command arguments; use --help\n")
+
+
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Store / inspect serial + public address records")
+    ap = _PrivateArgumentParser(prog="btc_db.py", description="Store / inspect serial + public address records")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name, helptext in (("import", "load a ledger.csv into the database (safe to repeat)"),
                            ("list", "show the newest public records"),

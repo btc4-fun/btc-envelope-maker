@@ -23,7 +23,8 @@ mean a live PostgreSQL-backed lookup works without reaching this server.
 
 Use a dedicated application database. The initial target is d_bitcoin4fun in
 nextcloud-aio-database on the existing external nextcloud-aio Docker network.
-Never change Nextcloud's databases, roles, container, image or volumes.
+Those are operational names, not evidence that Nextcloud is installed or shares
+this database. Preserve the existing database service, network names and volumes.
 
 The owner/importer uses the existing btc_db.py contract:
 
@@ -60,18 +61,22 @@ For existing installations run the explicit owner-side migrate-contact command
 in btc_db.py after checking its help. The reusable PostgreSQL routine uses a
 two-second lock timeout and ten-second statement timeout; SQLite uses its
 existing ten-second busy timeout. Fresh tables include the fields; normal
-web startup does not migrate tables. The completed one-time live PostgreSQL
-operation added nullable text columns, with no table rebuild/default population, a
+web startup does not migrate tables. Historical installation notes report that a
+one-time live PostgreSQL operation added nullable text columns, with no table rebuild/default population, a
 two-second lock timeout and five-second statement timeout. A repeated migration
 and a separate connection's schema readback passed. Actual web-role reads of
 each contact field were denied; a marked synthetic metadata record was cleaned
 after checking that public JSON still exposes only serial/address/explorer_url.
+These are historical reports, not fresh database verification in the generator
+security follow-up. App-only deployment neither reruns the migration nor reads
+real wallet rows; isolated database tests do not certify current production ACLs.
 
 Import only public ledger.csv records from a separate online computer using
 the database owner's credentials through a private network/SSH tunnel. Never
 expose PostgreSQL on a public host port or copy the private PDF to the server.
 Pass credentials through a private environment or secret file, not arguments
-or committed config. The original generator's URL masking has known gaps.
+or committed config. Importer descriptions omit userinfo/query/fragment and
+driver errors are sanitized; this does not hide secrets passed in process argv.
 
 ```sh
 python btc_envelope_maker/btc_db.py import /private/path/ledger.csv

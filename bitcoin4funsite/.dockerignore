@@ -2,6 +2,7 @@
 !Dockerfile
 !requirements.txt
 !app.py
+!address_validation.py
 !market.py
 !pricing.py
 !contact.py

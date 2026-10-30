@@ -1,0 +1,4 @@
+# Complete runtime install without replacing operator-local requirements.txt.
+-r requirements.txt
+# Shared bounded mainnet address validation for btc_db.py.
+bech32==1.2.0
