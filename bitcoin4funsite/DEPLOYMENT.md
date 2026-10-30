@@ -144,6 +144,37 @@ that predates a helper or transport fix is historical evidence, not verification
 of the current source. Repeat import/route smoke checks and source-hash parity
 after the final image is recreated.
 
+## Serial lookup admission and guide images
+
+Every valid serial inquiry is admitted once per client IP per 15 seconds,
+across /lookup?serial=..., /s/SERIAL, /SERIAL and /api/wallets/SERIAL.
+Invalid serials and an empty form do not query the wallet database. Admission
+is enforced before database access, with HTTP 429 and Retry-After on denial;
+state failure returns a sanitized 503 rather than bypassing the limiter.
+The same admitted serial's local QR within that 15-second window is a companion
+request and does not reset the timer. A different/direct QR uses the same gate.
+The server-rendered page is hydrated without a duplicate API inquiry.
+
+The limiter uses the existing CONTACT_SECRET and a separate SQLite file:
+
+    LOOKUP_STATE_FILE=/var/lib/btc4fun/lookup.sqlite3
+
+Keep the existing state directory mounted writable and UID/GID 1000, mode 0700.
+Both Gunicorn workers share transactional state; restarting the application
+must not remove it. Only HMAC-derived client/serial identifiers and timestamps
+are retained, not raw IPs, serials, wallet addresses or contact data. Clients
+behind a shared public IP share the interval. This is not a distributed-attack
+defense or a replacement for upstream capacity controls. Caddy appends the
+connecting client IP; never expose the upstream listener publicly or accept
+arbitrary forwarded headers from an untrusted proxy.
+
+Only guide-inner-example.png and guide-outer-example.png are public guide
+illustrations. Their words, QR codes, address and serial were replaced with
+nonfunctional placeholders and the PNGs have no source metadata. User originals
+privatekey.png/publickey.png must remain local: Git ignore, forced-index guard,
+Docker exclusions, transfer allowlist and Flask static refusal protect them.
+Never copy the full static directory without filtering operator originals.
+
 ## RPi installation and shared Caddy
 
 Application root: /home/saeb/bitcoin4fun/bitcoin4funsite.

@@ -22,7 +22,8 @@ def main():
         result = subprocess.run(['python3', str(temp / 'scripts/check_publication.py')], capture_output=True, text=True)
         assert result.returncode == 1 and 'forbidden publication path' in result.stdout
         subprocess.run(['git', '-C', temp, 'rm', '--cached', '-q', 'wallets.db'], check=True)
-        for name in ('contact.sqlite3-wal', 'contact.sqlite3-shm', 'wallets.db-wal', 'market.env', 'todo.txt', 'state/admission'):
+        for name in ('contact.sqlite3-wal', 'contact.sqlite3-shm', 'wallets.db-wal', 'market.env', 'todo.txt', 'state/admission',
+                     'bitcoin4funsite/static/privatekey.png', 'bitcoin4funsite/static/publickey.png'):
             target = temp / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text('SYNTHETIC')

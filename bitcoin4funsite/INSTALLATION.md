@@ -25,7 +25,47 @@ It was removed and the public API returned 404 afterward. No genuine wallet
 records were imported. The database is ready for later public-ledger imports.
 No private PDF, recovery words or existing local database was uploaded.
 
-## Market and converter preview verification
+## Subsequent calculator baseline and new guide release
+
+The previous accepted custom-calculator commit was
+cf3151bab9bc2704433bc9eda72891050605e538, deployed as the ARM64 image below.
+Its 151 default tests plus two separately credentialed database checks passed;
+the two independent math/privacy reviews passed and main CI succeeded.
+Earlier images and test totals later in this file are historical checkpoints,
+not the current guide/rate-limit release.
+
+sha256:20a898614d9d724a141017af1d682021be205bc682d4e71d134900e8a7811803
+
+The guide release adds shared plain-language inner/outer examples on home,
+lookup and guide, a camera/stranger/forged-address warning, and clarified
+initial-deposit terms. Images use nonfunctional opaque replacements; original
+wallet images are excluded from Git, builds, transfer and static serving.
+The pre-existing /s/SERIAL and /SERIAL handlers are exercised as equivalent
+public-only routes; no shared-Caddy change is required.
+
+Serial admission is enforced per client IP every 15 seconds using shared
+persisted SQLite state. Same-result QR requests within the interval do not
+extend the timer. Error responses expose Retry-After, not state or credentials.
+The default factory and real route integration are covered separately from
+tests that inject a limiter. See DEPLOYMENT.md for paths and boundaries.
+
+The guide candidate was built natively with offline locked wheels, activated
+app-only, and read back healthy. Its image is:
+
+sha256:e759b6ff1c382397c220a97ad92f2226d2b5459c893abea19e33c63f8277cf56
+
+The parent default and TMPDIR-unset runs each discovered 175 tests: 173 passed
+and two credential-gated tests skipped. Those two real database permission
+tests passed separately. Both actual serial URLs displayed the public-vector
+fixture and local QR, without a duplicate initial API request. A second lookup
+was rejected, and a lookup after 15 seconds succeeded. The exact synthetic row
+was removed; public API 404 was read back. No genuine wallet rows were examined.
+Home, guide, lookup and terms were inspected at 360px: safe images loaded on
+all three requested pages, no page overflow, no automatic third-party request
+and no captured script error. The normal Dockerfile build also confirmed both
+original wallet images are absent. The shared Caddy configuration was unchanged.
+
+## Market and converter preview verification (historical)
 
 The native preview was activated before extended tests at the user's request.
 Public /api/market returned a fresh quote; /costs rendered nineteen actual quote

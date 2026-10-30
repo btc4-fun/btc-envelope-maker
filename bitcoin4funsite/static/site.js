@@ -22,6 +22,12 @@
     return node;
   }
 
+  function validWallet(wallet, serial) {
+    return wallet && wallet.serial === serial && typeof wallet.address === 'string' &&
+      /^bc1q[a-z0-9]{10,86}$/.test(wallet.address) &&
+      wallet.explorer_url === 'https://mempool.space/address/' + wallet.address;
+  }
+
   function showWallet(wallet) {
     const heading = element("h2", "", "آدرس عمومی این پاکت");
     const serialLabel = element("p", "result-label", "شمارهٔ سریال");
@@ -95,6 +101,10 @@
         headers: { Accept: "application/json" }
       });
       if (version !== requestVersion) return;
+      if (response.status === 429) {
+        announce("هر پانزده ثانیه فقط یک استعلام مجاز است؛ کمی صبر کنید و دوباره بزنید.", "error");
+        return;
+      }
       if (response.status === 404) {
         announce("پاکتی با این شمارهٔ سریال پیدا نشد. حروف و ارقام را دوباره با روی پاکت تطبیق دهید.", "error");
         return;
@@ -107,9 +117,7 @@
       if (!response.ok) throw new Error("Lookup unavailable");
       const wallet = await response.json();
       if (version !== requestVersion) return;
-      if (!wallet || wallet.serial !== serial || typeof wallet.address !== "string" ||
-          !/^bc1q[a-z0-9]{10,86}$/.test(wallet.address) ||
-          wallet.explorer_url !== "https://mempool.space/address/" + wallet.address) {
+      if (!validWallet(wallet, serial)) {
         throw new Error("Unexpected public wallet response");
       }
       showWallet(wallet);
@@ -135,5 +143,21 @@
     return lookup(field.value);
   });
 
-  if (form.dataset.initialSerial) lookup(form.dataset.initialSerial);
+  if (form.dataset.initialSerial) {
+    const serial = form.dataset.initialSerial;
+    const state = form.dataset.initialState;
+    const wallet = { serial, address: form.dataset.initialAddress, explorer_url: form.dataset.initialExplorer };
+    if (state === 'found' && validSerial.test(serial) && validWallet(wallet, serial)) {
+      showWallet(wallet);
+      announce("آدرس عمومی پیدا شد. پیش از واریز، آدرس کامل و شبکه را بررسی کنید.", "success");
+    } else if (state === 'rate_limited') {
+      announce("هر پانزده ثانیه فقط یک استعلام مجاز است؛ کمی صبر کنید و دوباره بزنید.", "error");
+    } else if (state === 'not_found') {
+      announce("پاکتی با این شمارهٔ سریال پیدا نشد. حروف و ارقام را دوباره با روی پاکت تطبیق دهید.", "error");
+    } else if (state) {
+      announce("سرویس استعلام فعلاً در دسترس نیست؛ کمی بعد دوباره تلاش کنید.", "error");
+    } else {
+      lookup(serial);
+    }
+  }
 })();

@@ -6,7 +6,10 @@
 !pricing.py
 !contact.py
 !bounded_http.py
+!lookup_limit.py
 !templates/
 !templates/**
 !static/
 !static/**
+static/privatekey.png
+static/publickey.png

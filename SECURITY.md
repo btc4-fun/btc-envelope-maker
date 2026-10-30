@@ -31,6 +31,21 @@ column-level grants even when adding schema fields. Public imports/listing and
 ledger outputs do not carry contacts. Never infer contacts from a serial,
 publish a contact export, or connect the public contact form to wallet records.
 
+Serial inquiries are limited to one per 15 seconds per client IP, shared by
+HTML/API aliases and workers through private transactional SQLite admission.
+Same-result QR requests within the admitted interval do not reset the timer.
+The state uses HMAC-derived identifiers, not raw client IPs or serials; keep its
+directory private and persistent. Invalid configuration or state errors fail
+closed. Shared-IP users share the limit; changing IPs can bypass this defense.
+Trust forwarded client addresses only through the existing local/private peer
+and last appended Caddy hop; keep the app port bound to loopback.
+
+Guide images are nonfunctional educational derivatives. Original privatekey.png
+and publickey.png files must never enter Git, Docker contexts or remote uploads:
+they can expose recovery material even if a text secret scanner reports clean.
+Remove every recovery word/QR, address and serial with opaque replacement before
+publication; retain the originals only in a trusted local private environment.
+
 The optional contact form never uploads files and submits only to this server.
 Its publisher credential must have write-only permission to the private
 notification topic, never administrator or read access. Signed expiring tokens,

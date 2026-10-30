@@ -24,7 +24,7 @@ def check_index():
         path = Path(name)
         if (set(path.parts) & FORBIDDEN_PARTS or path.suffix.lower() in FORBIDDEN_SUFFIXES
                 or re.search(r'\.(?:db|sqlite|sqlite3)-(?:wal|shm|journal)$', path.name, re.IGNORECASE)
-                or path.name in {'config.toml', 'todo', 'todo.txt'} or path.suffix == '.env'
+                or path.name.lower() in {'config.toml', 'todo', 'todo.txt', 'privatekey.png', 'publickey.png'} or path.suffix == '.env'
                 or (path.name.startswith('.env') and path.name != '.env.example')):
             failures.append((name, 'forbidden publication path'))
             continue

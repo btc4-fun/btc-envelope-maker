@@ -45,6 +45,10 @@ def create_app(config=None):
 
     @app.before_request
     def validate_api_serial():
+        # Operator-supplied wallet originals are never public guide assets.
+        if (request.endpoint == 'static' and
+                Path(request.view_args.get('filename', '')).name.lower() in {'privatekey.png', 'publickey.png'}):
+            abort(404)
         if request.path.startswith('/api/wallets/'):
             serial = request.path.removeprefix('/api/wallets/').removesuffix('/qr.svg')
             if SERIAL_RE.fullmatch(serial) is None:
@@ -179,21 +183,43 @@ def create_app(config=None):
     def render_lookup(serial):
         wallet = None
         error = None
+        status = 200
+        retry_after = None
         if serial:
             response = lookup_response(serial)
             if isinstance(response, tuple):
                 error = response[0].get_json()['error']
+                if response[1] in (429, 503):
+                    status = response[1]
+                    retry_after = response[0].headers.get('Retry-After')
             else:
                 wallet = response.get_json()
-        return render_template('lookup.html', serial=serial, wallet=wallet, lookup_error=error)
+        html = render_template('lookup.html', serial=serial, wallet=wallet, lookup_error=error,
+                               lookup_retry_after=retry_after)
+        return html, status, ({'Retry-After': retry_after} if retry_after else {})
 
     @app.get('/healthz')
     def health():
         return jsonify(status='ok')
 
-    def lookup_response(serial):
+    def lookup_response(serial, *, qr=False):
         if SERIAL_RE.fullmatch(serial) is None:
             return jsonify(error='invalid_serial'), 400
+        try:
+            if 'lookup_limiter' not in app.extensions:
+                limiter = app.config.get('LOOKUP_LIMITER')
+                if limiter is None:
+                    from lookup_limit import LookupLimiter
+                    limiter = LookupLimiter()
+                app.extensions['lookup_limiter'] = limiter
+            retry = app.extensions['lookup_limiter'].admit(contact_client_ip(), serial, qr=qr)
+            if retry:
+                response = jsonify(error='rate_limited', retry_after=retry)
+                response.headers['Retry-After'] = str(retry)
+                return response, 429
+        except Exception:
+            app.logger.warning('Public lookup admission unavailable')
+            return jsonify(error='unavailable'), 503
         try:
             record = app.config.get('WALLET_LOOKUP', database_lookup)(serial)
             if record is None:
@@ -215,7 +241,7 @@ def create_app(config=None):
 
     @app.get('/api/wallets/<serial>/qr.svg')
     def wallet_qr(serial):
-        response = lookup_response(serial)
+        response = lookup_response(serial, qr=True)
         if isinstance(response, tuple):
             return response
         image = qrcode.make(response.get_json()['address'], image_factory=qrcode.image.svg.SvgPathImage, border=4)

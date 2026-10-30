@@ -104,6 +104,41 @@ class UIContract(unittest.TestCase):
                     self.assertEqual(next(attrs.get("aria-current") for tag, attrs in Document(header).elements
                                           if tag == "a" and attrs.get("href") == "/kids"), "page")
 
+    def test_plain_safety_examples_are_shared_on_home_lookup_and_guide(self):
+        for template in ('index.html', 'lookup.html', 'guide.html'):
+            with self.subTest(template=template):
+                source = self.render(template)
+                self.assertIn('id="quick-guide"', source)
+                self.assertIn('دوربین مداربسته', source)
+                self.assertIn('از غریبه پاکت نخرید', source)
+                self.assertIn('/static/guide-inner-example.png', source)
+                self.assertIn('/static/guide-outer-example.png', source)
+        terms = self.render('terms.html')
+        for phrase in ('یک تراکنش واریز اولیه', 'مسئولیت فروشنده نسبت به شما تمام شده',
+                       'تأییدنشده نهایی نیست', 'جعل', 'حقوق آمره'):
+            self.assertIn(phrase, terms)
+
+    def test_guide_starts_with_plain_inner_outer_and_stranger_warnings(self):
+        source = self.render("guide.html")
+        self.assertIn('<section id="quick-guide">', source)
+        intro = source.split('<section id="quick-guide">', 1)[1].split('</section>', 1)[0]
+        self.assertLess(source.index('id="quick-guide"'), source.index('id="two-things"'))
+        for phrase in ("دوازده کلمه", "دوربین مداربسته", "خالی کند", "شماره حساب", "مخدوش",
+                       "کلمات سالم", "استعلام سریال", "از غریبه پاکت نخرید", "جعل", "کیف پول دیگری",
+                       "اگر متخصص نیستید", "در این سایت وارد نکنید"):
+            self.assertIn(phrase, intro)
+        images = [attrs for tag, attrs in Document(intro).elements if tag == "img"]
+        self.assertEqual([attrs['src'] for attrs in images],
+                         ['/static/guide-inner-example.png', '/static/guide-outer-example.png'])
+        for attrs in images:
+            self.assertTrue(attrs.get('alt'))
+            self.assertTrue(attrs.get('width') and attrs.get('height'))
+        self.assertNotIn('/static/privatekey.png', source)
+        self.assertNotIn('/static/publickey.png', source)
+        self.assertIn('https://btc4.fun/s/SERIAL', intro)
+        self.assertIn('https://go.btc4.fun/SERIAL', intro)
+        self.assertIn('نمونهٔ آموزشی', intro)
+
     def test_adult_guide_explains_safe_full_balance_handover(self):
         source = self.render("guide.html")
         document = Document(source)
@@ -159,10 +194,11 @@ class UIContract(unittest.TestCase):
         dangerous = '\"><img src=x onerror=alert(1)>'
         initial = Document(self.render("lookup.html", serial=dangerous))
         self.assertEqual(initial.by_id("serial")["value"], dangerous)
-        self.assertFalse(any(tag == "img" for tag, _ in initial.elements))
+        self.assertEqual([attrs['src'] for tag, attrs in initial.elements if tag == 'img'],
+                         ['/static/guide-inner-example.png', '/static/guide-outer-example.png'])
         self.assertFalse(any(key.startswith("on") for _, attrs in initial.elements for key in attrs))
 
-    def run_lookup_script(self, scenario, initial=""):
+    def run_lookup_script(self, scenario, initial="", initial_state=""):
         self.assertIsNotNone(shutil.which("node"), "Node is required for the offline JavaScript behavior contract")
         harness = r'''
 const assert = require('node:assert/strict');
@@ -182,6 +218,9 @@ class Element {
 }
 const ids=Object.fromEntries(['lookup-form','serial','lookup-submit','lookup-status','lookup-result'].map(id=>[id,new Element()]));
 ids['lookup-form'].dataset.initialSerial=process.argv[2];
+ids['lookup-form'].dataset.initialState=process.argv[3];
+ids['lookup-form'].dataset.initialAddress='bc1qsyntheticpublicfixture';
+ids['lookup-form'].dataset.initialExplorer='https://mempool.space/address/bc1qsyntheticpublicfixture';
 ids.serial.value=process.argv[2];
 ids['lookup-result'].hidden=true;
 global.document={getElementById:id=>ids[id] || null, createElement:tag=>new Element(tag)};
@@ -195,7 +234,7 @@ const all=()=>{const found=[]; const walk=node=>{found.push(node);node.children.
 const submit=async serial=>{ids.serial.value=serial; await ids['lookup-form'].emit('submit'); await tick();};
 vm.runInThisContext(fs.readFileSync(process.argv[1], 'utf8'));
 '''
-        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial], capture_output=True, text=True, timeout=15)
+        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state], capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_lookup_waits_for_intent_and_rejects_invalid_without_network(self):
@@ -275,6 +314,31 @@ assert.equal(requests.length,1,'An explicit serial page should start one lookup'
 assert.equal(requests[0].url,'/api/wallets/Serial_71');
 assert.equal(ids['lookup-submit'].disabled,false);
 ''', initial="Serial_71")
+
+    def test_server_rendered_lookup_is_hydrated_without_duplicate_admission(self):
+        self.run_lookup_script(r'''
+await tick();
+assert.equal(requests.length,0,'Server already looked up the initial serial');
+assert.equal(ids['lookup-result'].hidden,false);
+assert.equal(ids['lookup-status'].dataset.state,'success');
+assert.ok(all().some(node=>node.textContent==='Serial_71'));
+''', initial='Serial_71', initial_state='found')
+        self.run_lookup_script(r'''
+await tick();
+assert.equal(requests.length,0,'Do not retry an initial limited lookup');
+assert.match(ids['lookup-status'].textContent,/پانزده ثانیه/);
+assert.equal(ids['lookup-result'].hidden,true);
+''', initial='Serial_71', initial_state='rate_limited')
+
+    def test_lookup_explains_server_rate_limit_without_automatic_retry(self):
+        self.run_lookup_script(r'''
+handler=async()=>({ok:false,status:429});
+await submit('Sample7');
+assert.match(ids['lookup-status'].textContent,/پانزده ثانیه/);
+assert.equal(requests.length,1);
+assert.equal(ids['lookup-result'].hidden,true);
+assert.equal(ids['lookup-submit'].disabled,false);
+''')
 
     def test_lookup_rejects_untrusted_payloads_without_rendering_or_external_urls(self):
         self.run_lookup_script(r'''

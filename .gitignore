@@ -1,6 +1,8 @@
 # Local operator notes and credentials
 /todo
 /todo.txt
+/bitcoin4funsite/static/privatekey.png
+/bitcoin4funsite/static/publickey.png
 *.env
 .env
 .env.*

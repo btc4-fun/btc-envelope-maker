@@ -16,6 +16,14 @@ class ApplicationContract(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('bitcoin4fun_app', APP_PATH)
         self.module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.module)
+        self.real_create_app = self.module.create_app
+        self.no_limit = Mock()
+        self.no_limit.admit.return_value = 0
+        def create_with_fixture(config=None):
+            settings = dict(config or {})
+            settings.setdefault('LOOKUP_LIMITER', self.no_limit)
+            return self.real_create_app(settings)
+        self.module.create_app = create_with_fixture
 
     def test_health_is_available_without_database_or_network(self):
         self.assertTrue(APP_PATH.is_file(), 'website application has not been implemented')
@@ -37,6 +45,39 @@ class ApplicationContract(unittest.TestCase):
         self.assertNotIn('SYNTHETIC_PRIVATE', response.text)
         lookup.assert_called_once_with('0587k45300')
 
+    def test_original_wallet_example_images_are_never_publicly_served(self):
+        app = self.module.create_app({'TESTING': True})
+        import tempfile
+        import os
+        with tempfile.TemporaryDirectory(dir=os.environ.get('TMPDIR')) as directory:
+            app.static_folder = directory
+            for name in ('privatekey.png', 'publickey.png'):
+                (Path(directory) / name).write_bytes(b'SYNTHETIC_NONWALLET_FIXTURE')
+            with app.test_client() as client:
+                for name in ('privatekey.png', 'publickey.png'):
+                    for path in ('/static/' + name, '/static/%70' + name[1:]):
+                        with self.subTest(path=path):
+                            with client.get(path) as response:
+                                self.assertEqual(response.status_code, 404)
+
+    def test_both_public_serial_url_forms_render_same_safe_record_without_js(self):
+        serial = 'TEST-DO-NOT-FUND-ROUTE'
+        address = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
+        lookup = Mock(return_value={'serial': serial, 'address': address, 'notes': 'PRIVATE_SENTINEL'})
+        app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lookup})
+        pages = []
+        for base_url, path in (('https://btc4.fun', '/s/' + serial),
+                               ('https://go.btc4.fun', '/' + serial)):
+            response = app.test_client().get(path, base_url=base_url)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(address, response.text)
+            self.assertIn(serial, response.text)
+            self.assertNotIn('PRIVATE_SENTINEL', response.text)
+            self.assertEqual(response.headers['X-Robots-Tag'], 'noindex, nofollow, noarchive')
+            pages.append(response.text)
+        self.assertEqual(pages[0], pages[1])
+        self.assertEqual(lookup.call_count, 2)
+
     def test_invalid_serial_is_rejected_before_database_access(self):
         lookup = Mock()
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lookup})
@@ -44,6 +85,47 @@ class ApplicationContract(unittest.TestCase):
             with self.subTest(serial=serial):
                 self.assertEqual(app.test_client().get('/api/wallets/' + serial).status_code, 400)
         lookup.assert_not_called()
+
+    def test_serial_rate_limit_precedes_database_and_is_shared_by_all_routes(self):
+        limiter = Mock()
+        limiter.admit.side_effect = [0, 14, 13, 12]
+        lookup = Mock(return_value=None)
+        app = self.real_create_app({'TESTING': True, 'WALLET_LOOKUP': lookup, 'LOOKUP_LIMITER': limiter})
+        client = app.test_client()
+        self.assertEqual(client.get('/api/wallets/First').status_code, 404)
+        for path in ('/s/Second', '/Second', '/lookup?serial=Second'):
+            response = client.get(path)
+            self.assertEqual(response.status_code, 429)
+            self.assertIn('Retry-After', response.headers)
+            self.assertIn('پانزده ثانیه', response.text)
+        lookup.assert_called_once_with('First')
+        self.assertEqual(limiter.admit.call_count, 4)
+
+    def test_api_rate_limit_and_failure_are_sanitized_and_fail_closed(self):
+        limiter = Mock()
+        limiter.admit.return_value = 15
+        lookup = Mock()
+        app = self.real_create_app({'TESTING': True, 'WALLET_LOOKUP': lookup, 'LOOKUP_LIMITER': limiter})
+        response = app.test_client().get('/api/wallets/First')
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json, {'error': 'rate_limited', 'retry_after': 15})
+        self.assertEqual(response.headers['Retry-After'], '15')
+        limiter.admit.side_effect = RuntimeError('PRIVATE_RATE_STATE')
+        response = app.test_client().get('/api/wallets/First')
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn('PRIVATE_RATE_STATE', response.text)
+        lookup.assert_not_called()
+
+    def test_lookup_rate_identity_uses_trusted_last_proxy_hop_and_qr_flag(self):
+        app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
+        client = app.test_client()
+        client.get('/api/wallets/First', headers={'X-Forwarded-For': '192.0.2.99, 198.51.100.8'})
+        self.no_limit.admit.assert_called_with('198.51.100.8', 'First', qr=False)
+        client.get('/api/wallets/First/qr.svg', headers={'X-Forwarded-For': '198.51.100.8'})
+        self.no_limit.admit.assert_called_with('198.51.100.8', 'First', qr=True)
+        client.get('/api/wallets/First', environ_overrides={'REMOTE_ADDR': '8.8.8.8'},
+                   headers={'X-Forwarded-For': '192.0.2.99'})
+        self.no_limit.admit.assert_called_with('8.8.8.8', 'First', qr=False)
 
     def test_missing_serial_and_database_failure_are_distinct(self):
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})

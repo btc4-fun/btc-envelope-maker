@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import sys
+import tempfile
 from pathlib import Path
 import unittest
 import uuid
@@ -31,6 +32,11 @@ class ReadonlyDatabaseIntegration(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('bitcoin4fun_integration_app', APP_PATH)
         self.module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.module)
+        from lookup_limit import LookupLimiter
+        directory = tempfile.TemporaryDirectory(prefix='wallet-db-limit-', dir=os.environ.get('TMPDIR'))
+        self.addCleanup(directory.cleanup)
+        self.limiter = LookupLimiter(state_file=str(Path(directory.name) / 'lookup.sqlite3'),
+                                     secret='SYNTHETIC_DB_TEST_SECRET_' * 2)
 
     def tearDown(self):
         with psycopg.connect(**self.owner) as conn:
@@ -41,11 +47,11 @@ class ReadonlyDatabaseIntegration(unittest.TestCase):
     def test_actual_readonly_role_serves_public_record_and_cannot_write(self):
         row = self.module.database_lookup(self.serial)
         self.assertEqual(row, {'serial': self.serial, 'address': PUBLIC_TEST_ADDRESS})
-        app = self.module.create_app({'TESTING': True})
-        response = app.test_client().get('/api/wallets/' + self.serial)
+        app = self.module.create_app({'TESTING': True, 'LOOKUP_LIMITER': self.limiter})
+        response = app.test_client().get('/api/wallets/' + self.serial, environ_overrides={'REMOTE_ADDR': '198.51.100.81'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['address'], PUBLIC_TEST_ADDRESS)
-        self.assertEqual(app.test_client().get('/api/wallets/' + self.serial + '/qr.svg').status_code, 200)
+        self.assertEqual(app.test_client().get('/api/wallets/' + self.serial + '/qr.svg', environ_overrides={'REMOTE_ADDR': '198.51.100.81'}).status_code, 200)
         web = {**self.owner, 'user': os.environ['BTC_DB_USER'], 'password': Path(os.environ['BTC_DB_PASSWORD_FILE']).read_text().rstrip('\r\n')}
         with psycopg.connect(**web) as conn:
             conn.execute('SET default_transaction_read_only = off')
@@ -63,7 +69,7 @@ class ReadonlyDatabaseIntegration(unittest.TestCase):
             columns = {row[0] for row in connection.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='wallets'")}
             self.assertTrue({'contact_type', 'contact_value', 'notes'} <= columns)
             connection.execute('UPDATE public.wallets SET contact_type=%s, contact_value=%s, notes=%s WHERE serial=%s', (*metadata, self.serial))
-        response = self.module.create_app({'TESTING': True}).test_client().get('/api/wallets/' + self.serial)
+        response = self.module.create_app({'TESTING': True, 'LOOKUP_LIMITER': self.limiter}).test_client().get('/api/wallets/' + self.serial, environ_overrides={'REMOTE_ADDR': '198.51.100.82'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.json), {'serial', 'address', 'explorer_url'})
         self.assertNotIn('SYNTHETIC_PRIVATE', response.text)
