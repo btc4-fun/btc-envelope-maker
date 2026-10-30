@@ -1,4 +1,6 @@
 """Offline template and executable JavaScript contracts for the public calculators."""
+from fractions import Fraction
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -32,7 +34,7 @@ class CalculatorUI(unittest.TestCase):
         self.assertIn('src="/static/calculator.js" defer', source)
         self.assertIn("<noscript>", source)
 
-    def test_converter_uses_exact_integer_arithmetic_and_never_fetches(self):
+    def test_converter_uses_exact_integer_arithmetic_independent_of_price_fetch(self):
         self.run_script(r'''
 load();
 for (const [btc,sats] of [['0.00000001','1'],['0.1','10000000'],['1.23456789','123456789'],['20999999.99999999','2099999999999999'],['21000000','2100000000000000'],['0','0']]) {
@@ -46,8 +48,105 @@ await edit('btc-amount','1.23000000');
 assert.equal(ids['satoshi-amount'].value,'123000000');
 await edit('satoshi-amount','123000000');
 assert.equal(ids['btc-amount'].value,'1.23');
-assert.equal(requests.length,0,'Conversion must work completely offline');
+assert.equal(requests.length,1,'Only the optional gross valuation requests a same-origin snapshot');
+assert.equal(requests[0].url,'/api/market');
 ''')
+
+    def test_gross_valuation_uses_raw_rate_not_adjusted_or_fees_and_fetches_once(self):
+        self.run_script(r'''
+const payload=marketFixture();
+payload.raw_rates.btc_toman='10000000000.123456789123456789';
+handler=async()=>({ok:true,json:async()=>payload});
+load();
+await edit('satoshi-amount','3000');
+assert.equal(ids['btc-amount'].value,'0.00003','Offline conversion does not await the network');
+await tick();
+assert.equal(ids['gross-result'].hidden,false);
+assert.equal(ids['gross-toman'].textContent,'300,000.00000370370367370370367');
+assert.equal(ids['gross-raw-price'].textContent,'10,000,000,000.123456789123456789');
+assert.equal(ids['gross-fetched-at'].textContent,payload.fetched_at);
+assert.equal(ids['gross-status'].dataset.state,'success');
+assert.equal(ids['gross-stale'].hidden,true);
+await edit('btc-amount','0.00000001');
+assert.equal(ids['gross-toman'].textContent,'100.00000000123456789123456789');
+await edit('btc-amount','0');
+assert.equal(ids['gross-toman'].textContent,'0');
+await edit('satoshi-amount','2100000000000000');
+assert.equal(ids['gross-toman'].textContent,'210,000,000,002,592,592.571592592569');
+await edit('satoshi-amount','-1');
+assert.equal(ids['gross-result'].hidden,true);
+assert.equal(ids['gross-toman'].textContent,'');
+await edit('btc-amount','');
+assert.equal(ids['gross-toman'].textContent,'');
+assert.equal(requests.length,1);
+assert.equal(requests[0].url,'/api/market');
+for(const [key,value] of Object.entries({method:'GET',credentials:'same-origin',redirect:'error',cache:'no-store'})) assert.equal(requests[0].options[key],value);
+assert.equal(requests[0].options.body,undefined);
+''')
+
+    def test_gross_valuation_discloses_raw_online_value_separately_from_offline_units(self):
+        source = self.render("satoshi.html")
+        document = Document(source)
+        self.assertIn("hidden", document.by_id("gross-result"))
+        self.assertIn("hidden", document.by_id("gross-stale"))
+        self.assertEqual(document.by_id("gross-status")["aria-live"], "polite")
+        self.assertEqual(document.by_id("gross-result")["aria-live"], "polite")
+        self.assertEqual(document.by_id("gross-toman")["dir"], "ltr")
+        for phrase in ("ارزش خام", "تومان", "بدون کارمزد", "تبدیل", "شبکه", "چاپ", "گرداننده", "آفلاین", "یک بار", "سرور همین سایت", "خودکار تازه نمی‌شود", "ارسال نمی‌شود"):
+            self.assertIn(phrase, source)
+        self.assertNotRegex(source, r'<(?:script|img|iframe)[^>]+src="https?://')
+
+    def test_gross_valuation_retains_stale_label_and_offline_conversion_survives_failures(self):
+        for mode in ("stale", "offline", "http503", "badraw", "missingraw", "badtime", "badsource"):
+            with self.subTest(mode=mode):
+                self.run_script("const mode=" + repr(mode) + r''';
+handler=async()=>{
+  if(mode==='offline') throw Error('offline');
+  const payload=marketFixture();
+  if(mode==='stale') payload.status='stale';
+  if(mode==='badraw') payload.raw_rates.btc_toman='NaN';
+  if(mode==='missingraw') delete payload.raw_rates;
+  if(mode==='badtime') payload.fetched_at='not a timestamp';
+  if(mode==='badsource') payload.source.prices='https://evil.example/';
+  return {ok:mode!=='http503',json:async()=>payload};
+};
+load(); await tick();
+await edit('btc-amount','1.23456789');
+assert.equal(ids['satoshi-amount'].value,'123456789');
+assert.equal(ids['converter-status'].dataset.state,'success');
+assert.equal(ids['gross-valuation'].getAttribute('aria-busy'),'false');
+if(mode==='stale') {
+  assert.equal(ids['gross-result'].hidden,false);
+  assert.equal(ids['gross-stale'].hidden,false);
+  assert.equal(ids['gross-status'].dataset.state,'stale');
+  assert.match(ids['gross-status'].textContent,/قدیمی/);
+} else {
+  assert.equal(ids['gross-result'].hidden,true);
+  assert.equal(ids['gross-toman'].textContent,'');
+  assert.equal(ids['gross-raw-price'].textContent,'');
+  assert.equal(ids['gross-status'].dataset.state,'error');
+  assert.match(ids['gross-status'].textContent,/آفلاین/);
+}
+assert.equal(requests.length,1);
+''')
+
+    def test_gross_valuation_loading_and_accessible_styles_do_not_block_conversion(self):
+        self.run_script(r'''
+let deliver;
+handler=()=>new Promise(resolve=>{deliver=resolve;}); load();
+assert.equal(ids['gross-status'].dataset.state,'loading');
+await edit('satoshi-amount','500');
+assert.equal(ids['btc-amount'].value,'0.000005');
+assert.equal(ids['gross-result'].hidden,true);
+deliver({ok:false}); await tick();
+assert.equal(ids['btc-amount'].value,'0.000005');
+assert.equal(ids['gross-result'].hidden,true);
+assert.equal(ids['gross-status'].dataset.state,'error');
+''')
+        css = (ROOT / "static/site.css").read_text()
+        self.assertIn(".gross-result", css)
+        self.assertIn(".gross-valuation", css)
+        self.assertRegex(css, r"\.quote-controls\s+:is\(input,select\):focus-visible\s*\{[^}]*outline:")
 
     def test_converter_rejects_invalid_values_without_rounding_or_stale_output(self):
         self.run_script(r'''
@@ -67,7 +166,7 @@ for (const [id,other,bad] of [
   assert.equal(ids[other].value,'');
   assert.equal(ids[id].getAttribute('aria-invalid'),null);
 }
-assert.equal(requests.length,0);
+assert.equal(requests.length,1);
 ''')
 
     def test_costs_page_discloses_formula_sources_cache_and_network_uncertainty(self):
@@ -119,6 +218,249 @@ assert.equal(all(ids['market-data']).filter(node=>['img','iframe','a'].includes(
 await tick();
 assert.equal(requests.length,1,'No external requests or automatic polling');
 ''', page="market")
+
+    def test_custom_principal_calculation_is_explicit_exact_and_local(self):
+        self.run_script(r'''
+handler=async()=>({ok:true,json:async()=>marketFixture()});
+load(); await tick();
+assert.equal(ids['quote-calculate'].disabled,false,'Ready after the shared snapshot');
+await edit('quote-amount','3000');
+assert.equal(ids['quote-result'].hidden,true,'Typing must not calculate');
+await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-result'].hidden,false);
+for(const [field,value] of Object.entries({principal:'3,000',btc:'0.00003',network:'141',print:'150',operator:'494','total-sats':'3,785','total-toman':'378,500','total-rial':'3,785,000'})) {
+  assert.equal(ids['quote-'+field].textContent,value,field);
+}
+assert.equal(ids['quote-status'].dataset.state,'success');
+assert.equal(requests.length,1,'Custom inputs must never leave the browser');
+assert.equal(requests[0].url,'/api/market');
+assert.equal(requests[0].options.body,undefined);
+assert.equal(requests[0].options.method,'GET');
+''', page="market")
+
+    def test_custom_budget_finds_maximal_net_principal_and_keeps_remainder(self):
+        self.run_script(r'''
+handler=async()=>({ok:true,json:async()=>marketFixture()});
+load(); await tick();
+ids['quote-mode'].value='budget_toman'; await ids['quote-mode'].emit('change');
+await edit('quote-amount','200000'); await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-principal'].textContent,'1,448');
+assert.equal(ids['quote-operator'].textContent,'261');
+assert.equal(ids['quote-total-sats'].textContent,'2,000');
+assert.equal(ids['quote-total-toman'].textContent,'200,000');
+assert.equal(ids['quote-budget'].textContent,'200,000');
+assert.equal(ids['quote-remainder'].textContent,'0');
+assert.equal(ids['quote-budget-details'].hidden,false);
+await edit('quote-amount','200099');
+assert.equal(ids['quote-result'].hidden,true,'Editing invalidates the previous quote');
+await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-principal'].textContent,'1,448');
+assert.equal(ids['quote-remainder'].textContent,'99');
+ids['quote-mode'].value='principal_sats'; await ids['quote-mode'].emit('change');
+assert.equal(ids['quote-result'].hidden,true,'Changing units invalidates the previous quote');
+await edit('quote-amount','500'); await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-budget-details'].hidden,true);
+assert.equal(requests.length,1);
+''', page="market")
+
+    def test_custom_quote_form_is_accessible_local_and_explicit(self):
+        source = self.render("costs.html")
+        document = Document(source)
+        form = document.by_id("quote-form")
+        self.assertEqual(form["action"], "/costs")
+        self.assertEqual(form["method"], "get")
+        for field_id in ("quote-mode", "quote-amount"):
+            field = document.by_id(field_id)
+            self.assertIn(("label", {"for": field_id}), document.elements)
+            self.assertNotIn("name", field, "No financial input belongs in a submitted request")
+            for hint in field["aria-describedby"].split():
+                self.assertTrue(document.by_id(hint))
+        self.assertEqual(document.by_id("quote-amount")["dir"], "ltr")
+        self.assertEqual(document.by_id("quote-amount")["maxlength"], "32")
+        self.assertEqual(document.by_id("quote-calculate")["type"], "submit")
+        self.assertIn("disabled", document.by_id("quote-calculate"))
+        self.assertIn("hidden", document.by_id("quote-result"))
+        self.assertEqual(document.by_id("quote-status")["aria-live"], "polite")
+        self.assertEqual(document.by_id("quote-result")["aria-live"], "polite")
+        for value in ("principal_sats", "budget_toman"):
+            self.assertTrue(any(tag == "option" and attrs.get("value") == value for tag, attrs in document.elements))
+        for phrase in ("۳۲", "۵۰۰", "۲۱ میلیون", "ارسال نمی‌شود", "محاسبه", "اصل مبلغ خالص", "باقی‌مانده"):
+            self.assertIn(phrase, source)
+        css = (ROOT / "static/site.css").read_text()
+        for selector in (".quote-calculator", ".quote-controls", ".quote-result", ".quote-breakdown"):
+            self.assertIn(selector, css)
+        self.assertNotRegex(source, r'<(?:script|img|iframe)[^>]+src="https?://')
+        self.assertNotRegex(source, r'\bon(?:submit|click|change|input)=')
+
+    def test_custom_quote_rejects_bad_inputs_and_insufficient_budget_without_old_results(self):
+        self.run_script(r'''
+handler=async()=>({ok:true,json:async()=>marketFixture()}); load(); await tick();
+for(const mode of ['principal_sats','budget_toman']) {
+  ids['quote-mode'].value=mode; await ids['quote-mode'].emit('change');
+  const bad=['','0','-1','+500','1e3','1.0','1,000','۵۰۰','٥٠٠',' 500','500 ','500\n','500\r','0500','9'.repeat(33),...(mode==='principal_sats'?['499','2100000000000001']:['90999'])];
+  for(const value of bad) {
+    await edit('quote-amount',mode==='principal_sats'?'3000':'200000');
+    await ids['quote-form'].emit('submit');
+    assert.equal(ids['quote-result'].hidden,false);
+    await edit('quote-amount',value); await ids['quote-form'].emit('submit');
+    assert.equal(ids['quote-result'].hidden,true,JSON.stringify(value));
+    for(const key of ['principal','btc','network','print','operator','total-sats','total-toman','total-rial','budget','remainder']) assert.equal(ids['quote-'+key].textContent,'','Clear old result: '+value);
+    assert.equal(ids['quote-amount'].getAttribute('aria-invalid'),'true',JSON.stringify(value));
+    assert.equal(ids['quote-status'].dataset.state,'error');
+    if(value==='90999') assert.match(ids['quote-status'].textContent,/کافی نیست/);
+  }
+}
+await edit('quote-amount','91000'); await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-amount'].getAttribute('aria-invalid'),null);
+assert.equal(ids['quote-principal'].textContent,'500');
+assert.equal(ids['quote-remainder'].textContent,'0');
+assert.equal(requests.length,1);
+''', page="market")
+
+    def test_custom_quote_readiness_stale_warning_and_unavailable_snapshot(self):
+        self.run_script(r'''
+let deliver;
+handler=()=>new Promise(resolve=>{deliver=resolve;}); load();
+assert.equal(ids['quote-calculate'].disabled,true);
+assert.equal(ids['quote-status'].dataset.state,'loading');
+await edit('quote-amount','3000'); await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-result'].hidden,true);
+const payload=marketFixture(); payload.status='stale';
+deliver({ok:true,json:async()=>payload}); await tick();
+assert.equal(ids['quote-status'].dataset.state,'stale');
+await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-status'].dataset.state,'stale');
+assert.match(ids['quote-result-warning'].textContent,/قدیمی/);
+assert.equal(ids['quote-result-fetched-at'].textContent,payload.fetched_at);
+''', page="market")
+        for mode in ("offline", "http503", "invalid"):
+            with self.subTest(mode=mode):
+                self.run_script("const mode=" + repr(mode) + r''';
+handler=async()=>{if(mode==='offline') throw Error('offline');
+ const payload=marketFixture(); if(mode==='invalid') payload.costs.network_sats=-1;
+ return {ok:mode!=='http503',json:async()=>payload};};
+load(); await tick();
+assert.equal(ids['quote-calculate'].disabled,true);
+assert.equal(ids['quote-status'].dataset.state,'error');
+await edit('quote-amount','3000'); await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-result'].hidden,true);
+assert.equal(ids['quote-total-toman'].textContent,'');
+assert.equal(ids['quote-status'].dataset.state,'error');
+assert.equal(requests.length,1);
+''', page="market")
+
+    def test_custom_modes_match_fraction_oracle_for_fractional_ceilings_minimum_and_supply(self):
+        maximum = 2100000000000000
+        scenarios = []
+        # Python Fraction is independent of the UI's decimal-string BigInt implementation.
+        for rate_text, network, printing in (("0.000000000000001", 1, 2),
+                                              ("100.00000000000000000001", 141, 150),
+                                              ("0.333333333333333333", 0, 0),
+                                              ("105.00000000000000000000000001", 443, 193)):
+            rate = Fraction(rate_text)
+
+            def quote(principal):
+                subtotal = principal + network + printing
+                operator = (subtotal * 15 + 99) // 100
+                total = subtotal + operator
+                cost = (total * rate.numerator + rate.denominator - 1) // rate.denominator
+                return {"principal": str(principal), "network": str(network), "print": str(printing),
+                        "operator": str(operator), "total-sats": str(total),
+                        "total-toman": str(cost), "total-rial": str(cost * 10)}
+
+            for principal in (500, 501, 3000, maximum - 1, maximum):
+                scenarios.append({"mode": "principal_sats", "input": str(principal), "rate": rate_text,
+                                  "network": network, "printing": printing, "expected": quote(principal)})
+            for budget in (int(quote(500)["total-toman"]), int(quote(3000)["total-toman"]) + 1,
+                           int(quote(maximum)["total-toman"]), 10 ** 32 - 1):
+                low, high = 500, maximum
+                while low < high:
+                    middle = (low + high + 1) // 2
+                    if int(quote(middle)["total-toman"]) <= budget:
+                        low = middle
+                    else:
+                        high = middle - 1
+                expected = quote(low)
+                expected.update(budget=str(budget), remainder=str(budget - int(expected["total-toman"])))
+                scenarios.append({"mode": "budget_toman", "input": str(budget), "rate": rate_text,
+                                  "network": network, "printing": printing, "expected": expected})
+        self.run_script("const scenarios=" + json.dumps(scenarios) + r''';
+for(const test of scenarios) {
+  const payload=marketFixture();
+  payload.rates.satoshi_toman=test.rate;
+  payload.costs.network_sats=test.network; payload.costs.print_sats=test.printing;
+  payload.rows=payload.rows.slice(0,1);
+  Object.assign(payload.rows[0],{network_sats:test.network,print_sats:test.printing,total_sats:500+test.network+test.printing+119});
+  handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
+  ids['quote-mode'].value=test.mode; await ids['quote-mode'].emit('change');
+  await edit('quote-amount',test.input); await ids['quote-form'].emit('submit');
+  assert.equal(ids['quote-result'].hidden,false,JSON.stringify(test));
+  for(const [key,value] of Object.entries(test.expected)) assert.equal(ids['quote-'+key].textContent.replaceAll(',',''),value,JSON.stringify({test,key}));
+}
+assert.equal(requests.length,scenarios.length,'One snapshot for each independently loaded page only');
+''', page="market")
+
+    def test_custom_modes_match_shared_synthetic_golden_vectors(self):
+        vectors = json.loads((ROOT / "tests/fixtures/quote_calculator.json").read_text())["cases"]
+        cases = []
+        for vector in vectors:
+            expected = vector.get("expected")
+            # Error vectors share the first vector's pricing snapshot. Unsafe numeric
+            # JSON costs are rejected, never rounded into a usable browser quote.
+            metadata = expected or vectors[0]["expected"]
+            costs = {key: int(value) for key, value in metadata["costs"].items()}
+            subtotal = 500 + costs["network_sats"] + costs["print_sats"]
+            operator = (subtotal * 15 + 99) // 100
+            total = subtotal + operator
+            rate = Fraction(metadata["rates"]["satoshi_toman"])
+            toman = (total * rate.numerator + rate.denominator - 1) // rate.denominator
+            row = {"principal_sats": 500, "btc": "0.00000500", **costs,
+                   "operator_sats": operator, "total_sats": total, "total_toman": toman,
+                   "total_rial": toman * 10, "budget_toman": None, "remainder_toman": 0}
+            assumptions = {**metadata["assumptions"], "transaction_vbytes": 141}
+            unsafe = any(value > 9007199254740991 for value in (*costs.values(), total, toman * 10))
+            cases.append({**vector, "snapshot": {"rates": metadata["rates"], "assumptions": assumptions,
+                                                 "costs": costs, "rows": [row]}, "unsafe": unsafe})
+        self.run_script("const cases=" + json.dumps(cases) + r''';
+let successful=0, rejected=0;
+for(const test of cases) {
+  const payload=Object.assign(marketFixture(),test.snapshot);
+  handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
+  const mode=test.mode==='principal'?'principal_sats':'budget_toman';
+  ids['quote-mode'].value=mode; await ids['quote-mode'].emit('change');
+  await edit('quote-amount',test.inputs[mode]); await ids['quote-form'].emit('submit');
+  if(test.unsafe || test.expected_error || test.inputs[mode].length>32) {
+    assert.equal(ids['quote-result'].hidden,true,test.id);
+    assert.equal(ids['quote-status'].dataset.state,'error',test.id);
+    if(test.id==='budget_insufficient') assert.match(ids['quote-status'].textContent,/کافی نیست/);
+    if(test.unsafe) assert.equal(ids['quote-calculate'].disabled,true);
+    rejected++; continue;
+  }
+  assert.equal(ids['quote-result'].hidden,false,test.id);
+  for(const [key,field] of Object.entries({principal_sats:'principal',network_sats:'network',print_sats:'print',operator_sats:'operator',total_sats:'total-sats',total_toman:'total-toman',total_rial:'total-rial'})) {
+    assert.equal(ids['quote-'+field].textContent.replaceAll(',',''),test.expected[key],test.id+':'+key);
+  }
+  assert.equal(ids['quote-btc'].textContent,test.expected.btc.replace(/\.?0+$/,''),test.id);
+  if(test.mode==='budget') {
+    assert.equal(ids['quote-budget'].textContent.replaceAll(',',''),test.expected.budget_toman,test.id);
+    assert.equal(ids['quote-remainder'].textContent.replaceAll(',',''),test.expected.remainder_toman,test.id);
+    if(test.next_principal_total_toman) assert.ok(BigInt(test.next_principal_total_toman)>BigInt(test.inputs.budget_toman),test.id+':maximality');
+  }
+  successful++;
+}
+assert.ok(successful>=10); assert.ok(rejected>=4);
+assert.equal(requests.length,cases.length);
+''', page="market")
+        gross = [vector for vector in vectors if "raw_asset_toman" in vector]
+        self.run_script("const cases=" + json.dumps(gross) + r''';
+for(const test of cases) {
+  const payload=marketFixture(); payload.raw_rates={btc_toman:test.inputs.btc_toman,usdt_toman:test.inputs.usdt_toman};
+  handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
+  await edit('satoshi-amount',test.expected.principal_sats);
+  assert.equal(ids['gross-toman'].textContent.replaceAll(',',''),test.raw_asset_toman,test.id);
+}
+assert.equal(requests.length,cases.length);
+''')
 
     def test_market_stale_and_unavailable_never_present_a_fabricated_price(self):
         for mode in ("stale", "http503", "offline", "invalid"):
@@ -367,9 +709,14 @@ class Element {
   replaceChildren(...nodes) { this.children=[...nodes]; this.textContent=''; }
   async emit(name) { await Promise.all((this.listeners[name] || []).map(handler=>handler({preventDefault(){}}))); }
 }
-const names = process.argv[2] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status'] :
-  process.argv[2] === 'market' ? ['market-panel','market-status','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-rows'] : [];
+const names = process.argv[2] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status','gross-valuation','gross-status','gross-result','gross-toman','gross-raw-price','gross-fetched-at','gross-stale'] :
+  process.argv[2] === 'market' ? ['market-panel','market-status','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-print','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
 const ids=Object.fromEntries(names.map(name=>[name,new Element()]));
+if(ids['gross-result']) ids['gross-result'].hidden=true;
+if(ids['gross-stale']) ids['gross-stale'].hidden=true;
+if(ids['quote-mode']) ids['quote-mode'].value='principal_sats';
+if(ids['quote-result']) ids['quote-result'].hidden=true;
+if(ids['quote-calculate']) ids['quote-calculate'].disabled=true;
 if (ids['market-data']) ids['market-data'].hidden=true;
 if (ids['market-stale']) ids['market-stale'].hidden=true;
 global.document={getElementById:id=>ids[id] || null,createElement:tag=>new Element(tag)};
@@ -381,12 +728,20 @@ const all=root=>{const found=[];const walk=node=>{found.push(node);node.children
 const edit=async(id,value)=>{ids[id].value=value; await ids[id].emit('input');};
 const marketFixture=()=>({status:'fresh',fetched_at:'2026-10-30T10:00:00+00:00',
   source:{prices:'https://swapwallet.app/api/v1/market/prices',fees:'https://mempool.space/api/v1/fees/recommended'},
+  raw_rates:{btc_toman:'9950248756.21890547263681592039800995',usdt_toman:'99502.4875621890547263681592039800995'},
   rates:{btc_toman:'10000000000',usdt_toman:'100000',satoshi_toman:'100'},
   assumptions:{exchange_fee_percent:'0.5',operator_fee_percent:'15',print_usd:'0.15',transaction_vbytes:141,network_fee_rate:'1'},
   costs:{network_sats:141,print_sats:150},
   rows:[{principal_sats:500,btc:'0.00000500',network_sats:141,print_sats:150,operator_sats:119,total_sats:910,total_toman:91000,total_rial:910000,budget_toman:null,remainder_toman:0},
         {principal_sats:1000,btc:'0.00001000',network_sats:141,print_sats:150,operator_sats:194,total_sats:1485,total_toman:148500,total_rial:1485000,budget_toman:200000,remainder_toman:51500}]});
-const load=()=>vm.runInThisContext(fs.readFileSync(process.argv[1],'utf8'));
+const load=()=>{
+  // A reload gets a new DOM, not another set of listeners on the previous page.
+  for(const name of names) ids[name]=new Element();
+  for(const name of ['gross-result','gross-stale','quote-result','market-data','market-stale']) if(ids[name]) ids[name].hidden=true;
+  if(ids['quote-mode']) ids['quote-mode'].value='principal_sats';
+  if(ids['quote-calculate']) ids['quote-calculate'].disabled=true;
+  vm.runInThisContext(fs.readFileSync(process.argv[1],'utf8'));
+};
 '''
         result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/calculator.js"), page], capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

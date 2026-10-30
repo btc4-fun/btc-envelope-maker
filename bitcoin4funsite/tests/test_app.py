@@ -28,12 +28,13 @@ class ApplicationContract(unittest.TestCase):
         self.assertEqual(response.json, {'status': 'ok'})
 
     def test_serial_lookup_returns_only_public_fields(self):
-        lookup = Mock(return_value={'serial': '0587k45300', 'address': 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', 'mnemonic': 'MUST_NOT_LEAK'})
+        lookup = Mock(return_value={'serial': '0587k45300', 'address': 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', 'mnemonic': 'MUST_NOT_LEAK', 'contact_type': 'email', 'contact_value': 'SYNTHETIC_PRIVATE_CONTACT', 'notes': 'SYNTHETIC_PRIVATE_NOTES'})
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lookup})
         response = app.test_client().get('/api/wallets/0587k45300')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.json), {'serial', 'address', 'explorer_url'})
         self.assertNotIn('MUST_NOT_LEAK', response.text)
+        self.assertNotIn('SYNTHETIC_PRIVATE', response.text)
         lookup.assert_called_once_with('0587k45300')
 
     def test_invalid_serial_is_rejected_before_database_access(self):
@@ -165,6 +166,8 @@ class ApplicationContract(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['status'], 'stale')
         self.assertEqual(response.json['rates']['btc_toman'], '21105000000')
+        self.assertIn('raw_rates', response.json)
+        self.assertEqual(response.json['raw_rates'], {'btc_toman': '21000000000', 'usdt_toman': '270000'})
         self.assertEqual(response.json['rows'][0]['principal_sats'], 500)
         self.assertEqual(response.json['rows'][0]['total_rial'], response.json['rows'][0]['total_toman'] * 10)
         self.assertNotIn('SYNTHETIC', response.text)

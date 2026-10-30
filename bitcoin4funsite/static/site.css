@@ -52,4 +52,13 @@ summary:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.quote-
 .contact-status{padding:16px 20px;border:1px solid var(--ink);border-inline-start-width:4px;border-radius:var(--radius);background:var(--soft);overflow-wrap:anywhere}
 .contact-status[data-state=error]{color:var(--accent-dark);border-color:var(--accent)}
 @media(max-width:700px){.contact-form{padding:20px}.contact-form .button{width:100%}.contact-social{gap:8px 20px}}
+/* Local calculator extensions: unit labels stay apart from exact numeric values. */
+.quote-calculator{margin-top:32px}.quote-calculator>h2{font-size:1.35rem}.quote-calculator>p{font-size:.88rem;color:var(--muted)}
+.quote-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:18px;align-items:end}.quote-controls>div{min-width:0}
+.quote-controls label{display:block;font-weight:700;font-size:.88rem;margin-bottom:8px}.quote-controls :is(input,select){width:100%;min-width:0;font:inherit;color:var(--ink);background:var(--paper);border:1px solid #aba594;border-radius:var(--radius);padding:12px}
+.quote-controls input{font-family:monospace;unicode-bidi:isolate}.quote-controls :is(input,select):focus-visible{outline:3px solid var(--accent);outline-offset:4px}.quote-controls input[aria-invalid=true]{border:2px solid var(--accent)}
+.quote-controls .button{justify-content:center}.quote-controls button:disabled{opacity:.6;cursor:not-allowed}.quote-result{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.quote-breakdown{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-block:18px}.quote-breakdown>div{min-width:0;padding:12px;background:var(--paper);border:1px solid var(--line)}.quote-breakdown dt{font-size:.8rem;color:var(--muted)}.quote-breakdown dd{margin:8px 0 0;text-align:left}.quote-breakdown .quote-payable{border-color:var(--accent);font-weight:700}.quote-result>p{font-size:.85rem}.quote-result-warning{color:var(--accent-dark)}
+@media(max-width:700px){.quote-controls{grid-template-columns:minmax(0,1fr)}.quote-breakdown{grid-template-columns:minmax(0,1fr)}.quote-controls .button{width:100%}}
+.gross-valuation{min-width:0}.gross-result{margin-top:20px;padding:18px;background:var(--soft);border-inline-start:3px solid var(--accent)}.gross-result p{margin-bottom:8px}.gross-result .numeric-block{font-size:1.05rem;overflow-wrap:anywhere;text-align:left}.quote-result-warning,#quote-result-warning{color:var(--accent-dark)}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}

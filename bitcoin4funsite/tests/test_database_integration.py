@@ -57,6 +57,25 @@ class ReadonlyDatabaseIntegration(unittest.TestCase):
                 conn.execute('SELECT created_utc FROM public.wallets LIMIT 1')
             conn.rollback()
 
+    def test_private_contact_columns_exist_and_are_not_publicly_readable(self):
+        metadata = ('email', 'synthetic-only@example.invalid', 'SYNTHETIC_PRIVATE_CONTACT_NOTES')
+        with psycopg.connect(**self.owner) as connection:
+            columns = {row[0] for row in connection.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='wallets'")}
+            self.assertTrue({'contact_type', 'contact_value', 'notes'} <= columns)
+            connection.execute('UPDATE public.wallets SET contact_type=%s, contact_value=%s, notes=%s WHERE serial=%s', (*metadata, self.serial))
+        response = self.module.create_app({'TESTING': True}).test_client().get('/api/wallets/' + self.serial)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(set(response.json), {'serial', 'address', 'explorer_url'})
+        self.assertNotIn('SYNTHETIC_PRIVATE', response.text)
+        self.assertNotIn('example.invalid', response.text)
+        web = {**self.owner, 'user': os.environ['BTC_DB_USER'], 'password': Path(os.environ['BTC_DB_PASSWORD_FILE']).read_text().rstrip('\r\n')}
+        with psycopg.connect(**web) as connection:
+            for column in ('contact_type', 'contact_value', 'notes'):
+                with self.subTest(column=column), self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                    # Identifiers come from the fixed tuple above, never request data.
+                    connection.execute('SELECT ' + column + ' FROM public.wallets WHERE serial=%s', (self.serial,))
+                connection.rollback()
+
 
 if __name__ == '__main__':
     unittest.main()

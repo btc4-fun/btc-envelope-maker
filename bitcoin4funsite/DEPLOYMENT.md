@@ -32,7 +32,10 @@ CREATE TABLE IF NOT EXISTS public.wallets (
     serial TEXT PRIMARY KEY,
     address TEXT NOT NULL UNIQUE,
     jalali_datetime TEXT,
-    created_utc TIMESTAMPTZ
+    created_utc TIMESTAMPTZ,
+    contact_type TEXT,
+    contact_value TEXT,
+    notes TEXT
 );
 ```
 
@@ -42,6 +45,27 @@ public and SELECT (serial, address) on public.wallets only. Set its
  default_transaction_read_only to on as defense in depth. Do not reuse the
 owner/importer's password in the web container. No automated migration runs at
 web startup. Create/grant the table separately with the owner/admin.
+
+The three nullable metadata fields are private operator records, not public
+wallet data. Examples of contact_type include email, phone, telegram and
+whatsapp; no contact values are inferred or populated automatically. Newly added
+fields are NULL in existing rows; any already-present compatible metadata and
+all existing ledger values remain unchanged. The web role must
+remain SELECT(serial,address) only: never grant table-level SELECT now that the
+table can contain personal contact information. Public API, QR, CSV ledger and
+ordinary list output must not include these fields. Export contact data only
+through a separately authorized private process, never Git or public fixtures.
+
+For existing installations run the explicit owner-side migrate-contact command
+in btc_db.py after checking its help. The reusable PostgreSQL routine uses a
+two-second lock timeout and ten-second statement timeout; SQLite uses its
+existing ten-second busy timeout. Fresh tables include the fields; normal
+web startup does not migrate tables. The completed one-time live PostgreSQL
+operation added nullable text columns, with no table rebuild/default population, a
+two-second lock timeout and five-second statement timeout. A repeated migration
+and a separate connection's schema readback passed. Actual web-role reads of
+each contact field were denied; a marked synthetic metadata record was cleaned
+after checking that public JSON still exposes only serial/address/explorer_url.
 
 Import only public ledger.csv records from a separate online computer using
 the database owner's credentials through a private network/SSH tunnel. Never

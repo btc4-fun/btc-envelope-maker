@@ -29,7 +29,39 @@
       </table>
     </div>
   </div>
-  <noscript><div class="callout"><strong>جدول زنده بدون جاوااسکریپت بارگیری نمی‌شود.</strong><p>هیچ نرخ جایگزین یا صفر فرض نمی‌کنیم. روش محاسبه را پایین بخوانید و برای برآورد تازه از <a href="/contact">راه تماس</a> استفاده کنید؛ کلمات بازیابی لازم نیست.</p></div></noscript>
+  <section class="calculator-card quote-calculator" aria-labelledby="quote-title">
+    <h2 id="quote-title">بودجه یا اصل مبلغ؛ خودتان محاسبه کنید.</h2>
+    <p id="quote-help">برای دیدن اصل مبلغ خالص پس از همهٔ هزینه‌ها، بودجهٔ تومانی را انتخاب کنید؛ برای دیدن جمع پرداختی، اصل ساتوشی داخل پاکت را وارد کنید. فقط عدد صحیح با ارقام انگلیسی، بدون فاصله، جداکننده یا صفر ابتدایی. حداقل اصل مبلغ ۵۰۰ ساتوشی و سقف آن معادل ۲۱ میلیون بیت‌کوین است. بودجه حداکثر ۳۲ رقم دارد.</p>
+    <p>همان نرخ و هزینه‌های جدول استفاده می‌شوند؛ مقدار ورودی ارسال نمی‌شود و محاسبه فقط با انتخاب دکمه انجام می‌شود. این برآورد سفارش یا پرداخت نیست.</p>
+    <form id="quote-form" action="/costs" method="get" novalidate>
+      <div class="quote-controls">
+        <div><label for="quote-mode">چه چیزی را وارد می‌کنید؟</label><select id="quote-mode" aria-describedby="quote-help quote-status"><option value="principal_sats">اصل مبلغ خالص؛ ساتوشی</option><option value="budget_toman">بودجهٔ کل؛ تومان</option></select></div>
+        <div><label for="quote-amount">مقدار در واحد انتخاب‌شده</label><input id="quote-amount" type="text" dir="ltr" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="32" aria-describedby="quote-help quote-status"></div>
+        <button id="quote-calculate" class="button" type="submit" disabled>محاسبه</button>
+      </div>
+    </form>
+    <p id="quote-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true">تا دریافت نرخ، محاسبه در دسترس نیست.</p>
+    <div id="quote-result" class="quote-result" role="region" aria-label="نتیجهٔ محاسبه و ریز هزینه" aria-live="polite" aria-atomic="true" hidden>
+      <p id="quote-result-warning"></p>
+      <dl class="quote-breakdown">
+        <div><dt>اصل مبلغ خالص داخل پاکت؛ ساتوشی</dt><dd id="quote-principal" class="numeric-block" dir="ltr"></dd></div>
+        <div><dt>اصل مبلغ خالص؛ بیت‌کوین</dt><dd id="quote-btc" class="numeric-block" dir="ltr"></dd></div>
+        <div><dt>هزینهٔ شبکه؛ ساتوشی</dt><dd id="quote-network" class="numeric-block" dir="ltr"></dd></div>
+        <div><dt>هزینهٔ چاپ؛ ساتوشی</dt><dd id="quote-print" class="numeric-block" dir="ltr"></dd></div>
+        <div><dt>کارمزد گرداننده؛ ساتوشی</dt><dd id="quote-operator" class="numeric-block" dir="ltr"></dd></div>
+        <div><dt>جمع اصل و هزینه‌ها؛ ساتوشی</dt><dd id="quote-total-sats" class="numeric-block" dir="ltr"></dd></div>
+        <div class="quote-payable"><dt>جمع پرداختی؛ تومان</dt><dd id="quote-total-toman" class="numeric-block" dir="ltr"></dd></div>
+        <div><dt>جمع پرداختی؛ ریال</dt><dd id="quote-total-rial" class="numeric-block" dir="ltr"></dd></div>
+      </dl>
+      <dl id="quote-budget-details" class="quote-breakdown" hidden>
+        <div><dt>بودجهٔ کل؛ تومان</dt><dd id="quote-budget" class="numeric-block" dir="ltr"></dd></div>
+        <div><dt>باقی‌ماندهٔ مصرف‌نشده؛ تومان</dt><dd id="quote-remainder" class="numeric-block" dir="ltr"></dd></div>
+      </dl>
+      <p>هزینه‌ها جزو موجودی پاکت نیستند؛ باقی‌مانده هم بیت‌کوینِ واریزی محسوب نمی‌شود. اصل مبلغ از سقف عرضه بیشتر نمی‌شود، حتی اگر بودجه بیشتر باشد.</p>
+      <p class="rate-timestamp">زمان دریافت دادهٔ این محاسبه:</p><p id="quote-result-fetched-at" class="ltr-block" dir="ltr"></p>
+    </div>
+  </section>
+  <noscript><div class="callout"><strong>جدول زنده و محاسبه‌گر هزینه بدون جاوااسکریپت بارگیری نمی‌شوند.</strong><p>هیچ نرخ جایگزین یا صفر فرض نمی‌کنیم. روش محاسبه را پایین بخوانید و برای برآورد تازه از <a href="/contact">راه تماس</a> استفاده کنید؛ کلمات بازیابی لازم نیست.</p></div></noscript>
 </section>
 <section class="cost-explanation shell prose" aria-labelledby="formula-title">
   <h2 id="formula-title">روش محاسبه، بدون هزینهٔ پنهان.</h2>

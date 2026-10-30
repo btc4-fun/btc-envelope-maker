@@ -156,7 +156,8 @@ def create_app(config=None):
             snapshot = app.extensions['market_service'].snapshot()
             from pricing import quote_table
             quote = quote_table(snapshot['raw_prices']['btc_toman'], snapshot['raw_prices']['usdt_toman'], snapshot['fee_rate'])
-            return jsonify(**quote, status=snapshot['status'], fetched_at=snapshot['fetched_at'], source=snapshot['source'])
+            raw_rates = {name: snapshot['raw_prices'][name] for name in ('btc_toman', 'usdt_toman')}
+            return jsonify(**quote, raw_rates=raw_rates, status=snapshot['status'], fetched_at=snapshot['fetched_at'], source=snapshot['source'])
         except Exception:
             app.logger.warning('Public market information unavailable')
             return jsonify(error='market_unavailable'), 503

@@ -25,6 +25,12 @@ response. PostgreSQL and deployment credentials must remain outside Git and
 outside the container image. The readonly database connection is defense in
 depth; the database role must also have no write privileges.
 
+Wallet contact_type/contact_value/notes are private nullable operator metadata.
+The website account is deliberately denied SELECT on these columns; retain the
+column-level grants even when adding schema fields. Public imports/listing and
+ledger outputs do not carry contacts. Never infer contacts from a serial,
+publish a contact export, or connect the public contact form to wallet records.
+
 The optional contact form never uploads files and submits only to this server.
 Its publisher credential must have write-only permission to the private
 notification topic, never administrator or read access. Signed expiring tokens,
