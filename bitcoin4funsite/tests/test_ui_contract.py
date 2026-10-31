@@ -47,7 +47,7 @@ class UIContract(unittest.TestCase):
         self.assertIn("btc4fun", source)
         self.assertIn("btc4.fun", source)
         self.assertIn("09113458375@btc4.fun", source)
-        self.assertIn("https://github.com/sae13/btc4fun", source)
+        self.assertIn("https://github.com/btc4-fun/btc-envelope-maker", source)
         self.assertNotIn("bitcoin4fun", source)
         self.assertNotIn("bitcoin4.fun", source)
         self.assertNotIn("/api/market", source)

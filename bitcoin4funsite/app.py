@@ -4,6 +4,8 @@ import os
 import io
 import re
 import ipaddress
+import time
+from collections.abc import Callable
 from pathlib import Path
 
 from address_validation import valid_address
@@ -26,7 +28,7 @@ SERIAL_PATTERN = (
 SERIAL_RE = re.compile(SERIAL_PATTERN)
 
 
-def database_lookup(serial):
+def database_lookup(serial, *, by_tag=False):
     password_file = os.environ.get('BTC_DB_PASSWORD_FILE', '/run/secrets/db_password')
     password = Path(password_file).read_text().rstrip('\r\n')
     with psycopg.connect(
@@ -41,13 +43,15 @@ def database_lookup(serial):
     ) as connection:
         connection.read_only = True
         with connection.cursor() as cursor:
-            cursor.execute('SELECT serial, address FROM public.wallets WHERE serial = %s LIMIT 1', (serial,))
+            column = 'nfc_uid' if by_tag else 'serial'
+            cursor.execute(f'SELECT serial, address FROM public.wallets WHERE {column} = %s LIMIT 1', (serial,))
             row = cursor.fetchone()
     return {'serial': row[0], 'address': row[1]} if row else None
 
 
 def create_app(config=None):
     app = Flask(__name__, root_path=str(Path(__file__).resolve().parent))
+    app.config['TAG_LOOKUP_ENABLED'] = os.environ.get('TAG_LOOKUP_ENABLED') == '1'
     if config:
         app.config.update(config)
     app.extensions['market_service'] = app.config.get('MARKET_SERVICE') or MarketService()
@@ -95,6 +99,14 @@ def create_app(config=None):
     @app.get('/kids')
     def kids():
         return render_template('kids.html')
+
+    @app.get('/security')
+    def security():
+        return render_template('security.html')
+
+    @app.get('/download')
+    def download():
+        return render_template('download.html')
 
     @app.get('/terms')
     @app.get('/t')
@@ -211,6 +223,72 @@ def create_app(config=None):
     @app.get('/healthz')
     def health():
         return jsonify(status='ok')
+
+    @app.get('/api/tags/<path:uid>')
+    def tag_activity(uid):
+        if app.config.get('TAG_LOOKUP_ENABLED') is not True:
+            return jsonify(error='tag_lookup_disabled'), 503
+        from tag_access import TagLimiter, TagAudit
+        started = time.monotonic()
+        audit_failed = False
+        error_recorder: Callable[[int], None] | None = None
+        try:
+            client_ip = contact_client_ip()
+            audit = app.config.get('TAG_AUDIT') or TagAudit()
+
+            def record(status):
+                nonlocal audit_failed
+                # Route pattern avoids persisting arbitrary path/query secrets.
+                try:
+                    audit.record(client_ip=client_ip, method=request.method,
+                                 path='/api/tags/:uid', status=status,
+                                 duration_ms=(time.monotonic() - started) * 1000,
+                                 headers=request.headers)
+                except Exception:
+                    audit_failed = True
+                    raise
+
+            def finish(body, status, headers=None):
+                record(status)
+                return jsonify(body), status, headers or {}
+
+            # Verify writable audit before any wallet/network access. 102 is
+            # an audit-only admission marker, never an HTTP interim response.
+            record(102)
+            error_recorder = record
+            cursor = request.args.get('after_txid')
+            if (re.fullmatch(r'(?:[0-9A-F]{8}|[0-9A-F]{14}|[0-9A-F]{20})', uid) is None
+                    or set(request.args) - {'after_txid'}
+                    or len(request.args.getlist('after_txid')) > 1
+                    or (cursor is not None and re.fullmatch(r'[0-9a-f]{64}', cursor) is None)):
+                return finish({'error': 'invalid_tag_request'}, 400)
+            limiter = app.config.get('TAG_LIMITER') or TagLimiter()
+            retry = limiter.admit(client_ip)
+            if retry:
+                return finish({'error': 'rate_limited', 'retry_after': retry}, 429,
+                              {'Retry-After': str(retry)})
+            lookup = app.config.get('TAG_LOOKUP')
+            wallet = lookup(uid) if lookup else database_lookup(uid, by_tag=True)
+            if wallet is None:
+                return finish({'error': 'not_found'}, 404)
+            if not valid_address(wallet['address']) or SERIAL_RE.fullmatch(wallet['serial']) is None:
+                raise ValueError('Invalid public wallet')
+            service = app.config.get('TAG_ACTIVITY')
+            if service is None:
+                from chain_activity import ChainActivity
+                service = ChainActivity()
+            activity = service.snapshot(wallet['address'], after_txid=cursor)
+            return finish(dict(activity, serial=wallet['serial']), 200)
+        except Exception:
+            # Best effort final error record, never retry a possibly-written line.
+            # If audit itself failed, no public data is returned.
+            if error_recorder is not None and not audit_failed:
+                try:
+                    error_recorder(503)
+                except Exception:
+                    pass
+            app.logger.warning('Tag inquiry unavailable')
+            return jsonify(error='tag_unavailable'), 503
 
     def lookup_response(serial, *, qr=False):
         if SERIAL_RE.fullmatch(serial) is None:

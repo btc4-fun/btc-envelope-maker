@@ -5,13 +5,13 @@
 {% set wait_seconds = lookup_retry_after|default('', true)|string %}
 {% set wait_fa = wait_seconds|replace('0', '۰')|replace('1', '۱')|replace('2', '۲')|replace('3', '۳')|replace('4', '۴')|replace('5', '۵')|replace('6', '۶')|replace('7', '۷')|replace('8', '۸')|replace('9', '۹') %}
 {% set limit_message = 'برای هر اتصال اینترنتی، پنج استعلام در شصت ثانیه مجاز است؛ ' + ('پس از ' + wait_fa + ' ثانیه دوباره تلاش کنید.' if wait_seconds else 'کمی صبر کنید و دوباره بزنید.') %}
-<header class="page-heading shell"><a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> استعلام سریال</a><p class="eyebrow">فقط بخش عمومی پاکت</p><h1>یک سریال.<br>یک آدرس عمومی.</h1><p class="page-deck">شمارهٔ سریال روی پاکت را وارد کنید تا آدرس دریافت آن را ببینید. اینجا جای کلمات بازیابی نیست؛ برای این کار نیازی به باز کردن راز پاکت ندارید.</p></header>
+<header class="page-heading shell"><a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> استعلام سریال</a><p class="eyebrow">فقط بخش عمومی پاکت</p><h1>یک سریال.<br>یک آدرس عمومی.</h1><p class="page-deck">شمارهٔ سریال روی پاکت را بنویسید تا آدرس دریافت بیت‌کوین را ببینید. لازم نیست پاکت را باز کنید. کلمات بازیابی را اینجا ننویسید.</p></header>
 <section class="lookup-layout shell" aria-label="استعلام عمومی پاکت">
   <div class="lookup-main">
     <form id="lookup-form" action="/lookup" method="get" data-initial-serial="{{ serial|default('', true) }}" data-initial-state="{{ 'found' if wallet else lookup_error|default('', true) }}" data-initial-address="{{ wallet.address if wallet else '' }}" data-initial-explorer="{{ 'https://mempool.space/address/' + wallet.address if wallet else '' }}" data-retry-after="{{ lookup_retry_after|default('', true) }}">
       <label for="serial">شمارهٔ سریال پاکت</label>
       <p id="serial-hint" class="field-hint">فقط شمارهٔ سریال؛ با حروف و ارقام انگلیسی، خط تیره یا زیرخط. فاصله وارد نکنید.</p>
-      <p class="field-hint">برای هر اتصال اینترنتی، پنج استعلام در شصت ثانیه مجاز است؛ سهمیه میان کاربران همان اتصال مشترک است. کد تصویری هر نتیجه تا شصت ثانیه پس از استعلام آن، سهمیهٔ جداگانه مصرف نمی‌کند.</p>
+      <p class="field-hint">برای هر اتصال اینترنتی، پنج استعلام در شصت ثانیه مجاز است. اگر چند نفر از یک اتصال استفاده کنند، این سهمیه بین آن‌ها مشترک است. دیدن کد تصویری نتیجه تا شصت ثانیه پس از استعلام، از این سهمیه کم نمی‌کند.</p>
       <div class="lookup-controls"><input id="serial" name="serial" type="text" value="{{ serial|default('', true) }}" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" pattern="{{ serial_pattern }}" aria-describedby="serial-hint" required><button id="lookup-submit" class="button" type="submit">نمایش آدرس <span aria-hidden="true">←</span></button></div>
     </form>
     <p id="lookup-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true">{% if lookup_error == 'rate_limited' %}{{ limit_message }}{% elif lookup_error == 'unavailable' %}سرویس استعلام فعلاً در دسترس نیست.{% endif %}</p>
@@ -39,7 +39,7 @@
       {% endif %}
     </noscript>
   </div>
-  <aside class="lookup-aside"><span class="aside-symbol" aria-hidden="true">↗</span><h2>چه چیزی نمایش داده می‌شود؟</h2><p>آدرس عمومی ثبت‌شده، کد تصویری محلی برای دریافت و سه پیوند اختیاری برای دیدن تراکنش‌ها.</p><p>مرورگر هیچ درخواست خودکاری به کاوشگرهای بلاک نمی‌فرستد. فقط اگر پیوند خارجی را خودتان باز کنید، آن سرویس از آدرس و اطلاعات اتصال شما باخبر می‌شود.</p><p>سریال و آدرس، مالکیت، موجودی یا تأیید تراکنش را ثابت نمی‌کنند.</p><a class="text-link" href="/guide">پیش از واریز، راهنما را بخوانید <span aria-hidden="true">←</span></a></aside>
+  <aside class="lookup-aside"><span class="aside-symbol" aria-hidden="true">↗</span><h2>چه چیزی نمایش داده می‌شود؟</h2><p>آدرس عمومی ثبت‌شده و کد تصویری آن را می‌بینید. کد در همین سایت ساخته می‌شود. سه پیوند اختیاری هم برای دیدن تراکنش‌ها در سایت‌های دیگر هست.</p><p>مرورگر هیچ درخواست خودکاری به سایت‌های نمایش تراکنش نمی‌فرستد. به این سایت‌ها «کاوشگر بلاک» می‌گویند. اگر پیوند یکی را باز کنید، آن سایت آدرس عمومی و اطلاعات اتصال اینترنتی شما را می‌بیند.</p><p>شمارهٔ سریال و آدرس ثابت نمی‌کنند که پولی واریز شده، تراکنش تأیید شده یا پول متعلق به شماست.</p><a class="text-link" href="/guide">پیش از واریز، راهنما را بخوانید <span aria-hidden="true">←</span></a></aside>
 </section>
 <div class="shell prose safety-summary">{% include '_wallet_safety.html' %}</div>
 <section class="article-end shell"><p>اگر کسی برای استعلام از شما کلمات بازیابی خواست، متوقف شوید.</p><a class="text-link" href="/terms">شرایط و مسئولیت‌ها <span aria-hidden="true">←</span></a></section>

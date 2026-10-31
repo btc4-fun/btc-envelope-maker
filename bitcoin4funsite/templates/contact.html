@@ -4,9 +4,9 @@
 {% block content %}
 <header class="page-heading shell">
   <a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> تماس</a>
-  <p class="eyebrow">راه گفت‌وگو، نه راه دریافت راز</p>
-  <h1>پرسش را بفرستید.<br>کلید را پیش خودتان نگه دارید.</h1>
-  <p class="page-deck">برای پرسش عمومی دربارهٔ پروژه، راهنمای پاکت، یا گزارش اشکال سایت می‌توانید ایمیل بفرستید یا از فرم همین صفحه استفاده کنید. برای پاسخ دادن به این پرسش‌ها نیازی به دسترسی به کیف پول شما نداریم.</p>
+  <p class="eyebrow">سؤال بپرسید؛ کلمات محرمانه را نفرستید</p>
+  <h1>پرسش را بفرستید.<br>کلمات بازیابی را نفرستید.</h1>
+  <p class="page-deck">برای پرسش عمومی دربارهٔ پاکت یا گزارش مشکل سایت، ایمیل بفرستید یا فرم پایین را پر کنید. برای پاسخ دادن، نیازی به دسترسی به کیف پول شما نداریم.</p>
 </header>
 <section class="contact-section shell prose" aria-labelledby="contact-title">
   <h2 id="contact-title">تماس با گرداننده</h2>
@@ -18,8 +18,8 @@
     <a href="https://x.com/btc4_fun" target="_blank" rel="noopener noreferrer">ایکس، توییتر سابق <span class="sr-only">؛ سایت خارجی، در زبانهٔ جدید</span><span aria-hidden="true">↗</span></a>
   </nav>
   <p class="field-hint">شبکه‌های اجتماعی فقط با انتخاب شما در زبانهٔ جدید باز می‌شوند؛ این صفحه محتوایی از آن‌ها بارگیری نمی‌کند.</p>
-  <div class="callout"><strong>کلمات بازیابی و کلید خصوصی را نفرستید.</strong><p>عبارت عبور، فایل پشتیبان کیف پول، تصویر داخل پاکت یا هر اطلاعاتی که امکان خرج کردن دارایی را می‌دهد، در ایمیل و پیام جایی ندارد. حتی اگر کسی به نام پشتیبانی درخواست کرد، ارسال نکنید.</p></div>
-  <p>این راه تماس برای پشتیبانی خصوصی کیف پول، گرفتن کنترل از راه دور، بازیابی دارایی یا انجام تراکنش به جای شما نیست. گرداننده تعهدی به پشتیبانی فنی مداوم یا زمان مشخص پاسخ‌گویی ندارد.</p>
+  <div class="callout"><strong>کلمات بازیابی و کلید خصوصی را نفرستید.</strong><p>عبارت عبور، فایل پشتیبان کیف پول و عکس داخل پاکت را نفرستید. هیچ اطلاعاتی که با آن بتوان پول را خرج کرد، در فرم، ایمیل یا پیام ننویسید. حتی اگر کسی گفت از پشتیبانی است، این اطلاعات را به او ندهید.</p></div>
+  <p>از این راه، کیف پول خصوصی شما را مدیریت یا بازیابی نمی‌کنیم. کنترل دستگاه شما را از راه دور نمی‌گیریم و به جای شما پول جابه‌جا نمی‌کنیم. گرداننده تعهدی به پشتیبانی فنی مداوم یا پاسخ در زمان مشخص ندارد.</p>
   <p>اگر اشکال سایت را گزارش می‌کنید، توضیح کوتاه و متن خطای عمومی کافی است؛ اطلاعات شخصی اضافی یا اسرار کیف پول را در گزارش قرار ندهید.</p>
   <form id="contact-form" class="contact-form" action="/contact" method="post" aria-labelledby="contact-form-title" aria-describedby="contact-safety">
     <h2 id="contact-form-title">ارسال پرسش عمومی</h2>
@@ -44,17 +44,17 @@
     <div class="contact-field">
       <label for="contact-name">نام</label>
       <input id="contact-name" type="text" name="name" autocomplete="name" maxlength="80" aria-describedby="contact-name-help contact-safety" required>
-      <p id="contact-name-help" class="field-hint">حداکثر ۸۰ نویسه؛ نامی که با آن شما را خطاب کنیم کافی است.</p>
+      <p id="contact-name-help" class="field-hint">نامی که با آن شما را صدا کنیم کافی است. تا ۸۰ حرف یا علامت می‌توانید بنویسید.</p>
     </div>
     <div class="contact-field">
       <label for="contact-mobile">شمارهٔ همراه، اختیاری</label>
       <input id="contact-mobile" type="tel" name="mobile" dir="ltr" autocomplete="tel" inputmode="tel" maxlength="32" aria-describedby="contact-mobile-help contact-safety">
-      <p id="contact-mobile-help" class="field-hint">حداکثر ۳۲ نویسه؛ اگر مایلید برای هماهنگی پاسخ شماره بگذارید. تماس یا پیامک تضمین نمی‌شود.</p>
+      <p id="contact-mobile-help" class="field-hint">اگر می‌خواهید برای هماهنگی پاسخ شماره بگذارید، این کادر را پر کنید. تا ۳۲ رقم یا علامت جا دارد. تماس یا پیامک تضمین نمی‌شود.</p>
     </div>
     <div class="contact-field">
       <label for="contact-message">پیام</label>
       <textarea id="contact-message" name="message" rows="7" maxlength="2000" aria-describedby="contact-message-help contact-safety" required></textarea>
-      <p id="contact-message-help" class="field-hint">حداکثر ۲۰۰۰ نویسه؛ کوتاه بنویسید، بدون اطلاعات محرمانه و پیوست. حجم نهایی پیام با نام و شماره نیز به چهار کیبی‌بایت در رمزگذاری یونی‌کد محدود است؛ پیام‌های فارسی ممکن است زودتر به سقف حجم برسند.</p>
+      <p id="contact-message-help" class="field-hint">کوتاه بنویسید. اطلاعات محرمانه یا پیوست نفرستید. این کادر تا ۲۰۰۰ حرف و علامت جا دارد. حجم کل پیام همراه نام و شماره هم محدود است: چهار کیبی‌بایت در رمزگذاری یونی‌کد. پیام‌های فارسی ممکن است زودتر به سقف حجم برسند. اگر پیام به دلیل حجم زیاد پذیرفته نشد، متن را کوتاه‌تر کنید.</p>
     </div>
     <button class="button" type="submit">ارسال پیام <span aria-hidden="true">←</span></button>
     </fieldset>

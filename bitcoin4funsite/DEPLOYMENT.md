@@ -4,7 +4,9 @@
 
 This service serves Persian educational pages and reads a single public wallet
 record by serial. It never creates wallets, signs transactions, stores recovery
-words or fetches a user's blockchain activity. Server-side market prices and
+words. Printed-serial lookup does not fetch blockchain activity. The separately
+activated tag endpoint can fetch public address activity from Blockstream.
+Server-side market prices and
 economy fee suggestions use fixed sources; a mempool address link is an explicit external
 navigation, not an automatically loaded resource. Self-contained assets do not
 mean a live PostgreSQL-backed lookup works without reaching this server.
@@ -107,7 +109,44 @@ is the sole writable persistent application mount; it contains contact token
 hashes, keyed client-IP hashes, state and timestamps for cross-worker rate limits
 and replay prevention, not submitted names, phone numbers or messages. Preserve
 it on app-only rollback. Contact text is sent to the private notification topic;
-that service's retention policy applies. No files upload.
+that service's retention policy applies. No files upload. When tag lookup is
+explicitly enabled, this mount also contains tag audit files with plaintext
+client IPs and redacted headers; these are separate from keyed-IP quota state.
+
+### Tag lookup activation (default off)
+
+`TAG_LOOKUP_ENABLED=1` enables the new `/api/tags/<UID>` endpoint; all other
+environment values leave it disabled. Before enabling: explicitly migrate the
+owner database using `btc_envelope_maker/nfc_bindings.py migrate`, verify the
+nullable unique `nfc_uid` column, grant only SELECT(nfc_uid) in addition to the
+existing public columns, prove private-column/write denial, publish the `/terms`
+tag privacy notice and verify the intended retention settings. Never perform
+these operations automatically at app startup. With the switch off, the route
+returns 503 before audit, limiter, database or provider work.
+
+Supply configuration through the existing private runtime envfile, not build
+arguments. `TAG_LOOKUP_STATE_FILE` defaults to
+`/var/lib/btc4fun/tag-lookup.sqlite3`; `CONTACT_SECRET` is reused with a distinct
+HMAC domain. `TAG_AUDIT_DIR` defaults to `/var/lib/btc4fun/tag-audit`;
+`TAG_AUDIT_MAX_BYTES` defaults to 1048576 (range 8192..104857600) and
+`TAG_AUDIT_BACKUP_COUNT` defaults to 5 (range 0..100). Rotation is size-based;
+idle files have no time-based expiration. Decreasing limits takes effect on the
+next write. All workers must share these values and persistent mounts. The
+audit stores client IP, bounded header names/allowlisted values, status and
+timing; cookies/authentication and unknown header values are redacted. The
+route records a fixed path pattern, not raw UID/query/body. A 102 audit line
+marks processing start; the final line reports outcome. Audit failure denies
+public data rather than silently bypassing logging. Preserve the stable lock
+file while workers are running.
+
+An admitted inquiry performs two bounded HTTPS reads to Blockstream: balance
+and a confirmed-history page of at most 25 entries. Public wallet address is
+disclosed to that provider. Pending balance delta is separate; pending
+transaction history is not provided. Results are timestamped and explicitly
+non-atomic. Failure is 503, never a fabricated zero balance. The per-IP interval
+is twenty seconds, shared between tag UIDs and history pages, independent of
+the existing website quota. This local candidate is not yet activated in
+production; app-only payment release evidence does not imply NFC activation.
 
 Provision a separate regular ntfy user, deny all topics, then allow write-only
 for btc4fun; deny anonymous access to that topic. The public form submits only

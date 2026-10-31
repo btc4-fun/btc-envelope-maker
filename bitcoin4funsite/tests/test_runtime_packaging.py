@@ -11,6 +11,14 @@ ROOT = SITE.parent
 
 
 class RuntimePackagingTests(unittest.TestCase):
+    def test_tag_runtime_modules_are_copied_and_allowed(self):
+        dockerfile = (SITE / 'Dockerfile').read_text()
+        copy_lines = '\n'.join(line for line in dockerfile.splitlines() if line.startswith('COPY '))
+        ignore = (SITE / 'Dockerfile.dockerignore').read_text().splitlines()
+        for name in ('tag_access.py', 'chain_activity.py'):
+            self.assertIn('bitcoin4funsite/' + name, copy_lines)
+            self.assertIn('!bitcoin4funsite/' + name, ignore)
+
     def test_shared_address_validator_is_in_image_and_context(self):
         dockerfile = (SITE / 'Dockerfile').read_text()
         self.assertIn('COPY btc_envelope_maker/address_validation.py ./btc_envelope_maker/', dockerfile)

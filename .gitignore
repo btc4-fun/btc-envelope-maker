@@ -19,6 +19,7 @@ secrets/
 **/config.toml
 **/out/
 **/ledger*.csv
+**/*-part-*.csv
 **/*.db
 **/*.db-*
 **/*.sqlite
@@ -43,3 +44,12 @@ artifacts/
 *.tar
 *.tar.gz
 *.log
+
+# Android build outputs and machine-local/signing inputs
+**/.gradle/
+**/build/
+**/local.properties
+*.apk
+*.aab
+*.jks
+*.keystore

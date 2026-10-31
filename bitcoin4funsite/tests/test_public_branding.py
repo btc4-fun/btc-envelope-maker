@@ -26,7 +26,7 @@ class PublicBrandingContract(unittest.TestCase):
                     self.assertEqual(response.status_code, 200)
                     self.assertIn('btc4.fun', response.text)
                     self.assertIn('mailto:09113458375@btc4.fun', response.text)
-                    self.assertIn('https://github.com/sae13/btc4fun', response.text)
+                    self.assertIn('https://github.com/btc4-fun/btc-envelope-maker', response.text)
                     self.assertNotIn('bitcoin4.fun', response.text)
 
     def test_generator_defaults_and_sanitized_example_have_public_brand(self):
