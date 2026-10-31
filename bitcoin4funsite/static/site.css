@@ -40,6 +40,12 @@ summary:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.quote-
 @media(max-width:1000px){.site-header{flex-wrap:wrap;padding-block:24px}.site-header nav{justify-content:flex-start}.rate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.site-header nav{justify-content:flex-start;gap:12px 20px}.calculator-card{padding:20px}.converter-fields{grid-template-columns:minmax(0,1fr);gap:20px}.market-section{padding-block:30px 40px}.rate-grid{gap:10px}.rate-grid>div{padding:12px}.rate-grid dd{font-size:.84rem}.quote-table{font-size:.73rem}.quote-table th,.quote-table td{padding:12px 8px}.quote-table thead th{font-size:.71rem}.quote-table caption{padding:13px}.quote-table th:first-child{width:26%}.quote-table th:nth-child(2){width:30%}.quote-details{font-size:.7rem}.contact-section{padding-block:32px 42px}.cost-explanation{padding-bottom:15px}}
 /* Contact stays native, locally styled, and usable without scripts. */
+.payment-details{margin-block:32px 50px;padding:26px;border:1px solid var(--line);border-radius:var(--radius);background:var(--white);min-width:0}
+.payment-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:28px}.payment-grid>div{min-width:0}
+.payment-number{display:block;width:100%;max-width:100%;border:1px solid var(--ink);border-radius:var(--radius);padding:14px 10px;margin-block:8px 22px;background:var(--paper);color:var(--ink);font:clamp(.85rem,2.5vw,1.2rem)/1.8 monospace;direction:ltr;unicode-bidi:isolate;text-align:left;overflow-wrap:anywhere;user-select:all}
+.payment-number:hover{border-color:var(--accent)}.payment-qr-controls{display:flex;flex-wrap:wrap;gap:10px}.payment-qr-controls a{text-decoration:none}.payment-qr-controls [aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.payment-qr img{width:232px;height:232px;max-width:100%;object-fit:contain}.payment-qr figcaption{margin-top:12px}
+@media(max-width:700px){.payment-grid{grid-template-columns:minmax(0,1fr)}.payment-details{padding:18px}.payment-details h2{font-size:1.4rem}}
 .nav-terms{font-weight:700;border-block-end:2px solid var(--accent);padding-block:8px;color:var(--accent-dark)}
 .contact-social{display:flex;flex-wrap:wrap;gap:12px 25px;margin-block:22px 10px}
 .contact-social a{display:inline-flex;align-items:center;gap:10px;min-height:44px;color:var(--accent-dark)}

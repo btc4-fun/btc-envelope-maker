@@ -1,0 +1,64 @@
+<section id="payment-details" class="payment-details" aria-labelledby="payment-title">
+  <h2 id="payment-title">
+    اطلاعات پرداخت
+  </h2>
+  <p>
+    شمارهٔ کارت و شمارهٔ شبای زیر هر دو به نام
+    <strong>
+      صائب ملایی
+    </strong>
+    هستند. پیش از تأیید انتقال وجه، نام صاحب حساب و شمارهٔ مقصد را در برنامهٔ بانکی تطبیق دهید.
+  </p>
+  {% if page != 'guide' %}
+    {% include '_purchase_warning.html' %}
+  {% endif %}
+  <div class="payment-grid">
+    <div class="payment-numbers">
+      <p id="payment-card-label">
+        شمارهٔ کارت؛ برای کپی روی شماره بزنید
+      </p>
+      <button id="payment-copy-card" class="payment-number" type="button" dir="ltr"
+              aria-labelledby="payment-card-label payment-copy-card" data-copy="6219861819062158">
+        6219861819062158
+      </button>
+      <p id="payment-sheba-label">
+        شمارهٔ شبا؛ بخش عددی، برای کپی روی شماره بزنید
+      </p>
+      <button id="payment-copy-sheba" class="payment-number" type="button" dir="ltr"
+              aria-labelledby="payment-sheba-label payment-copy-sheba" data-copy="930560611828006181828601">
+        930560611828006181828601
+      </button>
+      <p class="field-hint">
+        شمارهٔ شبا و کد تصویری آن شامل بخش عددی هستند. اگر برنامهٔ بانکی پیشوند کشور را جداگانه نشان می‌دهد، همین ارقام را در کادر شماره وارد کنید. پس از چسباندن، مقصد و نام صاحب حساب را دوباره بررسی کنید.
+      </p>
+      <p id="payment-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <noscript>
+        <p>
+          کپی خودکار و جابه‌جایی تصویر به جاوااسکریپت نیاز دارد؛ شماره را دستی انتخاب و کپی کنید. پیوندهای نمایش کد تصویری بدون جاوااسکریپت هم باز می‌شوند.
+        </p>
+      </noscript>
+    </div>
+    <div>
+      <div class="payment-qr-controls">
+        <a id="payment-show-card" class="secondary-button" href="/static/payment-card.svg"
+           role="button" aria-controls="payment-qr" aria-pressed="true">
+          نمایش کد کارت
+        </a>
+        <a id="payment-show-sheba" class="secondary-button" href="/static/payment-sheba.svg"
+           role="button" aria-controls="payment-qr" aria-pressed="false">
+          نمایش کد شبا
+        </a>
+      </div>
+      <figure class="qr-block payment-qr">
+        <img id="payment-qr" src="/static/payment-card.svg" width="232" height="232"
+             alt="کد تصویری شمارهٔ کارت">
+        <figcaption id="payment-qr-caption" aria-live="polite">
+          کد تصویری شمارهٔ کارت
+        </figcaption>
+      </figure>
+      <p class="field-hint">
+        کد تصویری فقط شمارهٔ مقصد را دارد؛ اسکن آن به معنی انجام پرداخت نیست و سازگاری با همهٔ برنامه‌های بانکی تضمین نمی‌شود.
+      </p>
+    </div>
+  </div>
+</section>

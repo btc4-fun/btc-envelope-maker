@@ -268,6 +268,27 @@ build used on this RPi.
 
 ## Verification and rollback
 
+### Public payment details
+
+The home page includes one merged purchase warning, not payment numbers or QR
+images. Navigation and the warning link to `/costs#payment-details`; `/guide`
+and `/terms` also show the full payment component. `_purchase_warning.html`
+is shared with the wallet safety guide, without duplicating it on `/guide`.
+The holder name is operator-supplied, not bank-verified. Card and numeric Sheba
+are copied verbatim; local `payment-card.svg` and `payment-sheba.svg` encode
+those same strings. No transfer API or remote QR provider is involved. Clipboard
+copy requires a supported secure browser context and permission; denied access
+falls back to a manual-copy message. Without JavaScript, QR links open the local
+images normally. Regenerate and test QR assets whenever either number changes.
+
+For a template/static-only release, verify all unchanged runtime modules and
+locked requirements against the current immutable image before using it as a
+base. Build an allowlisted asset layer with networking disabled, preserve the
+existing Compose override bytes, then update only its web image pin. Do not
+modify credentials, state, database grants or shared Caddy. Compare every
+runtime source/asset hash and test public HTTPS pages after recreation. Restore
+the exact previous override and recreate only web if verification fails.
+
 Run the unit/UI suite, database privilege negative tests and live browser tests.
 Inspect browser request URLs to prove all automatic assets/API/QR/font loads
 are same-origin. Verify a synthetic public fixture only within a temporary

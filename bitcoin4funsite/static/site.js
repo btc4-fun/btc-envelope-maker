@@ -1,6 +1,70 @@
 "use strict";
 
 (() => {
+  if (!document.getElementById("payment-details")) return;
+  const status = document.getElementById("payment-status");
+  const qr = document.getElementById("payment-qr");
+  const caption = document.getElementById("payment-qr-caption");
+  const kinds = ["card", "sheba"];
+  const labels = {
+    card: "کد تصویری شمارهٔ کارت",
+    sheba: "کد تصویری بخش عددی شبا"
+  };
+  let selected = "card";
+  let copyVersion = 0;
+
+  function showQr(kind) {
+    selected = kind;
+    qr.hidden = true;
+    caption.textContent = labels[kind];
+    qr.alt = labels[kind];
+    qr.src = document.getElementById("payment-show-" + kind).getAttribute("href");
+    for (const key of kinds) {
+      document.getElementById("payment-show-" + key).setAttribute("aria-pressed", String(key === kind));
+    }
+    if (qr.complete && qr.naturalWidth > 0) qr.hidden = false;
+  }
+
+  qr.addEventListener("load", () => {
+    qr.hidden = false;
+    caption.textContent = labels[selected];
+  });
+  qr.addEventListener("error", () => {
+    qr.hidden = true;
+    caption.textContent = "کد تصویری در دسترس نیست؛ شمارهٔ نوشته‌شده را دستی کپی کنید.";
+  });
+
+  for (const kind of kinds) {
+    const copy = document.getElementById("payment-copy-" + kind);
+    copy.addEventListener("click", async () => {
+      const version = ++copyVersion;
+      status.textContent = "در حال کپی…";
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+        await navigator.clipboard.writeText(copy.dataset.copy);
+        if (version !== copyVersion) return;
+        status.textContent = "شماره کپی شد؛ پس از چسباندن، شمارهٔ مقصد و نام صائب ملایی را بررسی کنید.";
+        status.dataset.state = "success";
+      } catch {
+        if (version !== copyVersion) return;
+        status.textContent = "کپی خودکار ممکن نشد؛ شماره را انتخاب و دستی کپی کنید.";
+        status.dataset.state = "error";
+      }
+    });
+    const control = document.getElementById("payment-show-" + kind);
+    control.addEventListener("click", event => {
+      event.preventDefault();
+      showQr(kind);
+    });
+    control.addEventListener("keydown", event => {
+      if (event.key !== " ") return;
+      event.preventDefault();
+      showQr(kind);
+    });
+  }
+})();
+
+(() => {
   const form = document.getElementById("lookup-form");
   if (!form) return;
   const field = document.getElementById("serial");

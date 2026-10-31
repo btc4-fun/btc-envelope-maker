@@ -1,5 +1,48 @@
 # Verified installation status
 
+## Current payment release — 2026-10-31
+
+This section supersedes the image/version statements in the historical sections
+below. The app-only payment release is active and healthy on the RPi:
+
+    sha256:109a3fd29b1a61939f5f692b2ec892a211cefc35f12e57eb8468b61e8977a644
+
+The previous running immutable image was used as the native ARM base after all
+unchanged runtime modules and locked requirements matched local source. Only
+eleven changed public template/static files were copied in a network-disabled
+build. All 32 runtime source/assets in the release manifest matched the running
+container after activation. The manifest SHA-256 is:
+
+    f32d0d0ab25740a01a554ed2d812ab2b676af37b9c0197b70dfa00b23803a995
+
+Private operational evidence and the exact prior Compose override are retained:
+
+    /home/saeb/bitcoin4fun/releases/payment-20261031T144135Z/
+
+The existing override now pins the new immutable image; the adjacent source
+tree was not overwritten and is not the authoritative running source. Rollback:
+restore `compose.override.before.yaml` from that directory to the application
+root's `compose.override.yaml`, then run `docker compose up -d --no-deps
+--no-build web` and verify health/public routes. The prior image is retained:
+
+    sha256:9fb9ec9cb46ed5a8e7dd42c0f608a5914f0ab075a7ce0bdc5d5fb2dd674d21c8
+
+Verification: 194 local tests, no failures, two credential-gated database tests
+skipped. The publication guard's positive/negative controls passed. Real HTTPS
+browser checks passed on home, guide, terms and costs on both public hostnames:
+one merged warning per page, no full payment panel on home, no horizontal
+overflow at 390px, and no automatic cross-origin resources. Card/Sheba clipboard
+contents and image switching passed on the public main hostname. Direct health,
+page and SVG routes passed; name/account ownership is not bank-verified.
+
+Shared Caddy and base Compose bytes were unchanged; mounts and both persistent
+SQLite file identities were preserved. No production SQL, migration, wallet
+import, contact submission or credential modification was performed. Current
+database ACLs were not re-audited. The host still cannot enforce the declared
+Docker memory limit. No automatic Git deployment or Git push was performed.
+
+## Historical installation evidence
+
 The site was built and activated on the explicitly requested RPi host. Both
 public HTTPS hostnames returned the application, and browser inspection proved
 same-origin font, CSS, JavaScript, API and QR requests with no automatic
