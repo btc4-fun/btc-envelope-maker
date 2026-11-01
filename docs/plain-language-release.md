@@ -1,5 +1,11 @@
 # Plain-language customer release
 
+This is the historical plain-language release checkpoint. Later Android
+version-one signing/publication work is separate; current ownership and signing
+authorization are recorded in workspace-ownership.md. Statements below about
+missing signing secrets and the parallel seller task describe this checkpoint,
+not the current release preparation.
+
 Website source: 89b954ee0682081770e40724fb686d23bd0c81f3; remote main readback
 and GitHub verification successful:
 https://github.com/btc4-fun/btc-envelope-maker/actions/runs/41230996869
