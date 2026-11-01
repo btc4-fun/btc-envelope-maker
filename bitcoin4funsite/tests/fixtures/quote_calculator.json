@@ -40,12 +40,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "300000"
     },
@@ -79,12 +83,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.23456789"
+          "network_fee_rate": "1.23456789",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "175",
-          "print_sats": "121"
-        }
+          "print_sats": "121",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "370370.3670337037034"
     },
@@ -118,12 +126,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "9999.999999999999999999"
+          "network_fee_rate": "9999.999999999999999999",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "1410000",
-          "print_sats": "1"
-        }
+          "print_sats": "1",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "29999999999.99999999999999999999997"
     },
@@ -157,12 +169,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "210000000000000000"
     },
@@ -196,12 +212,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "0.000000000000000001"
+          "network_fee_rate": "0.000000000000000001",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "1",
-          "print_sats": "15000000000000000000000000000000000000000"
-        }
+          "print_sats": "15000000000000000000000000000000000000000",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "0.00000000000000000000003"
     },
@@ -265,12 +285,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "50000",
       "next_principal_total_toman": "93365"
@@ -305,12 +329,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "55900",
       "next_principal_total_toman": "100098"
@@ -345,12 +373,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "300000",
       "next_principal_total_toman": "382302"
@@ -385,12 +417,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "299900",
       "next_principal_total_toman": "382101"
@@ -425,12 +461,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "43231300",
       "next_principal_total_toman": "50000057"
@@ -465,12 +505,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.23456789"
+          "network_fee_rate": "1.23456789",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "175",
-          "print_sats": "121"
-        }
+          "print_sats": "121",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "43225308.252558503050975",
       "next_principal_total_toman": "50000115"
@@ -505,12 +549,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "0.000000000000000001"
+          "network_fee_rate": "0.000000000000000001",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "1",
-          "print_sats": "15000000"
-        }
+          "print_sats": "15000000",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "0.000000000021"
     },
@@ -544,12 +592,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "210000000000000000"
     },
@@ -583,12 +635,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "1.1"
+          "network_fee_rate": "1.1",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "156",
-          "print_sats": "150"
-        }
+          "print_sats": "150",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "209999999999999900",
       "next_principal_total_toman": "242707500000035376"
@@ -623,12 +679,16 @@
           "operator_fee_percent": "15",
           "print_usd": "0.15",
           "transaction_vbytes": "141",
-          "network_fee_rate": "9999.999999999999999999"
+          "network_fee_rate": "9999.999999999999999999",
+          "tag_usd": "0.12",
+          "include_tag": false
         },
         "costs": {
           "network_sats": "1410000",
-          "print_sats": "1"
-        }
+          "print_sats": "1",
+          "tag_sats": "0"
+        },
+        "tag_sats": "0"
       },
       "raw_asset_toman": "20999999999999999999999.999999999979"
     }

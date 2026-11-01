@@ -33,6 +33,24 @@ class MarketContract(unittest.TestCase):
         self.assertNotIn('PRIVATE_UNUSED', repr(data))
         self.assertEqual(requests, [(module.PRICE_URL, True), (module.FEE_URL, False)])
 
+    def test_fee_choices_use_actual_recommended_fields_and_disable_invalid_choices(self):
+        module = self.load()
+        for invalid in (None, 0, -1, True, 'NaN', '10001', '1.0000000000000000001'):
+            fees = {'economyFee': '1.1', 'halfHourFee': invalid, 'hourFee': 99,
+                    'fastestFee': '3.25', 'minimumFee': 1}
+            def fetch(url, token=None):
+                return {'result': {'BTC/IRT': '21000000000', 'USDT/IRT': '270000'}} if url == module.PRICE_URL else fees
+            service = module.MarketService(fetch=fetch, token_loader=lambda: 'SYNTHETIC')
+            snapshot = service.snapshot()
+            self.assertEqual(snapshot.get('fee_rates'), {'economy': '1.1', 'medium': None, 'fast': '3.25'})
+            self.assertEqual(snapshot['fee_rate'], '1.1')
+        fees['halfHourFee'] = '2.125'
+        service = module.MarketService(fetch=fetch, token_loader=lambda: 'SYNTHETIC')
+        self.assertEqual(service.snapshot()['fee_rates'], {'economy': '1.1', 'medium': '2.125', 'fast': '3.25'})
+        del fees['fastestFee']
+        service = module.MarketService(fetch=fetch, token_loader=lambda: 'SYNTHETIC')
+        self.assertIsNone(service.snapshot()['fee_rates']['fast'])
+
     def test_cache_avoids_repeated_requests_and_marks_stale_before_expiry(self):
         module = self.load()
         now = [1000]

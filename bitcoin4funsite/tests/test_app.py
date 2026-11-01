@@ -243,6 +243,33 @@ class ApplicationContract(unittest.TestCase):
         client = self.module.create_app({'TESTING': True}).test_client()
         self.assertEqual(client.get('/t').data, client.get('/terms').data)
 
+    def test_market_exposes_six_exact_options_without_changing_default_quote(self):
+        from pricing import quote_table
+        service = Mock()
+        service.snapshot.return_value = {
+            'status': 'fresh', 'fetched_at': '2026-10-29T20:00:00+00:00',
+            'raw_prices': {'btc_toman': '21000000000', 'usdt_toman': '270000'},
+            'fee_rate': '1.1', 'fee_rates': {'economy': '1.1', 'medium': '2.125', 'fast': '3.25'},
+            'source': {'prices': 'https://swapwallet.app/api/v1/market/prices', 'fees': 'https://mempool.space/api/v1/fees/recommended'},
+        }
+        client = self.module.create_app({'TESTING': True, 'MARKET_SERVICE': service}).test_client()
+        response = client.get('/api/market')
+        self.assertEqual(response.status_code, 200)
+        data = response.json
+        self.assertIn('quote_options', data)
+        for speed, rate in service.snapshot.return_value['fee_rates'].items():
+            for variant, enabled in (('no_tag', False), ('with_tag', True)):
+                self.assertEqual(data['quote_options'][speed][variant],
+                                 quote_table('21000000000', '270000', rate, include_tag=enabled))
+        self.assertEqual({key: data[key] for key in ('rates', 'costs', 'assumptions', 'rows')},
+                         data['quote_options']['economy']['no_tag'])
+        for invalid in (None, 'NaN', True, '0', '10001'):
+            service.snapshot.return_value['fee_rates']['medium'] = invalid
+            data = client.get('/api/market').json
+            self.assertIsNone(data['quote_options']['medium'])
+            self.assertIsNotNone(data['quote_options']['economy'])
+            self.assertIsNotNone(data['quote_options']['fast'])
+
     def test_market_endpoint_integrates_exact_quotes_and_only_public_fields(self):
         service = Mock()
         service.snapshot.return_value = {

@@ -219,6 +219,150 @@ await tick();
 assert.equal(requests.length,1,'No external requests or automatic polling');
 ''', page="market")
 
+    def test_fee_and_tag_choices_update_table_and_both_custom_modes_without_fetch(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from pricing import quote_table
+        options = {speed: {variant: quote_table("12345678901.12345678", "98765.4321", fee, include_tag=tag)
+                           for variant, tag in (("no_tag", False), ("with_tag", True))}
+                   for speed, fee in (("economy", "1.1"), ("medium", "2.125"), ("fast", "3.25"))}
+        self.run_script("const choices=" + json.dumps(options) + r''';
+const payload=Object.assign(marketFixture(),choices.economy.no_tag,{quote_options:choices});
+handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
+assert.equal(ids['quote-speed'].value,'economy');
+assert.equal(ids['quote-tag'].checked,false);
+for (const speed of ['economy','medium','fast']) {
+  for(const variant of ['no_tag','with_tag']) {
+    const table=choices[speed][variant];
+    ids['quote-speed'].value=speed; await ids['quote-speed'].emit('change');
+    assert.equal(ids['quote-result'].hidden,true);
+    ids['quote-tag'].checked=variant==='with_tag'; await ids['quote-tag'].emit('change');
+    assert.equal(ids['quote-result'].hidden,true);
+    assert.equal(ids['quote-tag-cost'].textContent.replaceAll(',',''),String(table.costs.tag_sats));
+    assert.equal(ids['network-fee-rate'].textContent,table.assumptions.network_fee_rate);
+    assert.equal(ids['quote-rows'].children.length,table.rows.length);
+    for(const [index,row] of table.rows.entries()) {
+      const displayed=all(ids['quote-rows'].children[index]).map(n=>n.textContent.replaceAll(',',''));
+      assert.ok(displayed.includes(String(row.total_toman)));
+      assert.ok(displayed.includes(String(row.tag_sats)));
+      ids['quote-mode'].value=row.budget_toman===null?'principal_sats':'budget_toman';
+      await ids['quote-mode'].emit('change');
+      await edit('quote-amount',String(row.budget_toman??row.principal_sats));
+      await ids['quote-form'].emit('submit');
+      assert.equal(ids['quote-result'].hidden,false,JSON.stringify({speed,variant,row}));
+      for(const [key,field] of Object.entries({principal_sats:'principal',network_sats:'network',print_sats:'print',tag_sats:'tag-cost-result',operator_sats:'operator',total_toman:'total-toman',total_sats:'total-sats',total_rial:'total-rial'})) {
+        assert.equal(ids['quote-'+field].textContent.replaceAll(',',''),String(row[key]),speed+variant+key);
+      }
+    }
+  }
+}
+assert.equal(requests.length,1);
+assert.equal(requests[0].url,'/api/market');
+assert.equal(requests[0].options.body,undefined);
+''', page="market")
+
+    def test_selected_tag_budget_boundaries_match_independent_fraction_inverse(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from pricing import quote_table
+        maximum = 2100000000000000
+        cases = []
+        ceiling = lambda x: -(-x.numerator // x.denominator)
+        for btc, usdt, fee in [('12345678901.12345678', '98765.4321', '2.125'),
+                               ('0.000000000000000001', '0.000000000000000001', '0.000000000000000001')]:
+            sat = Fraction(btc) * Fraction(201, 200) / 100000000
+            network = ceiling(Fraction(fee) * 141)
+            printing = ceiling(Fraction(15, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
+            tag = ceiling(Fraction(12, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
+            minimum = ceiling(ceiling(Fraction(23, 20) * (500 + network + printing + tag)) * sat)
+            options = {variant: quote_table(btc, usdt, fee, include_tag=enabled)
+                       for variant, enabled in [('no_tag', False), ('with_tag', True)]}
+            for budget in (minimum - 1, minimum, minimum + 1, minimum + 100001, 10**32 - 1):
+                principal = min(maximum, 20 * (Fraction(budget) // sat) // 23 - network - printing - tag)
+                total = ceiling(ceiling(Fraction(23, 20) * (principal + network + printing + tag)) * sat)
+                cases.append({'options': options, 'budget': str(budget), 'principal': str(principal),
+                              'total': str(total), 'remainder': str(budget - total), 'tag': str(tag)})
+        self.run_script('const cases=' + json.dumps(cases) + r''';
+for(const test of cases) {
+  const payload=Object.assign(marketFixture(),test.options.no_tag,{quote_options:{economy:test.options,medium:null,fast:null}});
+  handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
+  ids['quote-tag'].checked=true; await ids['quote-tag'].emit('change');
+  ids['quote-mode'].value='budget_toman'; await ids['quote-mode'].emit('change');
+  await edit('quote-amount',test.budget); await ids['quote-form'].emit('submit');
+  if(BigInt(test.principal)<500n) {
+    assert.equal(ids['quote-result'].hidden,true);
+    assert.equal(ids['quote-status'].dataset.state,'error');
+  } else {
+    assert.equal(ids['quote-result'].hidden,false);
+    for(const [field,value] of Object.entries({principal:test.principal,'total-toman':test.total,remainder:test.remainder,'tag-cost-result':test.tag}))
+      assert.equal(ids['quote-'+field].textContent.replaceAll(',',''),value,field+test.budget);
+  }
+}
+assert.equal(requests.length,cases.length);
+''', page='market')
+
+    def test_invalid_or_missing_priority_is_disabled_without_fabrication(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from pricing import quote_table
+        options = {speed: {variant: quote_table('10000000000', '100000', fee, include_tag=tag)
+                           for variant, tag in (('no_tag', False), ('with_tag', True))}
+                   for speed, fee in (('economy', '1'), ('medium', '2'), ('fast', '3'))}
+        self.run_script('const choices=' + json.dumps(options) + r''';
+for (const damage of [
+  x=>x.medium=null,
+  x=>delete x.medium,
+  x=>x.medium.with_tag.costs.tag_sats=-1,
+  x=>delete x.medium.no_tag.rows[0].tag_sats,
+  x=>x.medium.with_tag.assumptions.include_tag=false,
+  x=>x.medium.with_tag.rates.satoshi_toman='200',
+  x=>x.medium.with_tag.assumptions.network_fee_rate='10001',
+  x=>x.medium.with_tag.rows[0].tag_sats+=1
+]) {
+  const options=structuredClone(choices); damage(options);
+  const payload=Object.assign(marketFixture(),options.economy.no_tag,{quote_options:options,status:'stale'});
+  handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
+  assert.equal(ids['quote-calculate'].disabled,false);
+  assert.equal(ids['quote-speed-medium'].disabled,true,'Invalid choice must be disabled');
+  assert.equal(ids['quote-speed-fast'].disabled,false);
+  assert.equal(ids['quote-tag'].disabled,false);
+  assert.match(ids['quote-options-status'].textContent,/غیرفعال/);
+  ids['quote-tag'].checked=true; await ids['quote-tag'].emit('change');
+  await edit('quote-amount','3000'); await ids['quote-form'].emit('submit');
+  assert.equal(ids['quote-result'].hidden,false);
+  assert.match(ids['quote-result-warning'].textContent,/قدیمی/);
+  ids['quote-speed'].value='medium'; await ids['quote-speed'].emit('change');
+  assert.equal(ids['quote-result'].hidden,true);
+  assert.equal(ids['quote-tag-cost-result'].textContent,'');
+  assert.equal(ids['quote-calculate'].disabled,true);
+  assert.equal(ids['quote-rows'].children.length,0);
+  await ids['quote-form'].emit('submit');
+  assert.equal(ids['quote-result'].hidden,true);
+  ids['quote-speed'].value='fast'; await ids['quote-speed'].emit('change');
+  assert.equal(ids['quote-calculate'].disabled,false);
+  assert.equal(ids['market-stale'].hidden,false);
+}
+assert.equal(requests.length,8,'One fetch per independent page load');
+''', page='market')
+
+    def test_option_controls_are_labeled_local_and_default_to_no_tag(self):
+        source = self.render("costs.html")
+        document = Document(source)
+        for field_id in ("quote-speed", "quote-tag"):
+            field = document.by_id(field_id)
+            self.assertNotIn("name", field)
+            self.assertIn("disabled", field)
+            self.assertIn(("label", {"for": field_id}), document.elements)
+            for hint in field["aria-describedby"].split():
+                self.assertTrue(document.by_id(hint))
+        self.assertNotIn("checked", document.by_id("quote-tag"))
+        self.assertEqual(document.by_id("quote-tag")["type"], "checkbox")
+        self.assertIn("selected", document.by_id("quote-speed-economy"))
+        for phrase in ("۰٫۱۲", "برچسب", "متوسط", "سریع", "تضمین"):
+            self.assertIn(phrase, source)
+        for field in ("quote-tag-cost", "quote-tag-cost-result"):
+            self.assertEqual(document.by_id(field)["dir"], "ltr")
+
     def test_custom_principal_calculation_is_explicit_exact_and_local(self):
         self.run_script(r'''
 handler=async()=>({ok:true,json:async()=>marketFixture()});
@@ -710,7 +854,7 @@ class Element {
   async emit(name) { await Promise.all((this.listeners[name] || []).map(handler=>handler({preventDefault(){}}))); }
 }
 const names = process.argv[2] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status','gross-valuation','gross-status','gross-result','gross-toman','gross-raw-price','gross-fetched-at','gross-stale'] :
-  process.argv[2] === 'market' ? ['market-panel','market-status','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-print','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
+  process.argv[2] === 'market' ? ['market-panel','market-status','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-print','quote-tag-cost-result','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
 const ids=Object.fromEntries(names.map(name=>[name,new Element()]));
 if(ids['gross-result']) ids['gross-result'].hidden=true;
 if(ids['gross-stale']) ids['gross-stale'].hidden=true;
@@ -739,6 +883,8 @@ const load=()=>{
   for(const name of names) ids[name]=new Element();
   for(const name of ['gross-result','gross-stale','quote-result','market-data','market-stale']) if(ids[name]) ids[name].hidden=true;
   if(ids['quote-mode']) ids['quote-mode'].value='principal_sats';
+  if(ids['quote-speed']) ids['quote-speed'].value='economy';
+  if(ids['quote-tag']) ids['quote-tag'].checked=false;
   if(ids['quote-calculate']) ids['quote-calculate'].disabled=true;
   vm.runInThisContext(fs.readFileSync(process.argv[1],'utf8'));
 };

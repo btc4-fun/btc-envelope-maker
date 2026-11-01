@@ -14,14 +14,18 @@
 
     print_sats = ceil(0.15 × adjusted_usdt_toman / satoshi_toman)
 
-پیشنهاد کم‌اولویت شبکه در اندازهٔ برآوردی صد‌وچهل‌ویک بایت مجازی ضرب و رو به بالا گرد می‌شود. این یک فرض محافظه‌کارانه برای یک ورودی و دو خروجی سگویت بومی است، نه اندازهٔ همهٔ تراکنش‌ها. تجمیع ورودی، تغییر نوع خروجی یا روش دسته‌ای هزینه را عوض می‌کند.
+برچسب ان‌اف‌سی اختیاری است و پیش‌فرض انتخاب نشده است. هزینهٔ آن دوازده سنت است و با همان فرض هر تتر برابر یک دلار به ساتوشی تبدیل می‌شود. هزینهٔ چاپ پانزده سنت باقی می‌ماند و جدا حساب می‌شود. بدون برچسب، سهم برچسب صریحاً صفر است:
 
-    network_sats = ceil(economy_fee_sat_per_vbyte × 141)
+    tag_sats = ceil(0.12 × adjusted_usdt_toman / satoshi_toman) if include_tag else 0
 
-کارمزد گرداننده، پانزده درصد مجموع مبلغ اصلی و هزینهٔ ساخت و شبکه است:
+پیشنهاد انتخاب‌شدهٔ شبکه در اندازهٔ برآوردی صد‌وچهل‌ویک بایت مجازی ضرب و رو به بالا گرد می‌شود. این یک فرض محافظه‌کارانه برای یک ورودی و دو خروجی سگویت بومی است، نه اندازهٔ همهٔ تراکنش‌ها. تجمیع ورودی، تغییر نوع خروجی یا روش دسته‌ای هزینه را عوض می‌کند.
 
-    operator_sats = ceil(0.15 × (principal_sats + print_sats + network_sats))
-    total_sats = principal_sats + print_sats + network_sats + operator_sats
+    network_sats = ceil(selected_fee_sat_per_vbyte × 141)
+
+طبق قاعدهٔ تأییدشدهٔ قیمت‌گذاری، هزینهٔ برچسب هم مانند چاپ و شبکه مشمول کارمزد گرداننده است. کارمزد گرداننده، پانزده درصد مجموع مبلغ اصلی و هزینهٔ چاپ، برچسب و شبکه است:
+
+    operator_sats = ceil(0.15 × (principal_sats + print_sats + tag_sats + network_sats))
+    total_sats = principal_sats + print_sats + tag_sats + network_sats + operator_sats
     total_toman = ceil(total_sats × satoshi_toman)
     total_rial = total_toman × 10
 
@@ -39,8 +43,37 @@
 
 توابع محاسبهٔ سمت پایتون برای اصل دلخواه و بودجه:
 
-    quote_for_principal(btc_toman, usdt_toman, fee_rate, principal_sats)
-    quote_for_budget(btc_toman, usdt_toman, fee_rate, budget_toman)
+    quote_for_principal(btc_toman, usdt_toman, fee_rate, principal_sats, *, include_tag=False)
+    quote_for_budget(btc_toman, usdt_toman, fee_rate, budget_toman, *, include_tag=False)
+
+## انتخاب‌ها و قرارداد پاسخ عمومی
+
+کارمزد اقتصادی همچنان پیش‌فرض است؛ متوسط و سریع به‌ترتیب از پیشنهاد نیم‌ساعته و سریع‌ترین پیشنهاد منبع گرفته می‌شوند. نام‌ها تخمین اولویت‌اند، نه تضمین زمان تأیید. پیشنهاد یک‌ساعته و حداقل شبکه جایگزین نرخ گمشده نمی‌شوند:
+
+    economy = economyFee
+    medium = halfHourFee
+    fast = fastestFee
+
+همان درخواست بازار، جدول کامل هر انتخاب را برمی‌گرداند. کلیدهای قدیمی پاسخ همچنان جدول اقتصادی بدون برچسب‌اند و قیمت‌های قبلی عوض نمی‌شوند. هزینهٔ برچسب به اجزای ثابت و هر ردیف افزوده شده و بدون انتخاب، صفر است. نرخ اقتصادی قدیمی در سرویس بازار حفظ می‌شود:
+
+    fee_rate
+    fee_rates = {economy, medium, fast}
+    quote_options = {
+        economy: {no_tag: quote_table(...), with_tag: quote_table(...)},
+        medium: {no_tag: quote_table(...), with_tag: quote_table(...)},
+        fast: {no_tag: quote_table(...), with_tag: quote_table(...)}
+    }
+    costs.tag_sats
+    rows[].tag_sats
+    assumptions.tag_usd = "0.12"
+    assumptions.include_tag = false | true
+
+اگر نرخ متوسط یا سریع گم‌شده یا نامعتبر باشد، فقط همان گزینه ناموجود و در صفحه غیرفعال می‌شود. نرخ دیگری برای آن فرض نمی‌شود. خراب بودن قیمت پایه یا نرخ اقتصادی، کل برآورد را ناموجود می‌کند. مرورگر عددهای صحیح ناامن را رد می‌کند؛ در این حالت هم قیمت ساختگی نشان داده نمی‌شود. پاسخ قدیمی بدون انتخاب‌ها فقط برای حالت اقتصادی بدون برچسب قابل استفاده است.
+
+    quote_options.medium = null
+    quote_options.fast = null
+
+انتخاب کارمزد و برچسب، هم جدول و هم محاسبه‌گر دلخواه را عوض می‌کند. با هر تغییر، نتیجهٔ قبلی پاک می‌شود؛ برای نتیجهٔ دلخواه باید دوباره دکمهٔ محاسبه را زد. تغییر انتخاب، درخواست تازه‌ای نمی‌فرستد و مقدار، بودجه و انتخاب‌ها به سرور ارسال نمی‌شوند. هشدار قدیمی بودن و زمان دریافت برای همهٔ انتخاب‌ها مشترک است.
 
 ## ارزش خام موجودی در تبدیل‌گر
 
@@ -63,11 +96,13 @@ https://swapwallet.app/api/v1/market/prices
     BTC/IRT
     USDT/IRT
 
-منبع عمومی پیشنهاد کارمزد و فیلد کم‌اولویت:
+منبع عمومی پیشنهادهای کارمزد:
 
 https://mempool.space/api/v1/fees/recommended
 
     economyFee
+    halfHourFee
+    fastestFee
 
 در بازبینی کد بلووالت، پیشنهاد کارمزد به برآورد الکتروم سپرده می‌شود؛ برآورد شامل هیستوگرام و هدف بلوک است. بنابراین نرخ این پروژه، «همان نرخ بلووالت» معرفی نمی‌شود. نسخهٔ بررسی‌شده:
 

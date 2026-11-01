@@ -154,15 +154,20 @@
   const quoteStatus = document.getElementById("quote-status");
   const result = document.getElementById("quote-result");
   let snapshot = null;
+  let catalog = null;
+  let marketSnapshot = null;
+  const speed = document.getElementById("quote-speed");
+  const tag = document.getElementById("quote-tag");
 
   function quote(principal) {
     const network = BigInt(snapshot.costs.network_sats);
     const print = BigInt(snapshot.costs.print_sats);
-    const operator = ceilDivide((principal + network + print) * 15n, 100n);
-    const total = principal + network + print + operator;
+    const tagCost = BigInt(snapshot.costs.tag_sats ?? 0);
+    const operator = ceilDivide((principal + network + print + tagCost) * 15n, 100n);
+    const total = principal + network + print + tagCost + operator;
     const rate = rational(snapshot.rates.satoshi_toman);
     const toman = ceilDivide(total * rate.numerator, rate.denominator);
-    return { principal, network, print, operator, "total-sats": total,
+    return { principal, network, print, "tag-cost-result": tagCost, operator, "total-sats": total,
       "total-toman": toman, "total-rial": toman * 10n };
   }
 
@@ -218,7 +223,7 @@
 
   function clearResult() {
     result.hidden = true;
-    for (const name of ["principal", "btc", "network", "print", "operator", "total-sats", "total-toman",
+    for (const name of ["principal", "btc", "network", "print", "tag-cost-result", "operator", "total-sats", "total-toman",
       "total-rial", "budget", "remainder", "result-warning", "result-fetched-at"]) {
       document.getElementById("quote-" + name).textContent = "";
     }
@@ -241,6 +246,30 @@
   amount.addEventListener("input", invalidate);
   mode.addEventListener("change", invalidate);
 
+  function selectQuote() {
+    clearResult();
+    const selected = catalog?.[speed.value]?.[tag.checked ? "with_tag" : "no_tag"];
+    if (!selected) {
+      snapshot = null;
+      calculate.disabled = true;
+      data.hidden = true;
+      rows.replaceChildren();
+      document.getElementById("quote-tag-cost").textContent = "";
+      quoteStatus.dataset.state = "error";
+      quoteStatus.textContent = "نرخ این انتخاب در دسترس نیست؛ انتخاب دیگری را امتحان کنید.";
+      return;
+    }
+    snapshot = { ...marketSnapshot, ...selected };
+    calculate.disabled = false;
+    data.hidden = false;
+    document.getElementById("network-fee-rate").textContent = decimal(snapshot.assumptions.network_fee_rate);
+    document.getElementById("quote-tag-cost").textContent = grouped(snapshot.costs.tag_sats ?? 0);
+    rows.replaceChildren(...snapshot.rows.map(quoteRow));
+    invalidate();
+  }
+  speed.addEventListener("change", selectQuote);
+  tag.addEventListener("change", selectQuote);
+
   function validMarket(market) {
     if (!validSnapshot(market) ||
         !market.rates || ![market.rates.btc_toman, market.rates.usdt_toman, market.rates.satoshi_toman].every(positiveDecimal) ||
@@ -249,22 +278,56 @@
         market.assumptions?.print_usd !== "0.15" || market.assumptions?.transaction_vbytes !== 141 ||
         !positiveDecimal(market.assumptions?.network_fee_rate) ||
         !integer(market.costs?.network_sats) || !integer(market.costs?.print_sats) ||
+        !integer(market.costs?.tag_sats ?? 0) ||
         !Array.isArray(market.rows) || market.rows.length < 1 || market.rows.length > 21) return false;
     return market.rows.every((row, index) => {
-      if (!row || ![row.principal_sats, row.network_sats, row.print_sats, row.operator_sats,
+      if (!row || ![row.principal_sats, row.network_sats, row.print_sats, row.tag_sats ?? 0, row.operator_sats,
           row.total_sats, row.total_toman, row.total_rial, row.remainder_toman].every(integer) ||
           row.principal_sats < 500 || row.principal_sats > 2100000000000000 || row.total_toman === 0 ||
           typeof row.btc !== "string" || !/^(?:0|[1-9][0-9]{0,7})\.[0-9]{8}$/.test(row.btc) ||
-          row.network_sats !== market.costs.network_sats || row.print_sats !== market.costs.print_sats) return false;
+          row.network_sats !== market.costs.network_sats || row.print_sats !== market.costs.print_sats ||
+          (row.tag_sats ?? 0) !== (market.costs.tag_sats ?? 0)) return false;
       const [whole, fraction] = row.btc.split(".");
       if (BigInt(whole) * 100000000n + BigInt(fraction) !== BigInt(row.principal_sats) ||
-          BigInt(row.principal_sats) + BigInt(row.network_sats) + BigInt(row.print_sats) + BigInt(row.operator_sats) !== BigInt(row.total_sats) ||
+          BigInt(row.principal_sats) + BigInt(row.network_sats) + BigInt(row.print_sats) + BigInt(row.tag_sats ?? 0) + BigInt(row.operator_sats) !== BigInt(row.total_sats) ||
           BigInt(row.total_toman) * 10n !== BigInt(row.total_rial)) return false;
       if (index === 0) return row.principal_sats === 500 && row.budget_toman === null && row.remainder_toman === 0;
       return integer(row.budget_toman) && row.budget_toman >= 100000 && row.budget_toman <= 2000000 &&
         BigInt(row.budget_toman) % 100000n === 0n && row.total_toman <= row.budget_toman &&
         BigInt(row.remainder_toman) === BigInt(row.budget_toman) - BigInt(row.total_toman) &&
         (index === 1 || row.budget_toman > market.rows[index - 1].budget_toman);
+    });
+  }
+
+  function validChoice(market, choice, withTag) {
+    if (!choice || choice.assumptions?.tag_usd !== "0.12" ||
+        choice.assumptions?.include_tag !== withTag ||
+        !integer(choice.costs?.tag_sats) ||
+        !validMarket({ ...market, ...choice }) ||
+        !["btc_toman", "usdt_toman", "satoshi_toman"].every(key => choice.rates[key] === market.rates[key]) ||
+        !/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,18})?$/.test(choice.assumptions.network_fee_rate)) return false;
+    const fee = rational(choice.assumptions.network_fee_rate);
+    if (fee.numerator > 10000n * fee.denominator) return false;
+    const sat = rational(choice.rates.satoshi_toman);
+    const usdt = rational(choice.rates.usdt_toman);
+    const dollarCost = cents => ceilDivide(cents * usdt.numerator * sat.denominator,
+      100n * usdt.denominator * sat.numerator);
+    const network = ceilDivide(fee.numerator * 141n, fee.denominator);
+    const printing = dollarCost(15n);
+    const tagCost = withTag ? dollarCost(12n) : 0n;
+    if (BigInt(choice.costs.network_sats) !== network || BigInt(choice.costs.print_sats) !== printing ||
+        BigInt(choice.costs.tag_sats) !== tagCost) return false;
+    const cost = principal => {
+      const subtotal = principal + network + printing + tagCost;
+      return ceilDivide(ceilDivide(subtotal * 115n, 100n) * sat.numerator, sat.denominator);
+    };
+    return choice.rows.every(row => {
+      if (!integer(row.tag_sats)) return false;
+      const principal = BigInt(row.principal_sats);
+      const subtotal = principal + network + printing + tagCost;
+      return BigInt(row.operator_sats) === ceilDivide(subtotal * 15n, 100n) &&
+        BigInt(row.total_toman) === cost(principal) &&
+        (row.budget_toman === null || principal === maximum || cost(principal + 1n) > BigInt(row.budget_toman));
     });
   }
 
@@ -289,7 +352,8 @@
     const breakdown = element("dl");
     for (const [label, value] of [
       ["اصل مبلغ؛ ساتوشی", row.principal_sats], ["شبکه؛ ساتوشی", row.network_sats],
-      ["چاپ؛ ساتوشی", row.print_sats], ["گرداننده؛ ساتوشی", row.operator_sats],
+      ["چاپ؛ ساتوشی", row.print_sats], ["برچسب؛ ساتوشی", row.tag_sats ?? 0],
+      ["گرداننده؛ ساتوشی", row.operator_sats],
       ["جمع؛ ساتوشی", row.total_sats], ["معادل ریال", row.total_rial],
       ...(row.budget_toman === null ? [] : [["بودجه؛ تومان", row.budget_toman], ["باقی‌مانده؛ تومان", row.remainder_toman]])
     ]) {
@@ -315,8 +379,27 @@
     try {
       const market = await fetchMarket();
       if (!validMarket(market)) throw new Error("Unexpected market data");
-      snapshot = market;
-      calculate.disabled = false;
+      marketSnapshot = market;
+      catalog = {};
+      for (const name of ["economy", "medium", "fast"]) {
+        const choices = market.quote_options?.[name];
+        if (choices && ["no_tag", "with_tag"].every(variant =>
+          validChoice(market, choices[variant], variant === "with_tag"))) catalog[name] = choices;
+        document.getElementById("quote-speed-" + name).disabled = !catalog[name];
+      }
+      // Older snapshots remain usable, but cannot invent tag or priority costs.
+      if (market.quote_options === undefined) catalog.economy = { no_tag: market };
+      if (!catalog.economy) throw new Error("Economy options unavailable");
+      document.getElementById("quote-speed-economy").disabled = false;
+      speed.value = "economy";
+      tag.checked = false;
+      speed.disabled = false;
+      tag.disabled = !catalog.economy.with_tag;
+      document.getElementById("quote-options-status").textContent =
+        ["medium", "fast"].some(name => !catalog[name])
+          ? "بعضی گزینه‌ها نرخ معتبر ندارند و غیرفعال‌اند؛ نرخ جایگزین فرض نشده است."
+          : "هر انتخاب روی جدول و محاسبه‌گر اثر دارد؛ زمان تأیید تضمین نمی‌شود.";
+      selectQuote();
       quoteStatus.dataset.state = market.status === "stale" ? "stale" : "ready";
       quoteStatus.textContent = market.status === "stale"
         ? "فقط نرخ قدیمی ذخیره‌شده آماده است؛ محاسبه برآورد قدیمی می‌دهد."
@@ -325,14 +408,16 @@
       document.getElementById("btc-price").textContent = decimal(market.rates.btc_toman);
       document.getElementById("usdt-price").textContent = decimal(market.rates.usdt_toman);
       document.getElementById("sat-price").textContent = decimal(market.rates.satoshi_toman);
-      document.getElementById("network-fee-rate").textContent = decimal(market.assumptions.network_fee_rate);
-      rows.replaceChildren(...market.rows.map(quoteRow));
+
       stale.hidden = market.status !== "stale";
       data.hidden = false;
       status.textContent = market.status === "stale" ? "نرخ قدیمی ذخیره‌شده نمایش داده می‌شود؛ پیش از پرداخت قیمت تازه را بررسی کنید." : "برآورد با آخرین دادهٔ دریافت‌شده آماده است؛ نرخ نهایی و زمان تأیید تضمین نمی‌شود.";
       status.dataset.state = market.status === "stale" ? "stale" : "success";
     } catch {
       snapshot = null;
+      catalog = null;
+      speed.disabled = true;
+      tag.disabled = true;
       calculate.disabled = true;
       clearResult();
       quoteStatus.dataset.state = "error";

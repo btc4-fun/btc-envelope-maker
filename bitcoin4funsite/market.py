@@ -90,6 +90,16 @@ class MarketService:
                         },
                         'fee_rate': _positive_decimal(fees['economyFee'], Decimal('10000')),
                     }
+                    result['fee_rates'] = {'economy': result['fee_rate']}
+                    for name, field in (('medium', 'halfHourFee'), ('fast', 'fastestFee')):
+                        try:
+                            rate = _positive_decimal(fees[field], Decimal('10000'))
+                            if len(rate.partition('.')[2]) > 18:
+                                raise MarketUnavailable('Invalid fee precision')
+                            result['fee_rates'][name] = rate
+                        except (KeyError, MarketUnavailable):
+                            # Never substitute a different priority's recommendation.
+                            result['fee_rates'][name] = None
                     self._cached = result
                     self._fetched = now
                     self._next_refresh = now + 60
