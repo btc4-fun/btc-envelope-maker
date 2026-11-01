@@ -212,9 +212,12 @@ out `btc4-fun/btc-wallet-generator`, never the website checkout or image. They
 remain separately authorized owner operations; no migration or database access
 is implied by this split. Historical deployment/image source paths elsewhere in
 this document remain evidence of their recorded revision, not the new layout.
-The split has not been deployed; the recorded live cost-options image remains
-`baa24af58ec59f1ae8f50d2d3c5067474959f5d86e8d8700d7ea4ee5df701f52`.
-A future deployment requires separate authorization and fresh image verification.
+The split and address-to-serial endpoint were subsequently deployed; see
+`../docs/generator-split-and-address-deployment.fa.md`. The freshly inspected
+pre-download-release image is
+`8d2ca480123ace3769488ae5339dbd182e8af10f6d5e5aa837e394ec292da115`.
+The authorized download-template update is described in
+`../docs/download-release.fa.md`; its activation evidence must be read separately.
 
 ## Serial lookup admission and guide images
 
