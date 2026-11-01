@@ -110,18 +110,8 @@ for (const serial of ['admin', 'login', 'TEST-DO-NOT-FUND', '0587k45300\n']) {
         self.assertNotIn('lookup_limiter', app.extensions)
 
     def test_generated_serial_modes_prefixes_and_suffix_widths_keep_all_aliases(self):
-        # Execute the actual pure encoder definitions without importing key generation.
-        import ast
-        import datetime as dt
-        source = (ROOT.parent / 'btc_envelope_maker' / 'btc_envelope_maker.py').read_text()
-        names = {'gregorian_to_jalali', 'enc1', 'enc_hour', 'enc_ms', 'to_b36', 'serial_stem'}
-        tree = ast.parse(source)
-        nodes = [node for node in tree.body if
-                 isinstance(node, ast.FunctionDef) and node.name in names or
-                 isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and
-                     target.id in {'_ALPHA', '_B36', '_B60'} for target in node.targets)]
-        encoder = {'dt': dt}
-        exec(compile(ast.Module(body=nodes, type_ignores=[]), '<generator-serial-helpers>', 'exec'), encoder)
+        import json
+        contract = json.loads((ROOT / 'tests/fixtures/public_contract.json').read_text())
         module = load_app()
         limiter = Mock()
         limiter.admit.return_value = 0
@@ -129,14 +119,12 @@ for (const serial of ['admin', 'login', 'TEST-DO-NOT-FUND', '0587k45300\n']) {
                       'address': 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'})
         client = module.create_app({'TESTING': True, 'WALLET_LOOKUP': lookup,
                                    'LOOKUP_LIMITER': limiter}).test_client()
-        for mode in ('digits', 'compact'):
-            for moment in (dt.datetime(2026, 3, 21), dt.datetime(2026, 10, 30, 23, 59, 59)):
-                stem, _ = encoder['serial_stem'](moment, mode)
-                for prefix in ('', 'TEST-', 'a_9-Z-', '123'):
-                    for width, index in ((1, 35), (2, 1295), (3, 1296), (4, 46656)):
-                        serial = prefix + stem + encoder['to_b36'](index, width)
-                        for path, _ in aliases(serial):
-                            with self.subTest(serial=serial, path=path):
-                                response = client.get(path)
-                                self.assertEqual(response.status_code, 200)
-                                lookup.assert_called_with(serial)
+        for stem in contract['serial_stems']:
+            for prefix in contract['prefixes']:
+                for suffix in contract['suffixes']:
+                    serial = prefix + stem['expected'] + suffix['expected']
+                    for path, _ in aliases(serial):
+                        with self.subTest(serial=serial, path=path):
+                            response = client.get(path)
+                            self.assertEqual(response.status_code, 200)
+                            lookup.assert_called_with(serial)

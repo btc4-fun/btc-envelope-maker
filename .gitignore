@@ -1,3 +1,7 @@
+# Extracted generator retained locally; never re-add to the website index
+/btc_envelope_maker/
+/bitcoin4funsite/tests/test_wallet_metadata_schema.py
+
 # Local operator notes and credentials
 /todo
 /todo.txt

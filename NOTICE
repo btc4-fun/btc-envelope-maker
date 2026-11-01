@@ -13,7 +13,10 @@ are unaffected. Third-party components retain their own licenses:
 
 - bitcoin4funsite/static/fonts/: Sahel v3.4.0 by Saber Rastikerdar,
   SIL Open Font License 1.1, with upstream Open Sans notice; see local LICENSE.
-- btc_envelope_maker/fonts/: Vazir Code Hack; see local LICENSE.
+- bitcoin4funsite/address_validation.py: Pieter Wuille reference checksum
+  functions, MIT; see the embedded notice and docs/address-validator-provenance.md.
+- Offline generator and its Vazir Code Hack font now have a separate owner:
+  https://github.com/btc4-fun/btc-wallet-generator
 - Python dependencies: their respective upstream licenses.
 
 Commercial permission for this project does not relicense third-party fonts

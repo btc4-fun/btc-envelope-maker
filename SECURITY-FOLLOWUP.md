@@ -1,5 +1,9 @@
 # Generator and lookup security follow-up
 
+> Historical pre-split report: generator implementation and executable tests now
+> belong to https://github.com/btc4-fun/btc-wallet-generator. Paths and commands
+> below describe the earlier combined snapshot, not the current website tree.
+
 ## Disposition and regression evidence
 
 1. Generator coverage: the internal official BIP84 self-test already existed;

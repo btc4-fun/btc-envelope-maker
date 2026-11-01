@@ -1,7 +1,12 @@
 # Repository ownership and current workspace
 
-- Website/backend/offline wallet generator: btc4-fun/btc-envelope-maker,
+- Website/backend: btc4-fun/btc-envelope-maker,
   /home/saeb/PycharmProjects/btc_envelope_maker.
+- Offline wallet generator: btc4-fun/btc-wallet-generator,
+  /home/saeb/PycharmProjects/btc_wallet_generator.
+  Exported from an explicit 26-file committed allowlist; no private working files.
+  Original local generator files and dirty legacy requirements are retained,
+  ignored and excluded from website publication. See generator source provenance.
 - Customer Android app (display name: btc4fun):
   btc4-fun/btc-tag-checker, /home/saeb/PycharmProjects/btc_tag_checker.
 - Seller Android app: btc4-fun/btc-tag-mapper,
@@ -17,8 +22,11 @@ is authoritative. This archive is retained, not deleted:
 
 The earlier website divergence was resolved without rewriting history. Fresh
 remote reads found local and remote main equal at 6de0399 before the Android
-version-one release work. The running website remains the plain-language image
-recorded in plain-language-release.md; Android publication does not deploy it.
+version-one release work. The plain-language deployment report is historical. The latest cost-options
+deployment evidence is docs/cost-options-deployment.fa.md (relative to the
+repository root). The running website image recorded for this split is
+`baa24af58ec59f1ae8f50d2d3c5067474959f5d86e8d8700d7ea4ee5df701f52`.
+Repository splitting or Android publication does not deploy a new image.
 
 The user explicitly transferred the seller's existing workflow/build/scanner
 changes into the version-one release scope. Review and test them before staging;

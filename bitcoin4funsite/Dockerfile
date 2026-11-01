@@ -6,7 +6,6 @@ COPY bitcoin4funsite/requirements.txt ./
 RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 COPY bitcoin4funsite/app.py bitcoin4funsite/market.py bitcoin4funsite/pricing.py bitcoin4funsite/contact.py bitcoin4funsite/bounded_http.py bitcoin4funsite/lookup_limit.py bitcoin4funsite/address_validation.py ./
 COPY bitcoin4funsite/tag_access.py bitcoin4funsite/chain_activity.py ./
-COPY btc_envelope_maker/address_validation.py ./btc_envelope_maker/
 COPY bitcoin4funsite/templates/ ./templates/
 COPY bitcoin4funsite/static/ ./static/
 USER 1000:1000

@@ -1,6 +1,0 @@
-# Optional test tools; install alongside requirements-runtime.txt.
--c requirements-runtime.txt
-pytest==8.4.2
-ecdsa==0.19.2
-# Independent oracle for the dependency-free address validator.
-bech32==1.2.0

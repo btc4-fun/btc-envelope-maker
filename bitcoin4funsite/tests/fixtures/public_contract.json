@@ -1,0 +1,91 @@
+{
+  "contract_version": 1,
+  "warning": "PUBLIC TEST VECTORS: DO NOT FUND",
+  "serial_stems": [
+    {
+      "moment": "2026-03-21T00:00:00",
+      "mode": "digits",
+      "expected": "0511z0000"
+    },
+    {
+      "moment": "2026-03-21T00:00:00",
+      "mode": "compact",
+      "expected": "0511z00"
+    },
+    {
+      "moment": "2026-10-30T23:59:59",
+      "mode": "digits",
+      "expected": "0588m5959"
+    },
+    {
+      "moment": "2026-10-30T23:59:59",
+      "mode": "compact",
+      "expected": "0588mXX"
+    }
+  ],
+  "prefixes": [
+    "",
+    "TEST-",
+    "a_9-Z-",
+    "123"
+  ],
+  "suffixes": [
+    {
+      "width": 1,
+      "index": 35,
+      "expected": "z"
+    },
+    {
+      "width": 2,
+      "index": 1295,
+      "expected": "zz"
+    },
+    {
+      "width": 3,
+      "index": 1296,
+      "expected": "100"
+    },
+    {
+      "width": 4,
+      "index": 46656,
+      "expected": "1000"
+    }
+  ],
+  "addresses": [
+    {
+      "value": "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4",
+      "valid": true,
+      "inventory": true
+    },
+    {
+      "value": "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu",
+      "valid": true,
+      "inventory": false
+    },
+    {
+      "value": "bc1qzmtrqsfuaf6l6kkcsseumq26ukaphfj9skkug6",
+      "valid": true,
+      "inventory": false
+    },
+    {
+      "value": "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5",
+      "valid": false,
+      "inventory": false
+    },
+    {
+      "value": "BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4",
+      "valid": false,
+      "inventory": false
+    },
+    {
+      "value": "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7",
+      "valid": false,
+      "inventory": false
+    },
+    {
+      "value": null,
+      "valid": false,
+      "inventory": false
+    }
+  ]
+}

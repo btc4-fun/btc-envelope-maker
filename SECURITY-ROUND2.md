@@ -1,5 +1,9 @@
 # Security round 2: acceptance and release contract
 
+> Historical pre-split report: generator implementation and executable tests now
+> belong to https://github.com/btc4-fun/btc-wallet-generator. Paths and commands
+> below describe the earlier combined snapshot, not the current website tree.
+
 This record closes the four local remediation reports against the final source
 reviewed before publication. It does not claim production deployment by itself.
 Operational image/commit/CI and rollback evidence is recorded separately by the

@@ -28,7 +28,11 @@ SERIAL_PATTERN = (
 SERIAL_RE = re.compile(SERIAL_PATTERN)
 
 
-def database_lookup(serial, *, by_tag=False):
+def database_lookup(serial, *, by_tag=False, by_address=False):
+    if by_tag and by_address:
+        raise ValueError('Ambiguous lookup mode')
+    # Identifiers are fixed here; request values are always bound parameters.
+    column = 'address' if by_address else 'nfc_uid' if by_tag else 'serial'
     password_file = os.environ.get('BTC_DB_PASSWORD_FILE', '/run/secrets/db_password')
     password = Path(password_file).read_text().rstrip('\r\n')
     with psycopg.connect(
@@ -43,7 +47,6 @@ def database_lookup(serial, *, by_tag=False):
     ) as connection:
         connection.read_only = True
         with connection.cursor() as cursor:
-            column = 'nfc_uid' if by_tag else 'serial'
             cursor.execute(f'SELECT serial, address FROM public.wallets WHERE {column} = %s LIMIT 1', (serial,))
             row = cursor.fetchone()
     return {'serial': row[0], 'address': row[1]} if row else None
@@ -59,6 +62,10 @@ def create_app(config=None):
 
     @app.before_request
     def validate_api_serial():
+        if request.path.startswith('/api/addresses/'):
+            address = request.path.removeprefix('/api/addresses/')
+            if request.query_string or not valid_address(address):
+                return jsonify(error='invalid_address'), 400
         # Operator-supplied wallet originals are never public guide assets.
         if (request.endpoint == 'static' and
                 Path(request.view_args.get('filename', '')).name.lower() in {'privatekey.png', 'publickey.png'}):
@@ -301,9 +308,26 @@ def create_app(config=None):
             app.logger.warning('Tag inquiry unavailable')
             return jsonify(error='tag_unavailable'), 503
 
-    def lookup_response(serial, *, qr=False):
-        if SERIAL_RE.fullmatch(serial) is None:
-            return jsonify(error='invalid_serial'), 400
+    @app.get('/api/addresses/<path:address>')
+    def address_serial(address):
+        admission = lookup_admission('address_' + address, qr=False)
+        if admission is not None:
+            return admission
+        try:
+            lookup = app.config.get('ADDRESS_LOOKUP')
+            record = lookup(address) if lookup is not None else database_lookup(address, by_address=True)
+            if record is None:
+                return jsonify(error='not_found'), 404
+            serial = record['serial']
+            if record['address'] != address or SERIAL_RE.fullmatch(serial) is None:
+                raise ValueError('Invalid public wallet')
+            return jsonify(address=address, serial=serial,
+                           lookup_url='https://btc4.fun/s/' + serial)
+        except Exception:
+            app.logger.warning('Public address lookup unavailable')
+            return jsonify(error='unavailable'), 503
+
+    def lookup_admission(serial, *, qr=False):
         try:
             if 'lookup_limiter' not in app.extensions:
                 limiter = app.config.get('LOOKUP_LIMITER')
@@ -319,6 +343,13 @@ def create_app(config=None):
         except Exception:
             app.logger.warning('Public lookup admission unavailable')
             return jsonify(error='unavailable'), 503
+
+    def lookup_response(serial, *, qr=False):
+        if SERIAL_RE.fullmatch(serial) is None:
+            return jsonify(error='invalid_serial'), 400
+        admission = lookup_admission(serial, qr=qr)
+        if admission is not None:
+            return admission
         try:
             record = app.config.get('WALLET_LOOKUP', database_lookup)(serial)
             if record is None:

@@ -68,7 +68,13 @@ Do not send recovery phrases, keys, passwords or confidential wallet images in
 any contact channel. Missing notification configuration must fail closed without
 revealing credentials or falsely claiming successful delivery.
 
-## Generator security follow-up
+## Historical generator security follow-up
+
+Generator implementation, verification and current operating guidance now belong
+to https://github.com/btc4-fun/btc-wallet-generator. The sections below preserve
+pre-split findings; extraction does not resolve them. Website runtime and tests
+no longer import that repository. The website owns a pinned pure validator copy;
+see docs/address-validator-provenance.md.
 
 The follow-up adds public-vector tests, including actual PDF text extraction,
 pixel QR decoding and independent recovery of the printed address. Admission

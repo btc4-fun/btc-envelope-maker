@@ -80,6 +80,8 @@ Pass credentials through a private environment or secret file, not arguments
 or committed config. Importer descriptions omit userinfo/query/fragment and
 driver errors are sanitized; this does not hide secrets passed in process argv.
 
+Run from the standalone generator repository, not the website:
+
 ```sh
 python btc_envelope_maker/btc_db.py import /private/path/ledger.csv
 ```
@@ -117,7 +119,8 @@ client IPs and redacted headers; these are separate from keyed-IP quota state.
 
 `TAG_LOOKUP_ENABLED=1` enables the new `/api/tags/<UID>` endpoint; all other
 environment values leave it disabled. Before enabling: explicitly migrate the
-owner database using `btc_envelope_maker/nfc_bindings.py migrate`, verify the
+owner database using `btc_envelope_maker/nfc_bindings.py migrate` from the
+standalone generator repository, verify the
 nullable unique `nfc_uid` column, grant only SELECT(nfc_uid) in addition to the
 existing public columns, prove private-column/write denial, publish the `/terms`
 tag privacy notice and verify the intended retention settings. Never perform
@@ -188,22 +191,30 @@ that predates a helper or transport fix is historical evidence, not verification
 of the current source. Repeat import/route smoke checks and source-hash parity
 after the final image is recreated.
 
-The canonical dependency-free address validator now lives at
-`btc_envelope_maker/address_validation.py`. The site imports only this module,
-not wallet generation/signing code. Build from the repository root:
+The website owns its dependency-free validator at
+`bitcoin4funsite/address_validation.py`, pinned byte-for-byte to the reviewed
+pre-split source with the embedded MIT notice. See
+[validator provenance](../docs/address-validator-provenance.md). Neither the
+image nor local imports need a generator directory or sibling repository.
+Build from the website repository root:
 
     docker build -f bitcoin4funsite/Dockerfile -t bitcoin4fun:local .
 
 Compose selects that same root context. `bitcoin4funsite/Dockerfile.dockerignore`
-is the build-specific allowlist; preserve it with the Dockerfile. For an offline
-source transfer, retain root-relative paths for the allowlisted website modules,
-requirements, templates and public static files plus only the canonical helper
-from the generator directory. Transfer compose/deployment control files
-separately as needed; never recursively copy the repository, generator directory
-or unfiltered static directory. The old site-directory-only build is incomplete.
-Local app imports outside Docker need the repository root on the Python path.
-An alternate/offline image recipe must copy the helper into
-`/app/btc_envelope_maker/address_validation.py` and retain the site facade.
+is the build-specific allowlist; preserve it with the Dockerfile. An offline
+transfer includes only allowlisted website modules, requirements, templates and
+approved public static files. Copy deployment control files separately. Never
+recursively transfer the workspace, private images, generator or runtime state.
+Alternate image recipes must include `/app/address_validation.py` directly.
+
+Generator import/migration commands in this guide run from a separately checked
+out `btc4-fun/btc-wallet-generator`, never the website checkout or image. They
+remain separately authorized owner operations; no migration or database access
+is implied by this split. Historical deployment/image source paths elsewhere in
+this document remain evidence of their recorded revision, not the new layout.
+The split has not been deployed; the recorded live cost-options image remains
+`baa24af58ec59f1ae8f50d2d3c5067474959f5d86e8d8700d7ea4ee5df701f52`.
+A future deployment requires separate authorization and fresh image verification.
 
 ## Serial lookup admission and guide images
 

@@ -1,3 +1,0 @@
-# Optional PostgreSQL export; SQLite uses the Python standard library.
--c requirements-runtime.txt
-psycopg[binary]==3.3.6

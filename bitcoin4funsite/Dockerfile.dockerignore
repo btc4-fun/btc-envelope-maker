@@ -17,5 +17,3 @@
 !bitcoin4funsite/static/**
 bitcoin4funsite/static/privatekey.png
 bitcoin4funsite/static/publickey.png
-!btc_envelope_maker/
-!btc_envelope_maker/address_validation.py
