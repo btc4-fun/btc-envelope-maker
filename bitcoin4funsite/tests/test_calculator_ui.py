@@ -688,7 +688,7 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source));
         self.assertNotIn("onsubmit", forms[0])
         controls = {attrs["name"]: (tag, attrs) for tag, attrs in document.elements
                     if tag in ("input", "textarea") and "name" in attrs}
-        self.assertEqual(set(controls), {"name", "mobile", "message", "csrf_token", "website"})
+        self.assertEqual(set(controls), {"name", "mobile", "message", "csrf_token", "website", "captcha_answer"})
         for name, expected_tag, limit in (("name", "input", "80"),
                                           ("mobile", "input", "32"),
                                           ("message", "textarea", "2000")):

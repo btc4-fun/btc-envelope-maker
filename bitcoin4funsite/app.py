@@ -156,13 +156,13 @@ def create_app(config=None):
     def contact():
         if request.method == 'POST':
             origin = request.headers.get('Origin')
-            if origin and origin not in {'https://btc4.fun', 'https://go.btc4.fun'}:
+            if origin not in {'https://btc4.fun', 'https://go.btc4.fun'}:
                 abort(403)
             if request.mimetype != 'application/x-www-form-urlencoded':
                 abort(415)
             if any(len(request.form.getlist(key)) != 1 for key in request.form):
                 abort(400)
-            if set(request.form) - {'name', 'mobile', 'message', 'csrf_token', 'website'}:
+            if set(request.form) - {'name', 'mobile', 'message', 'csrf_token', 'website', 'captcha_answer'}:
                 abort(400)
             form = request.form.to_dict()
             if 'message' in form:
@@ -174,6 +174,7 @@ def create_app(config=None):
                 code = getattr(error, 'code', 'unavailable')
                 messages = {
                     'invalid': 'نام، راه تماس و متن پیام را بررسی کنید؛ فقط پرسش عمومی و بدون اطلاعات محرمانه بفرستید.',
+                    'captcha': 'پاسخ جمع درست نیست. فرم را دوباره باز کنید و پاسخ را بنویسید.',
                     'csrf': 'اعتبار فرم تمام شده یا معتبر نیست. صفحه را دوباره باز کنید.',
                     'replayed': 'این فرم قبلاً استفاده شده است؛ برای جلوگیری از پیام تکراری دوباره ارسال نمی‌شود.',
                     'rate_limited': 'تعداد پیام‌ها زیاد است؛ لطفاً بعداً تلاش کنید یا ایمیل بفرستید.',
@@ -183,7 +184,8 @@ def create_app(config=None):
                 return render_template('contact.html', contact_error=message, contact_token=None), status
         try:
             token = contact_service().token()
-            return render_template('contact.html', contact_token=token, contact_sent=request.args.get('sent') == '1')
+            return render_template('contact.html', contact_token=token, contact_question=contact_service().question(token),
+                                   contact_sent=request.args.get('sent') == '1')
         except Exception:
             return render_template('contact.html', contact_token=None, contact_error='فرم فعلاً در دسترس نیست؛ از ایمیل استفاده کنید.')
 

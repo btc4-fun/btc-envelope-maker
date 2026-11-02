@@ -116,7 +116,7 @@ def _visible_text(value, maximum, *, multiline=False):
 
 
 def _payload(form):
-    if not isinstance(form, Mapping) or set(form) - {'name', 'mobile', 'message', 'csrf_token', 'website'}:
+    if not isinstance(form, Mapping) or set(form) - {'name', 'mobile', 'message', 'csrf_token', 'website', 'captcha_answer'}:
         raise ContactError('invalid')
     if form.get('website', '') != '':
         raise ContactError('invalid')
@@ -143,9 +143,23 @@ class ContactService:
 
     def token(self):
         secret = self._secret()
-        unsigned = '1.' + str(int(self.clock())) + '.' + secrets.token_hex(32)
+        unsigned = '2.' + str(int(self.clock())) + '.' + secrets.token_hex(32) + '.' + str(secrets.randbelow(9) + 1) + '.' + str(secrets.randbelow(9) + 1)
         signature = hmac.new(secret, b'csrf\0' + unsigned.encode('ascii'), hashlib.sha256).hexdigest()
         return unsigned + '.' + signature
+
+    def question(self, token):
+        self._verify_token(token, self._secret(), self.clock())
+        left, right = token.split('.')[3:5]
+        return (left + ' + ' + right).translate(str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹'))
+
+    @staticmethod
+    def _verify_captcha(form):
+        answer = form.get('captcha_answer')
+        if not isinstance(answer, str) or re.fullmatch(r'[0-9۰-۹٠-٩]{1,2}', answer) is None:
+            raise ContactError('captcha')
+        left, right = form['csrf_token'].split('.')[3:5]
+        if int(answer) != int(left) + int(right):
+            raise ContactError('captcha')
 
     @staticmethod
     def _secret():
@@ -160,7 +174,7 @@ class ContactService:
 
     @staticmethod
     def _verify_token(token, secret, now):
-        if not isinstance(token, str) or re.fullmatch(r'1\.[0-9]{1,12}\.[0-9a-f]{64}\.[0-9a-f]{64}', token) is None:
+        if not isinstance(token, str) or re.fullmatch(r'2\.[0-9]{1,12}\.[0-9a-f]{64}\.[1-9]\.[1-9]\.[0-9a-f]{64}', token) is None:
             raise ContactError('csrf')
         unsigned, signature = token.rsplit('.', 1)
         expected = hmac.new(secret, b'csrf\0' + unsigned.encode('ascii'), hashlib.sha256).hexdigest()
@@ -215,6 +229,7 @@ class ContactService:
         secret = self._secret()
         payload = _payload(form)
         self._verify_token(form.get('csrf_token'), secret, self.clock())
+        self._verify_captcha(form)
         try:
             if not isinstance(client_ip, str) or len(client_ip) > 45 or '%' in client_ip:
                 raise ValueError
@@ -224,6 +239,9 @@ class ContactService:
             client_ip = str(address)
         except ValueError:
             raise ContactError('invalid') from None
+        payload['message'] += '\n\nSource IP: ' + client_ip
+        if len(payload['message'].encode('utf-8')) > MAX_MESSAGE_BYTES:
+            raise ContactError('invalid')
         try:
             token = _valid_bearer(self.token_loader())
         except Exception:

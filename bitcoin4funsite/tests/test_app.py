@@ -294,16 +294,16 @@ class ApplicationContract(unittest.TestCase):
         service = Mock()
         app = self.module.create_app({'TESTING': True, 'TRUSTED_PROXIES': '127.0.0.1/32', 'CONTACT_SERVICE': service})
         client = app.test_client()
-        client.post('/contact', data={'message': 'Public test'}, headers={'X-Forwarded-For': '198.51.100.66, 203.0.113.4'})
+        client.post('/contact', data={'message': 'Public test'}, headers={'Origin': 'https://btc4.fun', 'X-Forwarded-For': '198.51.100.66, 203.0.113.4'})
         self.assertEqual(service.submit.call_args.args[1], '203.0.113.4')
         service.reset_mock()
-        client.post('/contact', data={'message': 'Public test'}, headers={'X-Forwarded-For': '198.51.100.66'}, environ_overrides={'REMOTE_ADDR': '8.8.8.8'})
+        client.post('/contact', data={'message': 'Public test'}, headers={'Origin': 'https://btc4.fun', 'X-Forwarded-For': '198.51.100.66'}, environ_overrides={'REMOTE_ADDR': '8.8.8.8'})
         self.assertEqual(service.submit.call_args.args[1], '8.8.8.8')
 
     def test_contact_normalizes_native_textarea_newlines_before_validation(self):
         service = Mock()
         app = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service})
-        response = app.test_client().post('/contact', data={'name': 'TEST', 'mobile': '', 'message': 'Line one\r\nLine two', 'csrf_token': 'SYNTHETIC', 'website': ''})
+        response = app.test_client().post('/contact', data={'name': 'TEST', 'mobile': '', 'message': 'Line one\r\nLine two', 'csrf_token': 'SYNTHETIC', 'website': ''}, headers={'Origin': 'https://btc4.fun'})
         self.assertEqual(response.status_code, 303)
         self.assertEqual(service.submit.call_args.args[0]['message'], 'Line one\nLine two')
 
@@ -327,13 +327,21 @@ class ApplicationContract(unittest.TestCase):
         self.assertEqual(service.submit.call_args.args[1], '198.51.100.23')
         self.assertNotIn('SYNTHETIC_MESSAGE_ID', response.text)
 
+    def test_contact_requires_explicit_allowed_origin(self):
+        service = Mock()
+        client = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service}).test_client()
+        for origin in (None, '', 'null', 'https://evil.invalid'):
+            headers = {} if origin is None else {'Origin': origin}
+            self.assertEqual(client.post('/contact', data={'message': 'synthetic'}, headers=headers).status_code, 403)
+        service.submit.assert_not_called()
+
     def test_contact_rejects_foreign_origin_nonform_and_oversize_before_notification(self):
         service = Mock()
         app = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service})
         client = app.test_client()
         self.assertEqual(client.post('/contact', data={'message': 'x'}, headers={'Origin': 'https://evil.invalid'}).status_code, 403)
-        self.assertEqual(client.post('/contact', json={'message': 'x'}).status_code, 415)
-        self.assertEqual(client.post('/contact', data={'message': 'x' * 20000}).status_code, 413)
+        self.assertEqual(client.post('/contact', json={'message': 'x'}, headers={'Origin': 'https://btc4.fun'}).status_code, 415)
+        self.assertEqual(client.post('/contact', data={'message': 'x' * 20000}, headers={'Origin': 'https://btc4.fun'}).status_code, 413)
         service.submit.assert_not_called()
 
 

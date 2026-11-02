@@ -56,6 +56,12 @@
       <textarea id="contact-message" name="message" rows="7" maxlength="2000" aria-describedby="contact-message-help contact-safety" required></textarea>
       <p id="contact-message-help" class="field-hint">کوتاه بنویسید. اطلاعات محرمانه یا پیوست نفرستید. این کادر تا ۲۰۰۰ حرف و علامت جا دارد. حجم کل پیام همراه نام و شماره هم محدود است: چهار کیبی‌بایت در رمزگذاری یونی‌کد. پیام‌های فارسی ممکن است زودتر به سقف حجم برسند. اگر پیام به دلیل حجم زیاد پذیرفته نشد، متن را کوتاه‌تر کنید.</p>
     </div>
+    <div class="contact-field">
+      <label for="contact-captcha">پاسخ این جمع را بنویسید: <bdi dir="ltr">{{ contact_question }}</bdi></label>
+      <input id="contact-captcha" type="text" name="captcha_answer" inputmode="numeric" maxlength="2" autocomplete="off" required aria-describedby="contact-captcha-help">
+      <p id="contact-captcha-help" class="field-hint">رقم فارسی، عربی یا لاتین پذیرفته می‌شود. این پرسش ساده فقط برای کاهش پیام‌های ناخواسته است و جلوی همهٔ ربات‌ها را نمی‌گیرد.</p>
+    </div>
+    <p class="field-hint">نشانی اینترنتی مبدأ که سرور تشخیص می‌دهد، همراه پیام برای گرداننده در اعلان خصوصی فرستاده می‌شود. این نشانی هم در سقف حجم پیام حساب می‌شود.</p>
     <button class="button" type="submit">ارسال پیام <span aria-hidden="true">←</span></button>
     </fieldset>
   </form>

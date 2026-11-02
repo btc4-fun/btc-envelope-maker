@@ -121,6 +121,7 @@ class WholeOperationDeadline(unittest.TestCase):
         }), loopback_server() as (url, requests, disconnected):
             service = contact.ContactService(token_loader=lambda: 'SYNTHETIC_LOOPBACK_ONLY')
             form = {'name': 'Fixture', 'message': 'Harmless isolated fixture', 'csrf_token': service.token()}
+            form['captcha_answer'] = str(sum(map(int, form['csrf_token'].split('.')[3:5])))
             with patch.object(contact, 'NTFY_URL', url):
                 started = time.monotonic()
                 with self.observe_worker(contact._bounded_http), self.assertRaises(contact.ContactError) as caught:

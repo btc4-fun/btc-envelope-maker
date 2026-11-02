@@ -59,6 +59,8 @@ class ContactContract(unittest.TestCase):
     def form(self, service, **overrides):
         form = dict(name='Synthetic Sender', mobile='+98 (912) 000-0000',
                     message='Synthetic offline message.', csrf_token=service.token(), website='')
+        token = overrides.get('csrf_token', form['csrf_token'])
+        form['captcha_answer'] = str(sum(int(value) for value in token.split('.')[3:5]))
         form.update(overrides)
         return form
 
@@ -78,11 +80,29 @@ class ContactContract(unittest.TestCase):
         self.error_code(lambda: service.submit(self.form(service), '2001:db8:1:2::ffff'), 'rate_limited')
         self.assertEqual(service.submit(self.form(service), '2001:db8:1:3::1')['status'], 'sent')
 
+    def test_captcha_wrong_answer_prevents_admission_and_publish(self):
+        service = self.service()
+        form = self.form(service, captcha_answer='99')
+        self.error_code(lambda: service.submit(form, '192.0.2.10'), 'captcha')
+        self.assertEqual(self.calls, [])
+        self.assertFalse(self.db.exists())
+
+    def test_notification_includes_server_ip_within_final_size_bound(self):
+        service = self.service()
+        service.submit(self.form(service), '2001:db8::1234')
+        self.assertIn('Source IP: 2001:db8::1234', self.calls[0][0]['message'])
+        # The final source line must count against the UTF-8 message budget.
+        form = self.form(service)
+        old_size = len(self.module._payload(form)['message'].encode('utf-8'))
+        with patch.object(self.module, 'MAX_MESSAGE_BYTES', old_size):
+            self.error_code(lambda: service.submit(form, '192.0.2.1'), 'invalid')
+        self.assertEqual(len(self.calls), 1)
+
     def test_signed_token_tamper_expiry_future_and_foreign_secret_are_rejected(self):
         service = self.service()
         token = service.token()
         self.assertNotEqual(token, service.token())
-        form = self.form(service)
+        form = self.form(service, csrf_token=token)
         for invalid in ['', None, [], 'x' * 1000, token[:-1] + ('0' if token[-1] != '0' else '1')]:
             with self.subTest(value=repr(invalid)[:30]):
                 self.error_code(lambda: service.submit(dict(form, csrf_token=invalid), '192.0.2.10'), 'csrf')
