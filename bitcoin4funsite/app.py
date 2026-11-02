@@ -274,21 +274,19 @@ def create_app(config=None):
                 record(status)
                 return jsonify(body), status, headers or {}
 
-            # Verify writable audit before any wallet/network access. 102 is
-            # an audit-only admission marker, never an HTTP interim response.
-            record(102)
-            error_recorder = record
             cursor = request.args.get('after_txid')
             if (re.fullmatch(r'(?:[0-9A-F]{8}|[0-9A-F]{14}|[0-9A-F]{20})', uid) is None
                     or set(request.args) - {'after_txid'}
                     or len(request.args.getlist('after_txid')) > 1
                     or (cursor is not None and re.fullmatch(r'[0-9a-f]{64}', cursor) is None)):
-                return finish({'error': 'invalid_tag_request'}, 400)
+                return jsonify(error='invalid_tag_request'), 400
             limiter = app.config.get('TAG_LIMITER') or TagLimiter()
             retry = limiter.admit(client_ip)
             if retry:
-                return finish({'error': 'rate_limited', 'retry_after': retry}, 429,
-                              {'Retry-After': str(retry)})
+                return jsonify(error='rate_limited', retry_after=retry), 429, {'Retry-After': str(retry)}
+            # Accepted requests prove audit writability before data/network access.
+            record(102)
+            error_recorder = record
             lookup = app.config.get('TAG_LOOKUP')
             wallet = lookup(uid) if lookup else database_lookup(uid, by_tag=True)
             if wallet is None:

@@ -45,7 +45,7 @@ class TagRoutes(unittest.TestCase):
         logs = ''.join(p.read_text() for p in (Path(self.temp.name)/'audit').glob('*.jsonl'))
         self.assertNotIn('secret-token', logs)
         self.assertNotIn('secret-cookie', logs)
-        self.assertIn('429', logs)
+        self.assertNotIn('"status": 429', logs)
 
     def test_disabled_by_default_has_no_data_or_audit_side_effects(self):
         with patch.dict('os.environ', {'TAG_LOOKUP_ENABLED': ''}):
@@ -80,6 +80,17 @@ class TagRoutes(unittest.TestCase):
         self.assertNotIn('confirmed_sats', r.json)
         logs = ''.join(p.read_text() for p in (Path(self.temp.name)/'audit').glob('*.jsonl'))
         self.assertIn('503', logs)
+
+    def test_invalid_and_limited_requests_never_write_audit(self):
+        audit = Mock()
+        self.client.application.config['TAG_AUDIT'] = audit
+        self.assertEqual(self.client.get('/api/tags/bad').status_code, 400)
+        audit.record.assert_not_called()
+        self.assertEqual(self.client.get('/api/tags/' + UID).status_code, 200)
+        self.assertEqual([call.kwargs['status'] for call in audit.record.call_args_list], [102, 200])
+        audit.reset_mock()
+        self.assertEqual(self.client.get('/api/tags/' + UID).status_code, 429)
+        audit.record.assert_not_called()
 
     def test_audit_failure_fails_closed_before_wallet_lookup(self):
         self.client.application.config['TAG_AUDIT'] = Mock(record=Mock(side_effect=OSError('private')))
