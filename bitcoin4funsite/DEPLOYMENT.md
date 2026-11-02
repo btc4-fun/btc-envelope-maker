@@ -339,6 +339,15 @@ See INSTALLATION.md for verified installation evidence and current host
 limitations, including unsupported kernel memory limits and the offline wheel
 build used on this RPi.
 
+## Security/contact upgrades
+
+Follow [the security/contact transition runbook](../docs/security-followup-transition.fa.md)
+for explicit proxy trust, signed arithmetic forms, IPv6 quota normalization,
+coordinated worker replacement and source-only immutable builds. Preserve an
+existing override's feature flags rather than replacing it with an image-only
+file. A historical deployment report is not evidence that a later security
+revision is serving traffic; verify the exact running manifest after activation.
+
 ## Verification and rollback
 
 ### Public payment details

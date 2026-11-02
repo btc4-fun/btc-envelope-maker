@@ -24,3 +24,34 @@ TRUSTED_PROXIES
 نمونهٔ محیط عمومی این مقدار را خالی دارد و ترکیب کانتینر همان مقدار را صریحاً به برنامه می‌رساند. مقدار باید در محیط اجرای ترکیب یا فایل محیط کنار آن توسط مالک تنظیم شود؛ گذاشتن آن فقط در فایل محیط تماس یا قیمت کافی نیست، چون مقدار صریح ترکیب اولویت دارد. هیچ دروازه‌ای به‌صورت خودکار انتخاب نمی‌شود.
 
 مقدار، فهرستی جداشده با ویرگول از نشانی یا شبکهٔ معتبر است. فقط پراکسی‌ای را مجاز کنید که زنجیرهٔ مبدأ را به‌درستی تکمیل یا پاک‌سازی می‌کند؛ فقط آخرین عضو زنجیره بررسی می‌شود. اگر آن عضو نامعتبر باشد، نشانی همتا استفاده می‌شود و عضوهای قبلی جایگزین آن نمی‌شوند. ورودی نامعتبر تنظیم باعث توقف راه‌اندازی می‌شود.
+
+## Security/contact release gate
+
+The security/contact release retains the existing feature flags, credentials,
+mounts and quota state. It does not enable a new NFC feature, run database
+queries/migrations, read real wallets, or change the shared reverse proxy.
+
+Before activation, observe the connecting peer with a uniquely marked health
+request through the existing proxy; also prove a client-supplied forwarded
+address is not accepted as the last hop. Configure only that observed address
+explicitly in the web service override. Do not publish private host inventory
+or runtime configuration in this repository.
+
+A source-only native image may retain the approved immutable application's
+installed dependencies only after its complete recorded runtime manifest,
+unchanged dependency lock and interpreter/startup compatibility are verified.
+Build from committed allowlisted public files, never a dirty workspace. Verify
+all runtime bytes in a network-disabled synthetic candidate and again in the
+actual serving container. Synthetic contact delivery uses an injected recorder
+and disposable state, never the real notification provider or quota database.
+
+Preserve the exact existing override and old immutable image before activation.
+Compare concurrent configuration immediately before writing. Change only the
+web image pin and explicit proxy setting, stop every old worker, then recreate
+only web. Preserve all existing state and secret identities. Public acceptance
+requires health, a visible signed arithmetic question, same-origin referrer
+policy, and rejection of missing/null/foreign Origin; no real contact message
+is needed. Rollback must stop the new workers first, restore the exact saved
+override, and verify old-image health. Neither rollback nor upgrade may clear
+quota state. Live activation and exact commit/image evidence belong in the
+operator's deployment report; this runbook alone does not claim activation.
