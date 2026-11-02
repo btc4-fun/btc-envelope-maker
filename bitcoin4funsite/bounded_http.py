@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from urllib.parse import urlsplit
 
 MAX_BYTES = 262144
 MAX_REQUEST_BYTES = 65536
@@ -34,6 +35,9 @@ def request_bytes(url, *, headers=None, data=None, method='GET', max_bytes=MAX_B
     """Return a bounded successful body; never expose worker error details."""
     deadline = time.monotonic() + timeout
     try:
+        parsed = urlsplit(url)
+        if parsed.scheme != 'https' or not parsed.hostname or parsed.username is not None or parsed.password is not None:
+            raise ValueError
         if not 0 < max_bytes <= MAX_BYTES or not 0 < timeout <= 4:
             raise ValueError
         descriptor = json.dumps({
@@ -62,6 +66,9 @@ def request_bytes(url, *, headers=None, data=None, method='GET', max_bytes=MAX_B
 
 
 def _read_response(descriptor):
+    parsed = urlsplit(descriptor['url'])
+    if parsed.scheme != 'https' or not parsed.hostname or parsed.username is not None or parsed.password is not None:
+        raise ValueError
     maximum = descriptor['max_bytes']
     if not isinstance(maximum, int) or not 0 < maximum <= MAX_BYTES:
         raise ValueError

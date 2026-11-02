@@ -8,6 +8,8 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import ssl
+import subprocess
 import tempfile
 import threading
 import time
@@ -73,20 +75,42 @@ def loopback_server(*, trickle=True, body=None, status=200, chunked=False, heade
                 else:
                     self.wfile.write(response_body)
                     self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
+            except (BrokenPipeError, ConnectionResetError, ssl.SSLError):
                 disconnected.set()
 
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    directory = tempfile.TemporaryDirectory(prefix='synthetic-tls-', dir=os.environ.get('TMPDIR'))
+    cert = Path(directory.name) / 'cert.pem'
+    key = Path(directory.name) / 'key.pem'
+    subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
+                    '-keyout', str(key), '-out', str(cert), '-days', '1',
+                    '-subj', '/CN=localhost', '-addext', 'subjectAltName=IP:127.0.0.1'],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(cert, key)
+    server.socket = context.wrap_socket(server.socket, server_side=True)
+    # Test-only worker launcher scopes trust to this generated certificate.
+    # The product worker still gets an empty environment and verifies hostname.
+    real_popen = subprocess.Popen
+    def trusted_worker(args, **kwargs):
+        if args[-1:] == ['--worker']:
+            launcher = ("import ssl,runpy,sys; original=ssl.create_default_context; ca=sys.argv.pop(1); "
+                        "ssl._create_default_https_context=lambda:original(cafile=ca); "
+                        "p=sys.argv.pop(1);sys.argv[0]=p;runpy.run_path(p,run_name='__main__')")
+            args = [args[0], '-I', '-B', '-c', launcher, str(cert), args[-2], '--worker']
+        return real_popen(args, **kwargs)
     server.daemon_threads = False
     thread = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': 0.02})
     thread.start()
     try:
-        yield f'http://127.0.0.1:{server.server_port}/', requests, disconnected
+        with patch.object(subprocess, 'Popen', side_effect=trusted_worker):
+            yield f'https://127.0.0.1:{server.server_port}/', requests, disconnected
     finally:
         stop.set()
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+        directory.cleanup()
         if thread.is_alive():
             raise AssertionError('loopback fixture leaked its serving thread')
 
@@ -111,6 +135,14 @@ class WholeOperationDeadline(unittest.TestCase):
         self.assertIsNotNone(worker.returncode, 'worker must be reaped before return')
         with self.assertRaises(ChildProcessError):
             os.waitpid(worker.pid, os.WNOHANG)
+
+    def test_plaintext_and_non_https_schemes_are_refused_before_worker(self):
+        http = load_module('bounded_http')
+        for url in ('http://127.0.0.1:9/', 'file:///synthetic', 'ftp://example.invalid/'):
+            with patch.object(http.subprocess, 'Popen') as worker:
+                with self.assertRaises(http.BoundedHTTPError):
+                    http.request_bytes(url)
+                worker.assert_not_called()
 
     def test_contact_continuously_trickling_ack_has_whole_operation_deadline(self):
         contact = load_module('contact')
