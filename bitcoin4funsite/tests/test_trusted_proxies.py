@@ -50,6 +50,19 @@ class TrustedProxies(unittest.TestCase):
         self.assertEqual(self.resolved('10.0.0.3', '203.0.113.7', '10.0.0.2/32'), '10.0.0.3')
         self.assertEqual(self.resolved('10.0.0.2', 'invalid', '10.0.0.2/32'), '10.0.0.2')
 
+    def test_mapped_peers_and_networks_have_identical_trust_boundaries(self):
+        for network in ('192.0.2.0/24', '::ffff:192.0.2.0/120',
+                        '192.0.2.17/24', '::ffff:192.0.2.17/120'):
+            for peer in ('192.0.2.2', '::ffff:192.0.2.2'):
+                with self.subTest(network=network, peer=peer):
+                    self.assertEqual(self.resolved(peer, '203.0.113.7', network), '203.0.113.7')
+            for peer in ('192.0.3.2', '::ffff:192.0.3.2'):
+                with self.subTest(network=network, peer=peer):
+                    self.assertEqual(self.resolved(peer, '203.0.113.7', network), '192.0.3.2')
+        self.assertEqual(self.resolved('::ffff:192.0.2.2', '203.0.113.7'), '192.0.2.2')
+        self.assertEqual(self.resolved('192.0.2.2', '203.0.113.7', '::/0'), '192.0.2.2')
+        self.assertEqual(self.resolved('::ffff:192.0.2.2', '203.0.113.7', '::/0'), '192.0.2.2')
+
     def test_invalid_proxy_configuration_fails_at_startup(self):
         with self.assertRaises(ValueError):
             create_app({'TRUSTED_PROXIES': 'not-an-address'})

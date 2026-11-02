@@ -57,7 +57,16 @@ def create_app(config=None):
     app.config['TAG_LOOKUP_ENABLED'] = os.environ.get('TAG_LOOKUP_ENABLED') == '1'
     if config:
         app.config.update(config)
-    trusted_proxies = tuple(ipaddress.ip_network(value.strip(), strict=True)
+    def proxy_network(value):
+        network = ipaddress.ip_network(value.strip(), strict=False)
+        # Convert only networks wholly contained in the IPv4-mapped range.
+        if (isinstance(network, ipaddress.IPv6Network) and network.prefixlen >= 96
+                and network.network_address.ipv4_mapped is not None):
+            return ipaddress.ip_network((network.network_address.ipv4_mapped,
+                                         network.prefixlen - 96))
+        return network
+
+    trusted_proxies = tuple(proxy_network(value)
                             for value in app.config.get('TRUSTED_PROXIES',
                                 os.environ.get('TRUSTED_PROXIES', '')).split(',') if value.strip())
     app.extensions['market_service'] = app.config.get('MARKET_SERVICE') or MarketService()
@@ -142,6 +151,8 @@ def create_app(config=None):
 
     def contact_client_ip():
         peer = ipaddress.ip_address(request.remote_addr or '')
+        if isinstance(peer, ipaddress.IPv6Address) and peer.ipv4_mapped is not None:
+            peer = peer.ipv4_mapped
         # Only explicitly configured connecting peers may assert a forwarded IP.
         if any(peer in network for network in trusted_proxies):
             for value in reversed(request.headers.get('X-Forwarded-For', '').split(',')):
