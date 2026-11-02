@@ -57,6 +57,9 @@ def create_app(config=None):
     app.config['TAG_LOOKUP_ENABLED'] = os.environ.get('TAG_LOOKUP_ENABLED') == '1'
     if config:
         app.config.update(config)
+    trusted_proxies = tuple(ipaddress.ip_network(value.strip(), strict=True)
+                            for value in app.config.get('TRUSTED_PROXIES',
+                                os.environ.get('TRUSTED_PROXIES', '')).split(',') if value.strip())
     app.extensions['market_service'] = app.config.get('MARKET_SERVICE') or MarketService()
     app.config['MAX_CONTENT_LENGTH'] = 16384
 
@@ -138,14 +141,15 @@ def create_app(config=None):
         return app.extensions['contact_service']
 
     def contact_client_ip():
-        peer = ipaddress.ip_address(request.remote_addr or '127.0.0.1')
-        # Caddy appends the real connecting IP. Never trust a user-supplied first hop.
-        forwarded = request.headers.get('X-Forwarded-For', '')
-        if (peer.is_private or peer.is_loopback) and forwarded:
-            try:
-                return str(ipaddress.ip_address(forwarded.split(',')[-1].strip()))
-            except ValueError:
-                pass
+        peer = ipaddress.ip_address(request.remote_addr or '')
+        # Only explicitly configured connecting peers may assert a forwarded IP.
+        if any(peer in network for network in trusted_proxies):
+            for value in reversed(request.headers.get('X-Forwarded-For', '').split(',')):
+                try:
+                    if '%' not in value:
+                        return str(ipaddress.ip_address(value.strip()))
+                except ValueError:
+                    continue
         return str(peer)
 
     @app.route('/contact', methods=['GET', 'POST'])

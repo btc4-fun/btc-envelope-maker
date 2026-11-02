@@ -118,7 +118,7 @@ class ApplicationContract(unittest.TestCase):
         lookup.assert_not_called()
 
     def test_lookup_rate_identity_uses_trusted_last_proxy_hop_and_qr_flag(self):
-        app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
+        app = self.module.create_app({'TESTING': True, 'TRUSTED_PROXIES': '127.0.0.1/32', 'WALLET_LOOKUP': lambda serial: None})
         client = app.test_client()
         client.get('/api/wallets/First0587k45300', headers={'X-Forwarded-For': '192.0.2.99, 198.51.100.8'})
         self.no_limit.admit.assert_called_with('198.51.100.8', 'First0587k45300', qr=False)
@@ -292,7 +292,7 @@ class ApplicationContract(unittest.TestCase):
 
     def test_contact_forwarded_ip_uses_last_proxy_hop_not_spoofed_first(self):
         service = Mock()
-        app = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service})
+        app = self.module.create_app({'TESTING': True, 'TRUSTED_PROXIES': '127.0.0.1/32', 'CONTACT_SERVICE': service})
         client = app.test_client()
         client.post('/contact', data={'message': 'Public test'}, headers={'X-Forwarded-For': '198.51.100.66, 203.0.113.4'})
         self.assertEqual(service.submit.call_args.args[1], '203.0.113.4')
@@ -316,7 +316,7 @@ class ApplicationContract(unittest.TestCase):
         service = Mock()
         service.token.return_value = 'SYNTHETIC_FORM_TOKEN'
         service.submit.return_value = {'id': 'SYNTHETIC_MESSAGE_ID'}
-        app = self.module.create_app({'TESTING': True, 'CONTACT_SERVICE': service})
+        app = self.module.create_app({'TESTING': True, 'TRUSTED_PROXIES': '127.0.0.1/32', 'CONTACT_SERVICE': service})
         client = app.test_client()
         form = {'name': 'TEST-DO-NOT-FUND', 'mobile': '', 'message': 'Public test only', 'csrf_token': 'SYNTHETIC_FORM_TOKEN', 'website': ''}
         response = client.post('/contact', data=form, headers={'Origin': 'https://btc4.fun', 'X-Forwarded-For': '198.51.100.23'})
