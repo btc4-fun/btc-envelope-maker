@@ -72,43 +72,64 @@ class MarketService:
         self._cached = None
         self._fetched = 0
         self._next_refresh = 0
+        self._inflight = None
+
+    def _snapshot_locked(self):
+        now = self.clock()
+        if self._cached is None or not 0 <= now - self._fetched <= 300:
+            raise MarketUnavailable('Market information temporarily unavailable')
+        result = deepcopy(self._cached)
+        result['status'] = 'fresh' if now - self._fetched < 60 else 'stale'
+        return result
 
     def snapshot(self):
         with self._lock:
             now = self.clock()
-            if now >= self._next_refresh:
-                try:
-                    prices = self.fetch(PRICE_URL, self.token_loader())['result']
-                    fees = self.fetch(FEE_URL)
-                    result = {
-                        'status': 'fresh',
-                        'fetched_at': datetime.fromtimestamp(now, timezone.utc).isoformat(),
-                        'source': {'prices': PRICE_URL, 'fees': FEE_URL},
-                        'raw_prices': {
-                            'btc_toman': _positive_decimal(prices['BTC/IRT'], Decimal('1e15')),
-                            'usdt_toman': _positive_decimal(prices['USDT/IRT'], Decimal('1e15')),
-                        },
-                        'fee_rate': _positive_decimal(fees['economyFee'], Decimal('10000')),
-                    }
-                    result['fee_rates'] = {'economy': result['fee_rate']}
-                    for name, field in (('medium', 'halfHourFee'), ('fast', 'fastestFee')):
-                        try:
-                            rate = _positive_decimal(fees[field], Decimal('10000'))
-                            if len(rate.partition('.')[2]) > 18:
-                                raise MarketUnavailable('Invalid fee precision')
-                            result['fee_rates'][name] = rate
-                        except (KeyError, MarketUnavailable):
-                            # Never substitute a different priority's recommendation.
-                            result['fee_rates'][name] = None
-                    self._cached = result
-                    self._fetched = now
-                    self._next_refresh = now + 60
-                except Exception:
-                    self._next_refresh = self.clock() + 30
-            # Refresh can cross the cache lifetime even when the fetch fails.
-            now = self.clock()
-            if self._cached is None or not 0 <= now - self._fetched <= 300:
-                raise MarketUnavailable('Market information temporarily unavailable')
-            result = deepcopy(self._cached)
-            result['status'] = 'fresh' if now - self._fetched < 60 else 'stale'
-            return result
+            if self._inflight is not None or now < self._next_refresh:
+                return self._snapshot_locked()
+            flight = object()
+            self._inflight = flight
+
+        result = None
+        try:
+            result = self._refresh(now)
+        except Exception:
+            pass
+        finally:
+            with self._lock:
+                # Only the reserving fetch may publish or release its slot.
+                if self._inflight is flight:
+                    if result is not None:
+                        self._cached = result
+                        self._fetched = now
+                        self._next_refresh = now + 60
+                    else:
+                        self._next_refresh = self.clock() + 30
+                    self._inflight = None
+        with self._lock:
+            return self._snapshot_locked()
+
+    def _refresh(self, now):
+        prices = self.fetch(PRICE_URL, self.token_loader())['result']
+        fees = self.fetch(FEE_URL)
+        result = {
+            'status': 'fresh',
+            'fetched_at': datetime.fromtimestamp(now, timezone.utc).isoformat(),
+            'source': {'prices': PRICE_URL, 'fees': FEE_URL},
+            'raw_prices': {
+                'btc_toman': _positive_decimal(prices['BTC/IRT'], Decimal('1e15')),
+                'usdt_toman': _positive_decimal(prices['USDT/IRT'], Decimal('1e15')),
+            },
+            'fee_rate': _positive_decimal(fees['economyFee'], Decimal('10000')),
+        }
+        result['fee_rates'] = {'economy': result['fee_rate']}
+        for name, field in (('medium', 'halfHourFee'), ('fast', 'fastestFee')):
+            try:
+                rate = _positive_decimal(fees[field], Decimal('10000'))
+                if len(rate.partition('.')[2]) > 18:
+                    raise MarketUnavailable('Invalid fee precision')
+                result['fee_rates'][name] = rate
+            except (KeyError, MarketUnavailable):
+                # Never substitute a different priority's recommendation.
+                result['fee_rates'][name] = None
+        return result

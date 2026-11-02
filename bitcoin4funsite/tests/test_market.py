@@ -16,28 +16,59 @@ class MarketContract(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
-    def test_concurrent_refresh_is_single_flight(self):
+    def test_paused_refresh_never_blocks_readers_or_starts_a_second_fetch(self):
         from concurrent.futures import ThreadPoolExecutor
         import threading
         module = self.load()
-        entered, release = threading.Event(), threading.Event()
-        calls = []
-        def fetch(url, token=None):
-            calls.append(url)
-            if url == module.PRICE_URL:
-                entered.set()
-                if not release.wait(5):
-                    raise TimeoutError('synthetic fixture timeout')
-                return {'result': {'BTC/IRT': '21000000000', 'USDT/IRT': '270000'}}
-            return {'economyFee': 1}
-        service = module.MarketService(fetch=fetch, token_loader=lambda: 'SYNTHETIC', clock=lambda: 1000)
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            futures = [pool.submit(service.snapshot) for _ in range(8)]
-            self.assertTrue(entered.wait(2))
-            release.set()
-            results = [future.result(timeout=5) for future in futures]
-        self.assertEqual(calls, [module.PRICE_URL, module.FEE_URL])
-        self.assertTrue(all(result == results[0] for result in results))
+        for cached_age in (None, 60, 300, 301):
+            for paused_url in (module.PRICE_URL, module.FEE_URL):
+                with self.subTest(cached_age=cached_age, paused_url=paused_url):
+                    entered, release = threading.Event(), threading.Event()
+                    calls = []
+                    now = [1000]
+                    pause = [False]
+                    def fetch(url, token=None):
+                        calls.append(url)
+                        if pause[0] and url == paused_url:
+                            entered.set()
+                            if not release.wait(5):
+                                raise TimeoutError('synthetic fixture timeout')
+                        return ({'result': {'BTC/IRT': '21000000000', 'USDT/IRT': '270000'}}
+                                if url == module.PRICE_URL else {'economyFee': 1})
+                    service = module.MarketService(fetch=fetch, token_loader=lambda: 'SYNTHETIC',
+                                                   clock=lambda: now[0])
+                    if cached_age is not None:
+                        service.snapshot()
+                        now[0] += cached_age
+                    calls.clear()
+                    pause[0] = True
+                    with ThreadPoolExecutor(max_workers=8) as pool:
+                        owner = pool.submit(service.snapshot)
+                        try:
+                            self.assertTrue(entered.wait(2))
+                            expected_calls = list(calls)
+                            readers = [pool.submit(service.snapshot) for _ in range(7)]
+                            for reader in readers:
+                                if cached_age is None or cached_age > 300:
+                                    with self.assertRaisesRegex(module.MarketUnavailable,
+                                            '^Market information temporarily unavailable$'):
+                                        reader.result(timeout=1)
+                                else:
+                                    result = reader.result(timeout=1)
+                                    self.assertEqual(result['status'], 'stale')
+                                    self.assertEqual(result['raw_prices']['btc_toman'], '21000000000')
+                                    self.assertEqual(result['fee_rates']['economy'], '1')
+                                    result['raw_prices']['btc_toman'] = 'mutated'
+                                    result['fee_rates']['economy'] = 'mutated'
+                            self.assertEqual(calls, expected_calls)
+                            self.assertFalse(owner.done())
+                        finally:
+                            release.set()
+                        result = owner.result(timeout=2)
+                    self.assertEqual(calls, [module.PRICE_URL, module.FEE_URL])
+                    self.assertEqual(result['raw_prices']['btc_toman'], '21000000000')
+                    self.assertEqual(result['fee_rates']['economy'], '1')
+                    self.assertEqual(service.snapshot(), result)
 
     def test_reads_only_required_public_prices_and_economy_fee(self):
         module = self.load()
