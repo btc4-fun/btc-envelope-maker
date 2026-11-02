@@ -1,4 +1,5 @@
 """Real form and service with a recording sender and synthetic SQLite."""
+from html.parser import HTMLParser
 import os
 from pathlib import Path
 import re
@@ -10,6 +11,33 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import create_app
 from contact import ContactService
+
+
+class VisibleQuestion(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_label = False
+        self.text = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'label' and dict(attrs).get('for') == 'contact-captcha':
+            self.in_label = True
+
+    def handle_endtag(self, tag):
+        if tag == 'label':
+            self.in_label = False
+
+    def handle_data(self, data):
+        if self.in_label:
+            self.text.append(data)
+
+    def answer(self):
+        question = ''.join(self.text)
+        match = re.search(r'([۰-۹]+)\s*([+−-])\s*([۰-۹]+)', question)
+        assert match is not None, 'Visible Persian operands and operator required'
+        left, operator, right = match.groups()
+        # Solve the rendered operator independently of the token/service helper.
+        return str(int(left) + int(right) if operator == '+' else int(left) - int(right))
 
 
 class ContactForm(unittest.TestCase):
@@ -34,7 +62,9 @@ class ContactForm(unittest.TestCase):
         match = re.search(r'name="csrf_token" value="([^"]+)"', page.text)
         assert match is not None
         token = match[1]
-        answer = str(sum(map(int, token.split('.')[3:5])))
+        question = VisibleQuestion()
+        question.feed(page.text)
+        answer = question.answer()
         return page, dict(name='Synthetic', mobile='', message='Synthetic only', website='',
                          csrf_token=token, captcha_answer=answer)
 
@@ -44,7 +74,6 @@ class ContactForm(unittest.TestCase):
     def test_real_form_question_and_three_digit_scripts_without_js(self):
         for digits in ('0123456789', '۰۱۲۳۴۵۶۷۸۹', '٠١٢٣٤٥٦٧٨٩'):
             page, form = self.form()
-            self.assertIn(self.service.question(form['csrf_token']), page.text)
             self.assertRegex(page.text, r'id="contact-captcha"[^>]*name="captcha_answer"')
             self.assertNotRegex(page.text, r'type="hidden"[^>]*name="captcha_answer"')
             form['captcha_answer'] = form['captcha_answer'].translate(str.maketrans('0123456789', digits))
