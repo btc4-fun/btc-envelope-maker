@@ -22,6 +22,7 @@ services:
     ports:
       - "127.0.0.1:${BITCOIN4FUN_BIND_PORT:-18084}:8080"
     environment:
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       BTC_DB_HOST: ${BTC_DB_HOST:-nextcloud-aio-database}
       BTC_DB_PORT: ${BTC_DB_PORT:-5432}
       BTC_DB_NAME: ${BTC_DB_NAME:-d_bitcoin4fun}

@@ -9,6 +9,23 @@ from app import create_app
 
 
 class TrustedProxies(unittest.TestCase):
+    def test_deployment_explicitly_passes_proxy_setting_with_empty_default(self):
+        site = Path(__file__).resolve().parents[1]
+        example = (site / '.env.example').read_text().splitlines()
+        compose = (site / 'compose.yaml').read_text().splitlines()
+        self.assertIn('TRUSTED_PROXIES=', example)
+        self.assertIn('      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}', compose)
+
+    def test_environment_setting_reaches_request_provenance(self):
+        service = Mock()
+        with patch.dict('os.environ', {'TRUSTED_PROXIES': '192.0.2.2/32'}):
+            client = create_app({'TESTING': True, 'CONTACT_SERVICE': service}).test_client()
+        response = client.post('/contact', data={'message': 'synthetic'},
+            headers={'Origin': 'https://btc4.fun', 'X-Forwarded-For': '203.0.113.9'},
+            environ_overrides={'REMOTE_ADDR': '192.0.2.2'})
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(service.submit.call_args.args[1], '203.0.113.9')
+
     def resolved(self, peer, forwarded, trusted=None):
         service = Mock()
         config = {'TESTING': True, 'CONTACT_SERVICE': service}
