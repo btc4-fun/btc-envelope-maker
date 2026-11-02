@@ -1,3 +1,4 @@
+# فهرست مجاز برای زمینهٔ محدود به پوشهٔ سایت؛ نقش آن در راهنمای ساخت آمده است.
 *
 !Dockerfile
 !requirements.txt
@@ -8,6 +9,8 @@
 !contact.py
 !bounded_http.py
 !lookup_limit.py
+!tag_access.py
+!chain_activity.py
 !templates/
 !templates/**
 !static/

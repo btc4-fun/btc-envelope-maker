@@ -11,6 +11,27 @@ ROOT = SITE.parent
 
 
 class RuntimePackagingTests(unittest.TestCase):
+    def test_context_allowlists_match_and_cover_every_runtime_copy(self):
+        local = [line.strip() for line in (SITE / '.dockerignore').read_text().splitlines()
+                 if line.strip() and not line.startswith('#')]
+        root = [line.strip() for line in (SITE / 'Dockerfile.dockerignore').read_text().splitlines()
+                if line.strip() and not line.startswith('#')]
+        self.assertEqual(root.count('!bitcoin4funsite/'), 1)
+        normalized = [line.replace('bitcoin4funsite/', '', 1)
+                      for line in root if line != '!bitcoin4funsite/']
+        self.assertEqual(local, normalized)
+        for line in (SITE / 'Dockerfile').read_text().splitlines():
+            if line.startswith('COPY '):
+                for source in line.split()[1:-1]:
+                    self.assertIn('!' + source, root)
+                    self.assertIn('!' + source.removeprefix('bitcoin4funsite/'), local)
+        self.assertEqual(local[0], '*')
+        for sensitive in ('static/privatekey.png', 'static/publickey.png'):
+            self.assertIn(sensitive, local)
+            self.assertGreater(local.index(sensitive), local.index('!static/**'))
+        for forbidden in ('.env', 'secrets/', 'state/', 'tests/', 'btc_envelope_maker/'):
+            self.assertFalse(any(line.startswith('!' + forbidden) for line in local))
+
     def test_tag_runtime_modules_are_copied_and_allowed(self):
         dockerfile = (SITE / 'Dockerfile').read_text()
         copy_lines = '\n'.join(line for line in dockerfile.splitlines() if line.startswith('COPY '))
