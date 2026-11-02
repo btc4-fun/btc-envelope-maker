@@ -57,6 +57,16 @@ class LookupLimitContract(unittest.TestCase):
             secret=kwargs.pop('secret', SECRET),
             clock=kwargs.pop('clock', lambda: self.now[0]), **kwargs)
 
+    def test_ipv6_prefix_shares_quota_and_mapped_ipv4_is_identical(self):
+        limiter = self.limiter()
+        for index in range(5):
+            self.assertEqual(limiter.admit('2001:db8:1:2::' + str(index + 1), 'Prefix'), 0)
+        self.assertEqual(limiter.admit('2001:db8:1:2::ffff', 'Prefix'), 60)
+        self.assertEqual(limiter.admit('2001:db8:1:3::1', 'Other'), 0)
+        for _ in range(5):
+            self.assertEqual(limiter.admit('192.0.2.1', 'Mapped'), 0)
+        self.assertEqual(limiter.admit('::ffff:192.0.2.1', 'Mapped'), 60)
+
     def test_five_admissions_use_a_sliding_not_fixed_window(self):
         for now in (1000, 1003.5, 1011, 1027, 1059):
             self.now[0] = now

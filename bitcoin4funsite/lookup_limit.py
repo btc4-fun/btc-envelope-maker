@@ -51,7 +51,11 @@ class LookupLimiter:
                 or not isinstance(qr, bool)):
             raise ValueError('Invalid lookup arguments')
         try:
-            client_ip = str(ipaddress.ip_address(client_ip))
+            address = ipaddress.ip_address(client_ip)
+            if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+                address = address.ipv4_mapped
+            client_ip = (str(ipaddress.ip_network((address, 64), strict=False))
+                         if isinstance(address, ipaddress.IPv6Address) else str(address))
         except ValueError:
             raise ValueError('Invalid lookup arguments') from None
         ip_hash = hmac.new(self.secret, b'lookup-ip\0' + client_ip.encode(), hashlib.sha256).hexdigest()

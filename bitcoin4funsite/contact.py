@@ -172,7 +172,10 @@ class ContactService:
         if not isinstance(self.state_file, str) or not os.path.isabs(self.state_file):
             raise ContactError('unavailable')
         token_hash = hashlib.sha256(token.encode('ascii')).hexdigest()
-        ip_hash = hmac.new(secret, b'ip\0' + client_ip.encode('ascii'), hashlib.sha256).hexdigest()
+        address = ipaddress.ip_address(client_ip)
+        quota_ip = (str(ipaddress.ip_network((address, 64), strict=False))
+                    if isinstance(address, ipaddress.IPv6Address) else client_ip)
+        ip_hash = hmac.new(secret, b'ip\0' + quota_ip.encode('ascii'), hashlib.sha256).hexdigest()
         try:
             with closing(sqlite3.connect(self.state_file, timeout=DB_TIMEOUT)) as connection:
                 with connection:

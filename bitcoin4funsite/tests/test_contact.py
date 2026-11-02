@@ -71,6 +71,13 @@ class ContactContract(unittest.TestCase):
         self.assertNotIn(BEARER, repr(caught.exception))
         return caught.exception
 
+    def test_ipv6_prefix_shares_contact_quota(self):
+        service = self.service()
+        for index in range(3):
+            service.submit(self.form(service), '2001:db8:1:2::' + str(index + 1))
+        self.error_code(lambda: service.submit(self.form(service), '2001:db8:1:2::ffff'), 'rate_limited')
+        self.assertEqual(service.submit(self.form(service), '2001:db8:1:3::1')['status'], 'sent')
+
     def test_signed_token_tamper_expiry_future_and_foreign_secret_are_rejected(self):
         service = self.service()
         token = service.token()

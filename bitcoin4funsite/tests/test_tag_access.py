@@ -92,6 +92,11 @@ class TagAccessContract(unittest.TestCase):
         return [json.loads(line) for file in (self.root / 'audit').glob('tag-access.jsonl*')
                 for line in file.read_text().splitlines()]
 
+    def test_ipv6_prefix_has_one_shared_admission(self):
+        self.assertEqual(self.limiter().admit('2001:db8:1:2::1'), 0)
+        self.assertEqual(self.limiter().admit('2001:db8:1:2::ffff'), 20)
+        self.assertEqual(self.limiter().admit('2001:db8:1:3::1'), 0)
+
     def test_smaller_rotation_size_removes_oversized_existing_generations(self):
         audit = self.audit(max_bytes=16384, backup_count=2)
         for _ in range(60):

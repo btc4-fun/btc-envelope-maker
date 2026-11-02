@@ -116,7 +116,8 @@ class TagLimiter:
             raise ValueError('Invalid client IP') from None
         if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
             address = address.ipv4_mapped
-        client_ip = str(address)
+        client_ip = (str(ipaddress.ip_network((address, 64), strict=False))
+                     if isinstance(address, ipaddress.IPv6Address) else str(address))
         ip_hash = hmac.new(self.secret, b'tag-ip\0' + client_ip.encode(), hashlib.sha256).hexdigest()
         try:
             return self._admit(ip_hash)
