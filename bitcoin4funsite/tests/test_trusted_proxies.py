@@ -42,9 +42,11 @@ class TrustedProxies(unittest.TestCase):
     def test_private_peer_is_not_implicitly_trusted(self):
         self.assertEqual(self.resolved('10.0.0.2', '203.0.113.7'), '10.0.0.2')
 
-    def test_explicit_peer_uses_last_valid_forwarded_address(self):
-        self.assertEqual(self.resolved('10.0.0.2', '198.51.100.1, 203.0.113.7, invalid',
+    def test_explicit_peer_uses_only_last_forwarded_address(self):
+        self.assertEqual(self.resolved('10.0.0.2', '198.51.100.1, 203.0.113.7',
                                        '10.0.0.2/32'), '203.0.113.7')
+        for forwarded in ('203.0.113.7, invalid', '203.0.113.7,', '203.0.113.7, fe80::1%eth0'):
+            self.assertEqual(self.resolved('10.0.0.2', forwarded, '10.0.0.2/32'), '10.0.0.2')
 
     def test_nonlisted_peer_and_invalid_chain_use_peer(self):
         self.assertEqual(self.resolved('10.0.0.3', '203.0.113.7', '10.0.0.2/32'), '10.0.0.3')

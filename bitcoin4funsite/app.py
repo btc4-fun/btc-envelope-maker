@@ -155,12 +155,12 @@ def create_app(config=None):
             peer = peer.ipv4_mapped
         # Only explicitly configured connecting peers may assert a forwarded IP.
         if any(peer in network for network in trusted_proxies):
-            for value in reversed(request.headers.get('X-Forwarded-For', '').split(',')):
-                try:
-                    if '%' not in value:
-                        return str(ipaddress.ip_address(value.strip()))
-                except ValueError:
-                    continue
+            value = request.headers.get('X-Forwarded-For', '').split(',')[-1].strip()
+            try:
+                if '%' not in value:
+                    return str(ipaddress.ip_address(value))
+            except ValueError:
+                pass
         return str(peer)
 
     @app.route('/contact', methods=['GET', 'POST'])
