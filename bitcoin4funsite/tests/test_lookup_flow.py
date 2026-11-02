@@ -62,6 +62,33 @@ class LookupAdmissionFlow(unittest.TestCase):
             self.assertEqual(client.get('/' + SERIALS[1]).status_code, 200)
             self.assertEqual(lookup.call_count, 11)
 
+    def test_balance_uses_shared_slots_not_free_qr_admission(self):
+        from lookup_limit import LookupLimiter
+        from chain_activity import ChainActivity
+        from test_chain_activity import FakeHTTP, stats
+        with tempfile.TemporaryDirectory(dir=os.environ.get('TMPDIR')) as directory:
+            limiter = LookupLimiter(Path(directory) / 'balance.sqlite3',
+                                    'SYNTHETIC_BALANCE_SECRET_' * 2, clock=lambda: 1000)
+            lookup = Mock(side_effect=lambda serial: {'serial': serial, 'address': ADDRESS})
+            reverse = Mock(return_value={'serial': SERIALS[0], 'address': ADDRESS})
+            http = FakeHTTP(stats(), stats())
+            client = load_app().create_app({'TESTING': True, 'WALLET_LOOKUP': lookup,
+                'ADDRESS_LOOKUP': reverse, 'LOOKUP_LIMITER': limiter,
+                'SERIAL_BALANCE': ChainActivity(request_bytes=http)}).test_client()
+            base = '/api/wallets/' + SERIALS[0]
+            for path in (base, base + '?balance=1', '/api/addresses/' + ADDRESS,
+                         base + '?balance=1', '/s/' + SERIALS[0]):
+                self.assertEqual(client.get(path).status_code, 200)
+            for _ in range(2):
+                self.assertEqual(client.get(base + '/qr.svg').status_code, 200)
+            before = lookup.call_count
+            denied = client.get(base + '?balance=1')
+            self.assertEqual(denied.status_code, 429)
+            self.assertEqual(denied.headers['Retry-After'], '60')
+            self.assertEqual(lookup.call_count, before)
+            self.assertEqual(len(http.calls), 2)
+            self.assertEqual(client.get('/api/addresses/' + ADDRESS).status_code, 429)
+
     def test_default_production_factory_enforces_limit_without_test_bypass(self):
         module = load_app()
         with tempfile.TemporaryDirectory(dir=os.environ.get('TMPDIR')) as directory:

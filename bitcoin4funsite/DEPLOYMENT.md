@@ -24,8 +24,9 @@ docker build -f bitcoin4funsite/Dockerfile -t bitcoin4fun:ci .
 
 This service serves Persian educational pages and reads a single public wallet
 record by serial. It never creates wallets, signs transactions, stores recovery
-words. Printed-serial lookup does not fetch blockchain activity. The separately
-activated tag endpoint can fetch public address activity from Blockstream.
+words. Ordinary printed-serial lookup does not fetch blockchain activity.
+The explicit `balance=1` option performs one balance-only Blockstream read.
+The separately activated tag endpoint can fetch public address activity from Blockstream.
 Server-side market prices and
 economy fee suggestions use fixed sources; a mempool address link is an explicit external
 navigation, not an automatically loaded resource. Self-contained assets do not
@@ -296,6 +297,34 @@ its public codes as nonfunctional. Both PNGs have no source metadata. User origi
 privatekey.png/publickey.png must remain local: Git ignore, forced-index guard,
 Docker exclusions, transfer allowlist and Flask static refusal protect them.
 Never copy the full static directory without filtering operator originals.
+
+## Optional serial balance deployment
+
+The serial page offers a separate explicit balance button, including a native
+GET-form fallback. Only `balance=1` is accepted; normal serial responses retain
+their exact three-field contract. The server performs ordinary shared admission,
+one public mapping read, then one fixed-origin address-statistics GET, never
+history. A balance refresh costs another slot; QR remains a separate companion.
+Transport is the existing bounded HTTPS helper (four seconds, 262144 bytes, no
+redirect/retry). The page discloses the public-address/server-connection transfer
+before the button. Provider failure is 503 with the public mapping preserved,
+not zero. Results contain source and conservative local start time, not a chain
+consistency or spendability guarantee.
+
+No new environment variable, credential, migration, table grant or feature flag
+is needed. Existing read-only public mapping permissions and lookup state suffice;
+serial balance is independent of `TAG_LOOKUP_ENABLED`. Preserve the current
+trusted-proxy settings, prefix quota policy, tag audit settings and feature flags.
+Keep the HTTPS helper in the immutable image and verify outbound access without
+reading real inventory. No application offline bundle is rebuilt here.
+
+For activation, freshly inspect the running image and exact rollback settings,
+back up the existing override, pin the reviewed web-only image, run synthetic
+mapping/provider tests offline, and compare all deployed file hashes with that
+commit. Do not use a historical download-release image as the base without fresh
+parity evidence. Preserve DB, volumes, secrets and shared proxy. Local synthetic
+checks are not a successful live-provider inquiry or proof of deployed parity.
+See `../docs/serial-balance.fa.md` for request/error examples and verification.
 
 ## RPi installation and shared Caddy
 

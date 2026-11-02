@@ -179,6 +179,18 @@ class ChainActivity:
         except Exception:
             raise ChainActivityUnavailable('Chain activity temporarily unavailable') from None
 
+    def balance(self, address):
+        """One bounded address read, without history, caching or retries."""
+        if not _address_validation.valid_address(address):
+            raise ValueError('Invalid Bitcoin address')
+        try:
+            fetched_at = datetime.fromtimestamp(self.clock(), timezone.utc).isoformat()
+            confirmed, pending = _balances(self._fetch('/address/' + address), address)
+            return {'address': address, 'confirmed_sats': confirmed,
+                    'pending_delta_sats': pending, 'source': SOURCE, 'fetched_at': fetched_at}
+        except Exception:
+            raise ChainActivityUnavailable('Chain activity temporarily unavailable') from None
+
     def snapshot(self, address, after_txid=None):
         if not _address_validation.valid_address(address):
             raise ValueError('Invalid Bitcoin address')

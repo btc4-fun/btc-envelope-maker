@@ -8,11 +8,13 @@
 <header class="page-heading shell"><a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> استعلام سریال</a><p class="eyebrow">فقط بخش عمومی پاکت</p><h1>یک سریال.<br>یک آدرس عمومی.</h1><p class="page-deck">شمارهٔ سریال روی پاکت را بنویسید تا آدرس دریافت بیت‌کوین را ببینید. لازم نیست پاکت را باز کنید. کلمات بازیابی را اینجا ننویسید.</p></header>
 <section class="lookup-layout shell" aria-label="استعلام عمومی پاکت">
   <div class="lookup-main">
-    <form id="lookup-form" action="/lookup" method="get" data-initial-serial="{{ serial|default('', true) }}" data-initial-state="{{ 'found' if wallet else lookup_error|default('', true) }}" data-initial-address="{{ wallet.address if wallet else '' }}" data-initial-explorer="{{ 'https://mempool.space/address/' + wallet.address if wallet else '' }}" data-retry-after="{{ lookup_retry_after|default('', true) }}">
+    <form id="lookup-form" action="/lookup" method="get" data-initial-serial="{{ serial|default('', true) }}" data-initial-state="{{ 'found' if wallet else lookup_error|default('', true) }}" data-initial-address="{{ wallet.address if wallet else '' }}" data-initial-explorer="{{ 'https://mempool.space/address/' + wallet.address if wallet else '' }}" data-retry-after="{{ lookup_retry_after|default('', true) }}" data-initial-balance='{{ (wallet.balance if wallet and wallet.balance else none)|tojson }}' data-balance-error="{{ wallet.balance_error if wallet and wallet.balance_error else '' }}">
       <label for="serial">شمارهٔ سریال پاکت</label>
       <p id="serial-hint" class="field-hint">فقط شمارهٔ سریال؛ با حروف و ارقام انگلیسی، خط تیره یا زیرخط. فاصله وارد نکنید.</p>
       <p class="field-hint">برای هر اتصال اینترنتی، پنج استعلام در شصت ثانیه مجاز است. اگر چند نفر از یک اتصال استفاده کنند، این سهمیه بین آن‌ها مشترک است. دیدن کد تصویری نتیجه تا شصت ثانیه پس از استعلام، از این سهمیه کم نمی‌کند.</p>
       <div class="lookup-controls"><input id="serial" name="serial" type="text" value="{{ serial|default('', true) }}" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" pattern="{{ serial_pattern }}" aria-describedby="serial-hint" required><button id="lookup-submit" class="button" type="submit">نمایش آدرس <span aria-hidden="true">←</span></button></div>
+      <p id="balance-privacy" class="field-hint">فقط با زدن «نمایش موجودی»، سرور آدرس عمومی را به بلاک‌استریم می‌فرستد. آن سرویس آدرس عمومی و اتصال سرور را می‌بیند؛ نه شمارهٔ سریال یا نشانی اینترنتی شما. هر بار یک استعلام از سهمیه کم می‌شود. دریافت و تکرار خودکار نداریم.</p>
+      <button id="balance-submit" class="secondary-button" type="submit" name="balance" value="1" aria-describedby="balance-privacy">نمایش موجودی</button>
     </form>
     <p id="lookup-status" class="lookup-status" role="status" aria-live="polite" aria-atomic="true">{% if lookup_error == 'rate_limited' %}{{ limit_message }}{% elif lookup_error == 'unavailable' %}سرویس استعلام فعلاً در دسترس نیست.{% endif %}</p>
     <div id="lookup-result" class="lookup-result" hidden></div>
@@ -25,6 +27,23 @@
         <p class="result-label">آدرس دریافت در شبکهٔ اصلی بیت‌کوین</p>
         <p class="public-address ltr-block" dir="ltr">{{ wallet.address }}</p>
         <figure class="qr-block"><img src="/api/wallets/{{ wallet.serial }}/qr.svg" alt="کد تصویری آدرس عمومی برای دریافت بیت‌کوین" width="192" height="192"><figcaption>فقط برای دریافت؛ کلمات بازیابی در این تصویر نیست.</figcaption></figure>
+        {% if wallet.balance %}
+        <section aria-label="موجودی آدرس عمومی">
+          <h2>موجودی آدرس عمومی</h2>
+          {% for label, amount, signed in [('موجودی تأییدشده', wallet.balance.confirmed_sats, false), ('تغییر خالص در انتظار', wallet.balance.pending_delta_sats, true)] %}
+          {% set magnitude = amount|abs %}
+          {% set sign = '-' if amount < 0 else '+' if signed and amount > 0 else '' %}
+          <h3>{{ label }}</h3>
+          <p>ساتوشی</p><p class="ltr-block" dir="ltr">{{ sign }}{{ magnitude }}</p>
+          <p>بیت‌کوین</p><p class="ltr-block" dir="ltr">{{ sign }}{{ magnitude // 100000000 }}.{{ '%08d'|format(magnitude % 100000000) }}</p>
+          {% endfor %}
+          <p>منبع</p><p class="ltr-block" dir="ltr">{{ wallet.balance.source }}</p>
+          <p>زمان شروع دریافت به وقت جهانی؛ زمان ثبت در شبکه نیست.</p><p class="ltr-block" dir="ltr">{{ wallet.balance.fetched_at }}</p>
+          <p>تغییر در انتظار قطعی نیست؛ می‌تواند منفی، حذف یا جایگزین شود. این اعداد تضمین موجودی قابل خرج یا اصالت پاکت نیستند. تاریخچه دریافت نمی‌شود.</p>
+        </section>
+        {% elif wallet.balance_error %}
+        <p role="status">موجودی فعلاً در دسترس نیست؛ این خطا به معنی صفر نیست. آدرس و کد تصویری همچنان قابل استفاده‌اند.</p>
+        {% endif %}
         <div class="explorer-links">
           <a class="explorer-link" href="https://mempool.space/address/{{ wallet.address }}" target="_blank" rel="noopener noreferrer">کاوشگر مم‌پول ↗</a>
           <a class="explorer-link" href="https://blockstream.info/address/{{ wallet.address }}" target="_blank" rel="noopener noreferrer">کاوشگر بلاک‌استریم ↗</a>

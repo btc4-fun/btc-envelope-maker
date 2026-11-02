@@ -68,6 +68,30 @@ Do not send recovery phrases, keys, passwords or confidential wallet images in
 any contact channel. Missing notification configuration must fail closed without
 revealing credentials or falsely claiming successful delivery.
 
+## Explicit serial balance
+
+Only `balance=1` on the serial HTML/API request enables one bounded HTTPS
+address-statistics read to the fixed `https://blockstream.info/api` origin.
+Unknown/duplicate options are rejected before admission. Normal three-field
+lookup, local QR, and reverse lookup do not fetch chain data. Balance consumes
+one ordinary shared lookup admission, never a free QR companion. The address
+comes only from the validated public database mapping; there are no new columns,
+grants, migrations or wallet writes. The provider receives only the public
+address and server connection, not the serial, client IP, cookies or forwarded
+headers. Existing trusted-proxy and IPv6-prefix admission policy is unchanged.
+
+The transport retains certificate verification, HTTPS-only destinations,
+redirect refusal, four-second deadline, 262144-byte cap and strict JSON/schema
+validation. There is no history fetch, retry or balance cache. Failure returns
+503 with the validated public mapping and `balance_error: unavailable`, never a
+zero; admission/DB errors remain sanitized and fail closed. Native HTML and JS
+keep confirmed sats and signed pending delta separate, use exact integer unit
+conversion, and identify the source and local request-start UTC timestamp.
+Pending transactions can disappear or be replaced; these sums are not a proof
+of spendability, custody, payment or authenticity. Browser lifecycle invalidation
+aborts its request and rejects late completions; it cannot undo upstream work
+already accepted by the server. The tag endpoint and its audit remain separate.
+
 ## Historical generator security follow-up
 
 Generator implementation, verification and current operating guidance now belong

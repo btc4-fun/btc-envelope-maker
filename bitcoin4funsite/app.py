@@ -74,6 +74,16 @@ def create_app(config=None):
 
     @app.before_request
     def validate_api_serial():
+        if request.endpoint in {'lookup_page', 'serial_page', 'wallet', 'wallet_qr'}:
+            allowed = {'serial', 'balance'} if request.endpoint == 'lookup_page' else {'balance'}
+            if request.endpoint == 'wallet_qr':
+                allowed = set()
+            if (set(request.args) - allowed
+                    or any(len(request.args.getlist(key)) != 1 for key in request.args)
+                    or ('balance' in request.args and request.args['balance'] != '1')
+                    or (request.endpoint == 'lookup_page' and 'balance' in request.args
+                        and not request.args.get('serial'))):
+                return jsonify(error='invalid_lookup_request'), 400
         if request.path.startswith('/api/addresses/'):
             address = request.path.removeprefix('/api/addresses/')
             if request.query_string or not valid_address(address):
@@ -245,7 +255,11 @@ def create_app(config=None):
         if serial:
             response = lookup_response(serial)
             if isinstance(response, tuple):
-                error = response[0].get_json()['error']
+                body = response[0].get_json()
+                if 'balance_error' in body:
+                    wallet = body
+                else:
+                    error = body['error']
                 if response[1] in (429, 503):
                     status = response[1]
                     retry_after = response[0].headers.get('Retry-After')
@@ -372,7 +386,18 @@ def create_app(config=None):
             address = record['address']
             if not valid_address(address):
                 raise ValueError('Invalid public Bitcoin address')
-            return jsonify(serial=serial, address=address, explorer_url='https://mempool.space/address/' + address)
+            public = dict(serial=serial, address=address, explorer_url='https://mempool.space/address/' + address)
+            if not qr and request.args.get('balance') == '1':
+                service = app.config.get('SERIAL_BALANCE')
+                if service is None:
+                    from chain_activity import ChainActivity
+                    service = ChainActivity()
+                try:
+                    public['balance'] = service.balance(address)
+                except Exception:
+                    app.logger.warning('Public serial balance unavailable')
+                    return jsonify(**public, balance_error='unavailable'), 503
+            return jsonify(public)
         except Exception:
             app.logger.warning('Public wallet lookup unavailable')
             return jsonify(error='unavailable'), 503

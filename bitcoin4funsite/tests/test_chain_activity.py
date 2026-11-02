@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch
+from typing import Any
 
 PATH = Path(__file__).resolve().parents[1] / 'chain_activity.py'
 ADDRESS = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
@@ -14,7 +15,7 @@ ORIGIN = 'https://blockstream.info/api'
 SUPPLY = 21_000_000 * 100_000_000
 
 
-def stats(funded=900, spent=400):
+def stats(funded: Any = 900, spent: Any = 400):
     return {'address': ADDRESS,
             'chain_stats': {'funded_txo_sum': funded, 'spent_txo_sum': spent},
             'mempool_stats': {'funded_txo_sum': 50, 'spent_txo_sum': 100}}
@@ -51,6 +52,45 @@ class ChainActivityContract(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
+
+    def test_balance_only_reads_address_once_and_preserves_signed_pending(self):
+        module = self.load()
+        self.assertTrue(callable(getattr(module.ChainActivity, 'balance', None)))
+        http = FakeHTTP(stats())
+        result = module.ChainActivity(request_bytes=http, clock=lambda: 1000).balance(ADDRESS)
+        self.assertEqual(result, {
+            'address': ADDRESS, 'confirmed_sats': 500, 'pending_delta_sats': -50,
+            'source': ORIGIN, 'fetched_at': '1970-01-01T00:16:40+00:00',
+        })
+        self.assertEqual(http.calls, [(ORIGIN + '/address/' + ADDRESS, {
+            'headers': {'Accept': 'application/json'}, 'max_bytes': 262144, 'timeout': 4})])
+
+    def test_balance_only_reuses_transport_and_schema_fail_closed_bounds(self):
+        module = self.load()
+        invalid = [TimeoutError('synthetic secret'), b'not-json', b'{"x":1,"x":2}',
+                   b'{"x":NaN}', b'[' * 40 + b']' * 40, b'x' * 262145,
+                   stats(0, 1), stats(SUPPLY + 1, 0), stats(True, 0),
+                   stats(1.5, 0), stats('1', 0), stats(2 ** 64, 0)]
+        mismatch = stats()
+        mismatch['address'] = OTHER
+        invalid.append(mismatch)
+        for body in invalid:
+            http = FakeHTTP(body)
+            with self.assertRaises(module.ChainActivityUnavailable):
+                module.ChainActivity(request_bytes=http).balance(ADDRESS)
+            self.assertEqual(len(http.calls), 1)
+        for address in (None, ADDRESS.upper(), ADDRESS[:-1] + 'q', ADDRESS + '/txs'):
+            http = FakeHTTP()
+            with self.assertRaises(ValueError):
+                module.ChainActivity(request_bytes=http).balance(address)
+            self.assertEqual(http.calls, [])
+        for amount in (0, SUPPLY):
+            body = stats(amount, 0)
+            body['mempool_stats'] = {'funded_txo_sum': 0, 'spent_txo_sum': amount}
+            http = FakeHTTP(body)
+            data = module.ChainActivity(request_bytes=http).balance(ADDRESS)
+            self.assertEqual((data['confirmed_sats'], data['pending_delta_sats']), (amount, -amount))
+            self.assertEqual(len(http.calls), 1)
 
     def test_confirmed_page_has_only_public_deltas_and_continuation(self):
         module = self.load()

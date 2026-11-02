@@ -180,6 +180,171 @@ class UIContract(unittest.TestCase):
         self.assertNotIn("سختی پایین شبکه", source)
         self.assertNotIn("متن‌باز", source)
 
+    def test_balance_button_discloses_privacy_and_native_result_is_exact(self):
+        wallet = {'serial': 'Serial_710587k45300', 'address': 'bc1qsyntheticpublicfixture',
+                  'balance': {'confirmed_sats': 0, 'pending_delta_sats': -50,
+                              'source': 'https://blockstream.info/api',
+                              'fetched_at': '1970-01-01T00:16:40+00:00'}}
+        source = self.render('lookup.html', wallet=wallet)
+        document = Document(source)
+        button = document.by_id('balance-submit')
+        self.assertEqual((button['name'], button['value'], button['type']), ('balance', '1', 'submit'))
+        self.assertLess(source.index('اتصال سرور'), source.index('id="balance-submit"'))
+        for text in ('0.00000000', '-0.00000050', 'تغییر خالص در انتظار',
+                     'https://blockstream.info/api', '1970-01-01T00:16:40+00:00'):
+            self.assertIn(text, source.split('<noscript>')[1])
+        self.assertIn('data-initial-balance=', source)
+
+    def test_balance_is_explicit_exact_and_retains_address_on_failure(self):
+        self.run_lookup_script(r'''
+await tick();
+assert.equal(requests.length,0);
+const address='bc1qsyntheticpublicfixture';
+const wallet={serial:ids.serial.value,address,explorer_url:'https://mempool.space/address/'+address};
+const balance={address,confirmed_sats:0,pending_delta_sats:-50,source:'https://blockstream.info/api',fetched_at:'1970-01-01T00:16:40+00:00'};
+handler=async()=>({ok:true,status:200,json:async()=>({...wallet,balance})});
+await ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+assert.equal(requests.length,1);
+assert.equal(requests[0].url,'/api/wallets/'+ids.serial.value+'?balance=1');
+assert.ok(all().some(n=>n.textContent==='0.00000000'));
+assert.ok(all().some(n=>n.textContent==='-0.00000050'));
+assert.ok(all().some(n=>n.textContent==='-50'));
+assert.ok(all().some(n=>n.textContent===balance.source));
+assert.ok(all().some(n=>n.textContent===balance.fetched_at));
+handler=async()=>({ok:false,status:503,json:async()=>({...wallet,balance_error:'unavailable'})});
+await ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+assert.equal(ids['lookup-result'].hidden,false);
+assert.ok(all().some(n=>n.textContent===address));
+assert.ok(all().some(n=>n.tagName==='img'));
+assert.ok(!all().some(n=>n.textContent==='0.00000000'));
+assert.ok(all().some(n=>/موجودی.*دسترس نیست/.test(n.textContent)));
+assert.equal(requests.length,2);
+''', initial='Serial_710587k45300', initial_state='found')
+
+    def test_balance_late_responses_are_discarded_on_edit_exit_and_new_request(self):
+        for action in ('edit', 'exit', 'new'):
+            self.run_lookup_script(r'''
+const pending=[];
+handler=()=>new Promise(resolve=>pending.push(resolve));
+const first=ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+await tick();
+const old=ids.serial.value;
+const response=serial=>({ok:true,status:200,json:async()=>({serial,address:'bc1qsyntheticpublicfixture',explorer_url:'https://mempool.space/address/bc1qsyntheticpublicfixture',balance:{address:'bc1qsyntheticpublicfixture',confirmed_sats:123,pending_delta_sats:1,source:'https://blockstream.info/api',fetched_at:'1970-01-01T00:16:40+00:00'}})});
+''' + (r'''
+ids.serial.value='Second0587k45300';
+await ids.serial.emit('input');
+assert.equal(requests[0].options.signal.aborted,true);
+''' if action == 'edit' else r'''
+window.listeners.pagehide();
+assert.equal(requests[0].options.signal.aborted,true);
+''' if action == 'exit' else r'''
+ids.serial.value='Second0587k45300';
+const second=ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+assert.equal(requests[0].options.signal.aborted,true);
+pending[1](response(ids.serial.value));
+await second;
+''') + r'''
+pending[0](response(old));
+await first;
+assert.ok(!all().some(n=>n.textContent===old),'Stale serial must not be rendered');
+assert.equal(ids['balance-submit'].disabled,false);
+''', initial='Serial_710587k45300', initial_state='found')
+
+    def test_balance_not_found_revokes_retained_address(self):
+        self.run_lookup_script(r'''
+handler=async()=>({ok:false,status:404});
+await ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+assert.equal(ids['lookup-result'].hidden,true);
+assert.ok(!all().some(n=>n.tagName==='img'));
+assert.ok(!all().some(n=>n.textContent==='bc1qsyntheticpublicfixture'));
+''', initial='Serial_710587k45300', initial_state='found')
+
+    def test_balance_body_decode_race_cannot_restore_retired_result(self):
+        for action in ('edit', 'exit', 'new'):
+            for reject in (False, True):
+                self.run_lookup_script(r'''
+let release,fail;
+const old=ids.serial.value;
+handler=async()=>({ok:true,status:200,json:()=>new Promise((resolve,reject)=>{release=resolve;fail=reject;})});
+const first=ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+await tick();
+''' + (r"ids.serial.value='Second0587k45300';await ids.serial.emit('input');" if action == 'edit' else
+       r"window.listeners.pagehide();" if action == 'exit' else r'''
+handler=async()=>({ok:false,status:404});
+await submit('Second0587k45300');
+''') + r'''
+const statusBefore=ids['lookup-status'].textContent;
+''' + (r"fail(new Error('synthetic body error'));" if reject else r'''
+release({serial:old,address:'bc1qsyntheticpublicfixture',explorer_url:'https://mempool.space/address/bc1qsyntheticpublicfixture',balance:{address:'bc1qsyntheticpublicfixture',confirmed_sats:123,pending_delta_sats:1,source:'https://blockstream.info/api',fetched_at:'1970-01-01T00:16:40+00:00'}});
+''') + r'''
+await first;
+assert.ok(!all().some(n=>n.textContent===old));
+assert.equal(ids['lookup-status'].textContent,statusBefore);
+''', initial='Serial_710587k45300', initial_state='found')
+
+    def test_rendered_balance_dataset_hydrates_without_refetch(self):
+        from test_serial_balance import SerialBalance, SERIAL
+        import json
+        for failed in (False, True):
+            client, _, _, _ = SerialBalance().fixture(*( [TimeoutError()] if failed else [] ))
+            html = client.get('/lookup?serial=' + SERIAL + '&balance=1').text
+            attrs = Document(html).by_id('lookup-form')
+            checks = r'''
+await tick();assert.equal(requests.length,0);
+''' + (r"assert.ok(all().some(n=>/موجودی.*دسترس نیست/.test(n.textContent)));" if failed else r'''
+for(const value of ['500','-50','0.00000500','-0.00000050','https://blockstream.info/api','1970-01-01T00:16:40+00:00']) assert.ok(all().some(n=>n.textContent===value),value);
+''')
+            self.run_lookup_script(checks, initial=attrs['data-initial-serial'],
+                initial_state=attrs['data-initial-state'], initial_balance=attrs['data-initial-balance'],
+                balance_error=attrs['data-balance-error'], initial_address=attrs['data-initial-address'])
+
+    def test_balance_hydration_zero_positive_and_error_never_refetch(self):
+        import json
+        for amount in (0, 1, 2100000000000000):
+            data = json.dumps({'address': 'bc1qsyntheticpublicfixture', 'confirmed_sats': amount,
+                               'pending_delta_sats': amount, 'source': 'https://blockstream.info/api',
+                               'fetched_at': '1970-01-01T00:16:40+00:00'})
+            self.run_lookup_script("""
+await tick();
+assert.equal(requests.length,0);
+assert.ok(all().some(n=>n.textContent==='موجودی تأییدشده'));
+assert.ok(all().some(n=>n.textContent===%s));
+""" % json.dumps(('+' if amount else '') + str(amount)),
+                initial='Serial_710587k45300', initial_state='found', initial_balance=data)
+        self.run_lookup_script(r'''
+await tick();
+assert.equal(requests.length,0);
+assert.ok(all().some(n=>/موجودی.*دسترس نیست/.test(n.textContent)));
+assert.ok(!all().some(n=>n.textContent==='0.00000000'));
+''', initial='Serial_710587k45300', initial_state='found', balance_error='unavailable')
+
+    def test_balance_quota_and_network_failure_preserve_mapping_without_retry(self):
+        self.run_lookup_script(r'''
+handler=async()=>({ok:false,status:429,headers:{get:()=> '43'}});
+await ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+assert.match(ids['lookup-status'].textContent,/۴۳ ثانیه/);
+assert.ok(all().some(n=>n.textContent==='bc1qsyntheticpublicfixture'));
+handler=async()=>{throw new Error('synthetic network failure');};
+await ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+assert.ok(all().some(n=>n.textContent==='bc1qsyntheticpublicfixture'));
+assert.ok(all().some(n=>/موجودی.*دسترس نیست/.test(n.textContent)));
+assert.equal(requests.length,2);
+''', initial='Serial_710587k45300', initial_state='found')
+
+    def test_balance_reuses_qr_and_malformed_balance_is_not_announced_success(self):
+        self.run_lookup_script(r'''
+const originalQr=all().find(n=>n.tagName==='img');
+let finish;
+handler=()=>new Promise(resolve=>{finish=resolve;});
+const pending=ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
+assert.equal(all().find(n=>n.tagName==='img'),originalQr,'Do not refetch QR while starting balance');
+finish({ok:true,status:200,json:async()=>({serial:ids.serial.value,address:'bc1qsyntheticpublicfixture',explorer_url:'https://mempool.space/address/bc1qsyntheticpublicfixture',balance:{confirmed_sats:0}})});
+await pending;
+assert.equal(all().find(n=>n.tagName==='img'),originalQr,'Do not refetch unchanged QR on completion');
+assert.equal(ids['lookup-status'].dataset.state,'error');
+assert.ok(all().some(n=>/موجودی.*دسترس نیست/.test(n.textContent)));
+''', initial='Serial_710587k45300', initial_state='found')
+
     def test_lookup_form_has_safe_progressive_enhancement_contract(self):
         source = self.render("lookup.html")
         document = Document(source)
@@ -206,7 +371,7 @@ class UIContract(unittest.TestCase):
                          ['/static/guide-inner-example.png', '/static/guide-outer-example.png'])
         self.assertFalse(any(key.startswith("on") for _, attrs in initial.elements for key in attrs))
 
-    def run_lookup_script(self, scenario, initial="", initial_state="", retry_after=""):
+    def run_lookup_script(self, scenario, initial="", initial_state="", retry_after="", initial_balance="null", balance_error="", initial_address="bc1qsyntheticpublicfixture"):
         self.assertIsNotNone(shutil.which("node"), "Node is required for the offline JavaScript behavior contract")
         harness = r'''
 const assert = require('node:assert/strict');
@@ -222,19 +387,21 @@ class Element {
   appendChild(node) { this.children.push(node); return node; }
   replaceChildren(...nodes) { this.children=[...nodes]; this.textContent=''; }
   focus() { this.focused=true; }
-  async emit(name) { await Promise.all((this.listeners[name] || []).map(handler => handler({preventDefault(){}}))); }
+  async emit(name, extra={}) { await Promise.all((this.listeners[name] || []).map(handler => handler({preventDefault(){}, ...extra}))); }
 }
-const ids=Object.fromEntries(['lookup-form','serial','lookup-submit','lookup-status','lookup-result'].map(id=>[id,new Element()]));
+const ids=Object.fromEntries(['lookup-form','serial','lookup-submit','balance-submit','lookup-status','lookup-result'].map(id=>[id,new Element()]));
 ids['lookup-form'].dataset.initialSerial=process.argv[2];
 ids['lookup-form'].dataset.initialState=process.argv[3];
 ids['lookup-form'].dataset.retryAfter=process.argv[5];
-ids['lookup-form'].dataset.initialAddress='bc1qsyntheticpublicfixture';
-ids['lookup-form'].dataset.initialExplorer='https://mempool.space/address/bc1qsyntheticpublicfixture';
+ids['lookup-form'].dataset.initialBalance=process.argv[6];
+ids['lookup-form'].dataset.balanceError=process.argv[7];
+ids['lookup-form'].dataset.initialAddress=process.argv[8];
+ids['lookup-form'].dataset.initialExplorer='https://mempool.space/address/'+process.argv[8];
 ids.serial.value=process.argv[2];
 ids.serial.setAttribute('pattern', process.argv[4]);
 ids['lookup-result'].hidden=true;
 global.document={getElementById:id=>ids[id] || null, createElement:tag=>new Element(tag)};
-global.window={isSecureContext:true, location:{origin:'http://localhost'}};
+global.window={isSecureContext:true, location:{origin:'http://localhost'}, listeners:{}, addEventListener(name, handler){this.listeners[name]=handler;}};
 let handler=async()=>{throw new Error('Unexpected request');};
 const requests=[];
 global.fetch=async(url, options)=>{requests.push({url,options}); return handler(url,options);};
@@ -253,7 +420,7 @@ vm.runInThisContext(fs.readFileSync(process.argv[1], 'utf8'));
         spec.loader.exec_module(module)
         html = module.create_app({'TESTING': True}).test_client().get('/lookup').text
         pattern = Document(html).by_id('serial')['pattern']
-        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state, pattern, retry_after], capture_output=True, text=True, timeout=15)
+        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state, pattern, retry_after, initial_balance, balance_error, initial_address], capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_lookup_waits_for_intent_and_rejects_invalid_without_network(self):

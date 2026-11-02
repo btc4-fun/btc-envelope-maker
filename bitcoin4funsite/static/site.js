@@ -71,10 +71,28 @@
   const status = document.getElementById("lookup-status");
   const result = document.getElementById("lookup-result");
   const submit = document.getElementById("lookup-submit");
+  const balanceSubmit = document.getElementById("balance-submit");
+  let currentWallet = null;
+  let balancePanel = null;
   // The native form and JS use the server's generator-derived grammar.
   // (?![\s\S]) is an absolute end assertion; $ alone permits a final newline.
   const validSerial = new RegExp("^(?:" + (field.getAttribute("pattern") || "(?!)") + ")(?![\\s\\S])");
   let requestVersion = 0;
+  let controller = null;
+
+  function invalidateLookup() {
+    ++requestVersion;
+    controller?.abort();
+    controller = null;
+    currentWallet = null;
+    result.hidden = true;
+    result.replaceChildren();
+    result.setAttribute("aria-busy", "false");
+    submit.disabled = balanceSubmit.disabled = false;
+    announce("", "");
+  }
+  field.addEventListener("input", invalidateLookup);
+  window.addEventListener("pagehide", invalidateLookup);
 
   function announce(message, state) {
     status.textContent = message;
@@ -101,7 +119,63 @@
       wallet.explorer_url === 'https://mempool.space/address/' + wallet.address;
   }
 
+  const balanceUnavailable = "موجودی فعلاً در دسترس نیست؛ این خطا به معنی صفر نیست. آدرس و کد تصویری همچنان قابل استفاده‌اند.";
+
+  function showBalance(wallet) {
+    const balance = wallet.balance;
+    if (balancePanel) {
+      balancePanel.replaceChildren();
+      balancePanel.hidden = true;
+    }
+    if (!balance && !wallet.balance_error) return;
+    const panel = balancePanel || element("section");
+    if (!balancePanel) result.append(panel);
+    balancePanel = panel;
+    panel.hidden = false;
+    panel.setAttribute("aria-label", "موجودی آدرس عمومی");
+    const valid = balance && balance.address === wallet.address &&
+      Number.isSafeInteger(balance.confirmed_sats) && balance.confirmed_sats >= 0 &&
+      balance.confirmed_sats <= 2100000000000000 &&
+      Number.isSafeInteger(balance.pending_delta_sats) && Math.abs(balance.pending_delta_sats) <= 2100000000000000 &&
+      balance.source === 'https://blockstream.info/api' &&
+      typeof balance.fetched_at === 'string' &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00:00$/.test(balance.fetched_at) &&
+      Number.isFinite(Date.parse(balance.fetched_at));
+    if (!valid || wallet.balance_error) {
+      wallet.balance_error = 'unavailable';
+      panel.append(element("p", "lookup-status", balanceUnavailable));
+    } else {
+      panel.append(element("h2", "", "موجودی آدرس عمومی"));
+      for (const [label, amount, signed] of [
+        ["موجودی تأییدشده", balance.confirmed_sats, false],
+        ["تغییر خالص در انتظار", balance.pending_delta_sats, true]
+      ]) {
+        const magnitude = BigInt(Math.abs(amount));
+        const sign = amount < 0 ? '-' : signed && amount > 0 ? '+' : '';
+        const sats = element("p", "ltr-block", sign + magnitude);
+        const btc = element("p", "ltr-block", sign + magnitude / 100000000n + '.' +
+          (magnitude % 100000000n).toString().padStart(8, '0'));
+        sats.dir = btc.dir = "ltr";
+        panel.append(element("h3", "", label), element("p", "", "ساتوشی"), sats,
+          element("p", "", "بیت‌کوین"), btc);
+      }
+      const source = element("p", "ltr-block", balance.source);
+      const fetched = element("p", "ltr-block", balance.fetched_at);
+      source.dir = fetched.dir = "ltr";
+      panel.append(element("p", "", "منبع"), source,
+        element("p", "", "زمان شروع دریافت به وقت جهانی؛ زمان ثبت در شبکه نیست."), fetched,
+        element("p", "", "تغییر در انتظار قطعی نیست؛ می‌تواند منفی، حذف یا جایگزین شود. این اعداد تضمین موجودی قابل خرج یا اصالت پاکت نیستند. تاریخچه دریافت نمی‌شود."));
+    }
+  }
+
   function showWallet(wallet) {
+    if (currentWallet?.serial === wallet.serial && currentWallet.address === wallet.address && !result.hidden) {
+      currentWallet = wallet;
+      showBalance(wallet);
+      return;
+    }
+    balancePanel = null;
+    currentWallet = wallet;
     const heading = element("h2", "", "آدرس عمومی این پاکت");
     const serialLabel = element("p", "result-label", "شمارهٔ سریال");
     const serial = element("p", "public-serial ltr-block", wallet.serial);
@@ -147,14 +221,25 @@
     const warning = element("p", "result-warning", "هر پیوند، یک سایت خارجی را در زبانهٔ جدید باز می‌کند و آدرس عمومی را با آن سرویس به اشتراک می‌گذارد. مرورگر هیچ درخواست خودکاری به این سرویس‌ها نمی‌فرستد. نمایش آدرس، تضمین موجودی یا تأیید تراکنش نیست.");
     result.replaceChildren(heading, serialLabel, serial, addressLabel, address, copy, figure, explorers, warning);
     result.hidden = false;
+    showBalance(wallet);
   }
 
-  async function lookup(serial) {
+  async function lookup(serial, withBalance = false) {
     const version = ++requestVersion;
+    controller?.abort();
+    controller = new AbortController();
+    balanceSubmit.disabled = false;
     result.setAttribute("aria-busy", "false");
     submit.disabled = false;
-    result.hidden = true;
-    result.replaceChildren();
+    const retained = withBalance && currentWallet?.serial === serial ? {
+      serial, address: currentWallet.address, explorer_url: currentWallet.explorer_url
+    } : null;
+    if (retained) showWallet(retained);
+    else {
+      currentWallet = null;
+      result.hidden = true;
+      result.replaceChildren();
+    }
     if (!validSerial.test(serial)) {
       field.setAttribute("aria-invalid", "true");
       announce("شمارهٔ سریال معتبر نیست. فقط حروف و ارقام انگلیسی، خط تیره یا زیرخط وارد کنید؛ آغاز آن باید حرف یا رقم باشد.", "error");
@@ -164,14 +249,16 @@
     field.removeAttribute("aria-invalid");
     result.setAttribute("aria-busy", "true");
     submit.disabled = true;
-    announce("در حال پیدا کردن آدرس عمومی…", "loading");
+    balanceSubmit.disabled = true;
+    announce(withBalance ? "در حال دریافت موجودی…" : "در حال پیدا کردن آدرس عمومی…", "loading");
     try {
-      const response = await fetch("/api/wallets/" + encodeURIComponent(serial), {
+      const response = await fetch("/api/wallets/" + encodeURIComponent(serial) + (withBalance ? "?balance=1" : ""), {
         method: "GET",
         credentials: "same-origin",
         redirect: "error",
         cache: "no-store",
-        headers: { Accept: "application/json" }
+        headers: { Accept: "application/json" },
+        signal: controller.signal
       });
       if (version !== requestVersion) return;
       if (response.status === 429) {
@@ -179,6 +266,10 @@
         return;
       }
       if (response.status === 404) {
+        currentWallet = null;
+        balancePanel = null;
+        result.replaceChildren();
+        result.hidden = true;
         announce("پاکتی با این شمارهٔ سریال پیدا نشد. حروف و ارقام را دوباره با روی پاکت تطبیق دهید.", "error");
         return;
       }
@@ -187,21 +278,25 @@
         announce("شمارهٔ سریال معتبر نیست. آن را دقیقاً مطابق روی پاکت وارد کنید.", "error");
         return;
       }
-      if (!response.ok) throw new Error("Lookup unavailable");
+      if (!response.ok && !(withBalance && response.status === 503)) throw new Error("Lookup unavailable");
       const wallet = await response.json();
       if (version !== requestVersion) return;
       if (!validWallet(wallet, serial)) {
         throw new Error("Unexpected public wallet response");
       }
+      if (withBalance && !wallet.balance) wallet.balance_error = 'unavailable';
       showWallet(wallet);
-      announce("آدرس عمومی پیدا شد. پیش از واریز، آدرس کامل و شبکه را بررسی کنید.", "success");
+      announce(withBalance ? (wallet.balance_error ? balanceUnavailable : "نتیجهٔ موجودی دریافت شد؛ زمان و محدودیت‌های زیر را بخوانید.") :
+        "آدرس عمومی پیدا شد. پیش از واریز، آدرس کامل و شبکه را بررسی کنید.", wallet.balance_error ? "error" : "success");
     } catch {
       if (version !== requestVersion) return;
-      announce("سرویس استعلام فعلاً در دسترس نیست. کمی بعد دوباره تلاش کنید؛ کلمات بازیابی را ارسال نکنید.", "error");
+      if (retained) showWallet({...retained, balance_error: 'unavailable'});
+      announce(withBalance ? balanceUnavailable : "سرویس استعلام فعلاً در دسترس نیست. کمی بعد دوباره تلاش کنید؛ کلمات بازیابی را ارسال نکنید.", "error");
     } finally {
       if (version === requestVersion) {
         result.setAttribute("aria-busy", "false");
         submit.disabled = false;
+        balanceSubmit.disabled = false;
       }
     }
   }
@@ -213,7 +308,7 @@
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    return lookup(field.value);
+    return lookup(field.value, event.submitter === balanceSubmit);
   });
 
   if (form.dataset.initialSerial) {
@@ -221,8 +316,11 @@
     const state = form.dataset.initialState;
     const wallet = { serial, address: form.dataset.initialAddress, explorer_url: form.dataset.initialExplorer };
     if (state === 'found' && validSerial.test(serial) && validWallet(wallet, serial)) {
+      try { wallet.balance = JSON.parse(form.dataset.initialBalance || 'null'); }
+      catch { wallet.balance_error = 'unavailable'; }
+      if (form.dataset.balanceError) wallet.balance_error = 'unavailable';
       showWallet(wallet);
-      announce("آدرس عمومی پیدا شد. پیش از واریز، آدرس کامل و شبکه را بررسی کنید.", "success");
+      announce(wallet.balance_error ? balanceUnavailable : "آدرس عمومی پیدا شد. پیش از واریز، آدرس کامل و شبکه را بررسی کنید.", wallet.balance_error ? "error" : "success");
     } else if (state === 'rate_limited') {
       announce(limitedMessage(form.dataset.retryAfter), "error");
     } else if (state === 'not_found') {
