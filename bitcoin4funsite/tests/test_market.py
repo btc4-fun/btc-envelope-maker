@@ -16,6 +16,29 @@ class MarketContract(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
+    def test_concurrent_refresh_is_single_flight(self):
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
+        module = self.load()
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+        def fetch(url, token=None):
+            calls.append(url)
+            if url == module.PRICE_URL:
+                entered.set()
+                if not release.wait(5):
+                    raise TimeoutError('synthetic fixture timeout')
+                return {'result': {'BTC/IRT': '21000000000', 'USDT/IRT': '270000'}}
+            return {'economyFee': 1}
+        service = module.MarketService(fetch=fetch, token_loader=lambda: 'SYNTHETIC', clock=lambda: 1000)
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(service.snapshot) for _ in range(8)]
+            self.assertTrue(entered.wait(2))
+            release.set()
+            results = [future.result(timeout=5) for future in futures]
+        self.assertEqual(calls, [module.PRICE_URL, module.FEE_URL])
+        self.assertTrue(all(result == results[0] for result in results))
+
     def test_reads_only_required_public_prices_and_economy_fee(self):
         module = self.load()
         requests = []
