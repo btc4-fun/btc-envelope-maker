@@ -27,7 +27,7 @@ def load_module(name):
 
 
 @contextmanager
-def loopback_server(*, trickle=True, body=None, status=200, chunked=False, header_trickle=False):
+def loopback_server(*, trickle=True, body=None, status=200, chunked=False, header_trickle=False, trust_certificate=True):
     stop = threading.Event()
     disconnected = threading.Event()
     requests = []
@@ -84,7 +84,7 @@ def loopback_server(*, trickle=True, body=None, status=200, chunked=False, heade
     key = Path(directory.name) / 'key.pem'
     subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
                     '-keyout', str(key), '-out', str(cert), '-days', '1',
-                    '-subj', '/CN=localhost', '-addext', 'subjectAltName=IP:127.0.0.1'],
+                    '-subj', '/CN=fixture.invalid', '-addext', 'subjectAltName=IP:127.0.0.1'],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(cert, key)
@@ -93,7 +93,7 @@ def loopback_server(*, trickle=True, body=None, status=200, chunked=False, heade
     # The product worker still gets an empty environment and verifies hostname.
     real_popen = subprocess.Popen
     def trusted_worker(args, **kwargs):
-        if args[-1:] == ['--worker']:
+        if trust_certificate and args[-1:] == ['--worker']:
             launcher = ("import ssl,runpy,sys; original=ssl.create_default_context; ca=sys.argv.pop(1); "
                         "ssl._create_default_https_context=lambda:original(cafile=ca); "
                         "p=sys.argv.pop(1);sys.argv[0]=p;runpy.run_path(p,run_name='__main__')")
@@ -143,6 +143,31 @@ class WholeOperationDeadline(unittest.TestCase):
                 with self.assertRaises(http.BoundedHTTPError):
                     http.request_bytes(url)
                 worker.assert_not_called()
+
+    def test_untrusted_certificate_is_refused_before_http(self):
+        http = load_module('bounded_http')
+        with loopback_server(trickle=False, trust_certificate=False) as (url, requests, _):
+            with self.observe_worker(http), self.assertRaises(http.BoundedHTTPError) as caught:
+                http.request_bytes(url)
+            self.assertEqual(str(caught.exception), 'HTTP request unavailable')
+            self.assertEqual(requests, [])
+        # The same certificate construction succeeds only with explicit test trust.
+        with loopback_server(trickle=False, body=b'trusted') as (url, requests, _):
+            with self.observe_worker(http):
+                self.assertEqual(http.request_bytes(url), b'trusted')
+            self.assertEqual(requests, ['/'])
+
+    def test_trusted_certificate_wrong_hostname_is_refused_before_http(self):
+        http = load_module('bounded_http')
+        with loopback_server(trickle=False, body=b'trusted') as (url, requests, _):
+            with self.observe_worker(http), self.assertRaises(http.BoundedHTTPError) as caught:
+                http.request_bytes(url.replace('127.0.0.1', 'localhost'))
+            self.assertEqual(str(caught.exception), 'HTTP request unavailable')
+            self.assertEqual(requests, [])
+            # Identical server, certificate, trust and worker; only hostname changes.
+            with self.observe_worker(http):
+                self.assertEqual(http.request_bytes(url), b'trusted')
+            self.assertEqual(requests, ['/'])
 
     def test_contact_continuously_trickling_ack_has_whole_operation_deadline(self):
         contact = load_module('contact')
