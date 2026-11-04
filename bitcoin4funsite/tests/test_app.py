@@ -291,7 +291,7 @@ class ApplicationContract(unittest.TestCase):
         self.assertEqual(response.json['rates']['btc_toman'], '21105000000')
         self.assertIn('raw_rates', response.json)
         self.assertEqual(response.json['raw_rates'], {'btc_toman': '21000000000', 'usdt_toman': '270000'})
-        self.assertEqual(response.json['rows'][0]['principal_sats'], 500)
+        self.assertEqual(response.json['rows'][0]['principal_sats'], 501)
         self.assertEqual(response.json['rows'][0]['total_rial'], response.json['rows'][0]['total_toman'] * 10)
         self.assertNotIn('SYNTHETIC', response.text)
         self.assertEqual(response.headers['Cache-Control'], 'no-store')

@@ -4,7 +4,7 @@
   "serialization": "All integers inside cases.expected (including transaction_vbytes) and monetary/satoshi inputs are base-10 strings, even when JS-safe. Null remains null. Python core numeric row contract is unchanged; stringify integer outputs recursively before fixture comparison. Exponents, floats, bools and whitespace are invalid inputs.",
   "contract": {
     "rates": "Raw btc_toman/usdt_toman positive <=1000000000000000; fee_rate positive <=10000; up to18 fractional places; input text <=64 characters.",
-    "principal": "int or ASCII digits; 500 <= principal_sats <=2100000000000000.",
+    "principal": "int or ASCII digits; 501 <= principal_sats <=2100000000000000.",
     "budget": "Whole toman int or ASCII digits; 0 <= budget_toman <=10^64-1. No table budget cap. Below minimum cost: Python ValueError; browser explicit insufficient status with no principal.",
     "raw_asset_toman": "Exact principal_sats * raw btc_toman /100000000; no exchange markup, network, print, operator or ceiling. Decimal text.",
     "formula": "adjusted rates=raw*201/200; satprice=adjustedBTC/100000000; network=ceil(rate*141); print=ceil((9/50)*adjustedUSDT/satprice); operator=ceil((3/20)*(principal+network+print)); totalToman=ceil((principal+network+print+operator)*satprice); totalRial=totalToman*10; remainder=budget-totalToman. Budget result is maximal principal bounded by supply.",
@@ -233,12 +233,12 @@
         "btc_toman": "10000000000",
         "usdt_toman": "100000",
         "fee_rate": "1.1",
-        "budget_toman": "96680"
+        "budget_toman": "96781"
       },
       "expected_error": {
         "status": "insufficient",
-        "minimum_principal_sats": "500",
-        "minimum_total_toman": "96681"
+        "minimum_principal_sats": "501",
+        "minimum_total_toman": "96782"
       }
     },
     {
@@ -252,8 +252,8 @@
       },
       "expected_error": {
         "status": "insufficient",
-        "minimum_principal_sats": "500",
-        "minimum_total_toman": "96681"
+        "minimum_principal_sats": "501",
+        "minimum_total_toman": "96782"
       }
     },
     {
@@ -263,18 +263,18 @@
         "btc_toman": "10000000000",
         "usdt_toman": "100000",
         "fee_rate": "1.1",
-        "budget_toman": "96681"
+        "budget_toman": "96782"
       },
       "expected": {
-        "principal_sats": "500",
-        "btc": "0.00000500",
+        "principal_sats": "501",
+        "btc": "0.00000501",
         "network_sats": "156",
         "print_sats": "180",
         "operator_sats": "126",
-        "total_sats": "962",
-        "total_toman": "96681",
-        "total_rial": "966810",
-        "budget_toman": "96681",
+        "total_sats": "963",
+        "total_toman": "96782",
+        "total_rial": "967820",
+        "budget_toman": "96782",
         "remainder_toman": "0",
         "rates": {
           "btc_toman": "10050000000",
@@ -297,8 +297,8 @@
         },
         "tag_sats": "0"
       },
-      "raw_asset_toman": "50000",
-      "next_principal_total_toman": "96782"
+      "raw_asset_toman": "50100",
+      "next_principal_total_toman": "96882"
     },
     {
       "id": "budget_remainder",

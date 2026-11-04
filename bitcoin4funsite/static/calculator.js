@@ -184,18 +184,18 @@
     }
     let budget = null;
     let principal = BigInt(amount.value);
-    if (mode.value === "principal_sats" && (principal < 500n || principal > maximum)) {
-      reject("اصل مبلغ باید از پانصد ساتوشی تا سقف بیست‌ویک میلیون بیت‌کوین باشد.");
+    if (mode.value === "principal_sats" && (principal < 501n || principal > maximum)) {
+      reject("اصل مبلغ باید از پانصد و یک ساتوشی تا سقف بیست‌ویک میلیون بیت‌کوین باشد.");
       return;
     }
     if (mode.value === "budget_toman") {
       budget = principal;
-      if (quote(500n)["total-toman"] > budget) {
+      if (quote(501n)["total-toman"] > budget) {
         reject("بودجه برای حداقل اصل مبلغ و همهٔ هزینه‌ها کافی نیست؛ بودجه را افزایش دهید.");
         return;
       }
       // Upper-bound search also handles flat price steps and the supply cap.
-      let low = 500n;
+      let low = 501n;
       let high = maximum;
       while (low < high) {
         const middle = (low + high + 1n) / 2n;
@@ -284,7 +284,7 @@
     return market.rows.every((row, index) => {
       if (!row || ![row.principal_sats, row.network_sats, row.print_sats, row.tag_sats ?? 0, row.operator_sats,
           row.total_sats, row.total_toman, row.total_rial, row.remainder_toman].every(integer) ||
-          row.principal_sats < 500 || row.principal_sats > 2100000000000000 || row.total_toman === 0 ||
+          row.principal_sats < 501 || row.principal_sats > 2100000000000000 || row.total_toman === 0 ||
           typeof row.btc !== "string" || !/^(?:0|[1-9][0-9]{0,7})\.[0-9]{8}$/.test(row.btc) ||
           row.network_sats !== market.costs.network_sats || row.print_sats !== market.costs.print_sats ||
           (row.tag_sats ?? 0) !== (market.costs.tag_sats ?? 0)) return false;
@@ -292,7 +292,7 @@
       if (BigInt(whole) * 100000000n + BigInt(fraction) !== BigInt(row.principal_sats) ||
           BigInt(row.principal_sats) + BigInt(row.network_sats) + BigInt(row.print_sats) + BigInt(row.tag_sats ?? 0) + BigInt(row.operator_sats) !== BigInt(row.total_sats) ||
           BigInt(row.total_toman) * 10n !== BigInt(row.total_rial)) return false;
-      if (index === 0) return row.principal_sats === 500 && row.budget_toman === null && row.remainder_toman === 0;
+      if (index === 0) return row.principal_sats === 501 && row.budget_toman === null && row.remainder_toman === 0;
       return integer(row.budget_toman) && row.budget_toman >= 100000 && row.budget_toman <= 2000000 &&
         BigInt(row.budget_toman) % 100000n === 0n && row.total_toman <= row.budget_toman &&
         BigInt(row.remainder_toman) === BigInt(row.budget_toman) - BigInt(row.total_toman) &&

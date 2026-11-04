@@ -71,24 +71,39 @@ class BitcoinConversionTests(unittest.TestCase):
 
 
 class QuoteTableTests(unittest.TestCase):
+    def test_minimum_principal_is_501_with_exact_inverse_boundary(self):
+        from pricing import quote_for_principal, quote_for_budget, quote_table
+        for tag in (False, True):
+            args = ("10000000000", "100000", "1.1")
+            with self.assertRaises(ValueError):
+                quote_for_principal(*args, 500, include_tag=tag)
+            row = quote_for_principal(*args, 501, include_tag=tag)
+            self.assertEqual(row['principal_sats'], 501)
+            first = quote_table(*args, include_tag=tag)['rows'][0]
+            self.assertEqual(first, {key: row[key] for key in first})
+            budget = row['total_toman']
+            self.assertEqual(quote_for_budget(*args, budget, include_tag=tag)['principal_sats'], 501)
+            with self.assertRaises(ValueError):
+                quote_for_budget(*args, budget - 1, include_tag=tag)
+
     def test_print_charge_combines_fifteen_cent_printing_with_one_three_cent_seal(self):
         from pricing import quote_for_budget, quote_for_principal, quote_table
 
         inputs = ("10000000000", "100000", "1.1")
-        # 18 cents -> 180 sats; ceil(15% * (500 + 156 + 180)) = 126.
-        # ceil((500 + 156 + 180 + 126) * 100.5) = 96681 toman.
+        # 18 cents -> 180 sats; ceil(15% * (501 + 156 + 180)) = 126.
+        # ceil((501 + 156 + 180 + 126) * 100.5) = 96782 toman.
         for include_tag in (False, True):
-            row = quote_for_principal(*inputs, 500, include_tag=include_tag)
+            row = quote_for_principal(*inputs, 501, include_tag=include_tag)
             self.assertEqual(row["print_sats"], 180)
             self.assertEqual(row["costs"]["print_sats"], 180)
             self.assertEqual(row["assumptions"]["print_usd"], "0.18")
             self.assertEqual(quote_table(*inputs, include_tag=include_tag)["rows"][0]["print_sats"], 180)
-        row = quote_for_principal(*inputs, 500)
+        row = quote_for_principal(*inputs, 501)
         self.assertEqual((row["operator_sats"], row["total_sats"], row["total_toman"]),
-                         (126, 962, 96681))
+                         (126, 963, 96782))
         with self.assertRaisesRegex(ValueError, "insufficient"):
-            quote_for_budget(*inputs, 96680)
-        self.assertEqual(quote_for_budget(*inputs, 96681)["principal_sats"], 500)
+            quote_for_budget(*inputs, 96781)
+        self.assertEqual(quote_for_budget(*inputs, 96782)["principal_sats"], 501)
 
     def test_optional_tag_is_separate_and_included_in_operator_subtotal(self):
         from fractions import Fraction
@@ -109,7 +124,7 @@ class QuoteTableTests(unittest.TestCase):
                     subtotal = row["principal_sats"] + row["network_sats"] + row["print_sats"] + tag
                     self.assertEqual(row["operator_sats"], ceiling(Fraction(15, 100) * subtotal))
                     self.assertEqual(row["total_toman"], ceiling(ceiling(Fraction(23, 20) * subtotal) * sat))
-                    custom = (quote_for_principal(*inputs, 500, include_tag=include_tag)
+                    custom = (quote_for_principal(*inputs, 501, include_tag=include_tag)
                               if row["budget_toman"] is None else
                               quote_for_budget(*inputs, row["budget_toman"], include_tag=include_tag))
                     self.assertEqual({key: custom[key] for key in row}, row)
@@ -122,7 +137,7 @@ class QuoteTableTests(unittest.TestCase):
     def test_tag_option_requires_boolean_and_ignores_hostile_decimal_context(self):
         from decimal import Decimal, localcontext
         from pricing import quote_table, quote_for_principal, quote_for_budget
-        for function, extra in ((quote_table, ()), (quote_for_principal, (500,)), (quote_for_budget, (500000,))):
+        for function, extra in ((quote_table, ()), (quote_for_principal, (501,)), (quote_for_budget, (500000,))):
             inputs = ('12345678901.12345678', '98765.4321', '1.23456789', *extra)
             for invalid in ('false', 'true', 0, 1, None, [], {}):
                 with self.subTest(function=function.__name__, invalid=invalid):
@@ -152,9 +167,9 @@ class QuoteTableTests(unittest.TestCase):
         })
         self.assertEqual(quote["costs"], {"network_sats": 156, "print_sats": 180, "tag_sats": 0})
         self.assertEqual(quote["rows"][0], {
-            "principal_sats": 500, "btc": "0.00000500", "network_sats": 156,
-            "print_sats": 180, "tag_sats": 0, "operator_sats": 126, "total_sats": 962,
-            "total_toman": 96681, "total_rial": 966810,
+            "principal_sats": 501, "btc": "0.00000501", "network_sats": 156,
+            "print_sats": 180, "tag_sats": 0, "operator_sats": 126, "total_sats": 963,
+            "total_toman": 96782, "total_rial": 967820,
             "budget_toman": None, "remainder_toman": 0,
         })
 
@@ -171,7 +186,7 @@ class QuoteTableTests(unittest.TestCase):
         previous = rows[0]
         for row in rows[1:]:
             with self.subTest(budget=row["budget_toman"]):
-                self.assertGreaterEqual(row["principal_sats"], 500)
+                self.assertGreaterEqual(row["principal_sats"], 501)
                 self.assertGreaterEqual(row["principal_sats"], previous["principal_sats"])
                 self.assertGreaterEqual(row["total_toman"], previous["total_toman"])
                 self.assertLessEqual(row["total_toman"], row["budget_toman"])
@@ -218,7 +233,7 @@ class QuoteTableTests(unittest.TestCase):
     def test_budgets_start_strictly_above_initial_total_including_exact_multiple(self):
         from pricing import quote_table
 
-        quote = quote_table("17214963246", "1", "0.001")
+        quote = quote_table("17185231012", "1", "0.001")
         self.assertEqual(quote["rows"][0]["total_toman"], 100000)
         self.assertEqual(quote["rows"][1]["budget_toman"], 200000)
         self.assertEqual(quote["rows"][-1]["budget_toman"], 2000000)
@@ -228,7 +243,7 @@ class QuoteTableTests(unittest.TestCase):
 
         quote = quote_table(1000000000000000, 1000000000000000, 10000)
         self.assertEqual(len(quote["rows"]), 1)
-        self.assertEqual(quote["rows"][0]["principal_sats"], 500)
+        self.assertEqual(quote["rows"][0]["principal_sats"], 501)
         self.assertGreater(quote["rows"][0]["total_toman"], 2000000)
 
     def test_fractional_rates_match_exact_rational_ceiling_oracle_and_json(self):
@@ -288,7 +303,7 @@ class CustomQuoteTests(unittest.TestCase):
             sat_price = Fraction(btc) * Fraction(201, 200) / 100000000
             network = ceiling(Fraction(fee) * 141)
             printing = ceiling(Fraction(9, 50) * Fraction(usdt) * Fraction(201, 200) / sat_price)
-            principal = rng.choice((500, rng.randint(500, MAX_SATOSHIS), MAX_SATOSHIS))
+            principal = rng.choice((501, rng.randint(501, MAX_SATOSHIS), MAX_SATOSHIS))
             subtotal = principal + network + printing
             budget = ceiling(ceiling(Fraction(23, 20) * subtotal) * sat_price) + rng.choice((-1, 0, 1))
             # Algebraically invert the two integer ceilings, independently of
@@ -297,7 +312,7 @@ class CustomQuoteTests(unittest.TestCase):
             subtotal_limit = 20 * total_sats_limit // 23
             expected_principal = min(MAX_SATOSHIS, subtotal_limit - network - printing)
             with self.subTest(case=case, budget=budget):
-                if expected_principal < 500:
+                if expected_principal < 501:
                     with self.assertRaisesRegex(ValueError, "insufficient"):
                         quote_for_budget(btc, usdt, fee, budget)
                     continue
@@ -433,13 +448,13 @@ class CustomQuoteTests(unittest.TestCase):
 
                 budget = int(inputs["budget_toman"]) if case["mode"] == "budget" else None
                 if "expected_error" in case:
-                    self.assertLess(budget, cost(500))
-                    self.assertEqual(int(case["expected_error"]["minimum_total_toman"]), cost(500))
+                    self.assertLess(budget, cost(501))
+                    self.assertEqual(int(case["expected_error"]["minimum_total_toman"]), cost(501))
                     continue
                 expected = case["expected"]
                 principal = (int(inputs["principal_sats"]) if budget is None else
                              min(supply, 20 * (Fraction(budget) // sat_price) // 23 - network - printing - tag))
-                self.assertGreaterEqual(principal, 500)
+                self.assertGreaterEqual(principal, 501)
                 self.assertEqual(int(expected["principal_sats"]), principal)
                 self.assertEqual(expected["btc"], f"{principal // 100000000}.{principal % 100000000:08d}")
                 subtotal = principal + network + printing + tag
@@ -466,7 +481,7 @@ class CustomQuoteTests(unittest.TestCase):
                 if case["id"] in ("budget_exact_minimum", "budget_exact_3000", "budget_exact_supply_bound"):
                     self.assertEqual(budget, cost(principal))
                 if case["id"] == "budget_exact_minimum":
-                    self.assertEqual(principal, 500)
+                    self.assertEqual(principal, 501)
                 if case["id"] == "budget_exact_3000":
                     self.assertEqual(principal, 3000)
                 if case["id"] == "budget_below_3000_boundary":
@@ -494,7 +509,7 @@ class CustomQuoteTests(unittest.TestCase):
                 inputs = case["inputs"]
                 function = pricing.quote_for_principal if case["mode"] == "principal" else pricing.quote_for_budget
                 if "expected_error" in case:
-                    with self.assertRaisesRegex(ValueError, "insufficient.*500"):
+                    with self.assertRaisesRegex(ValueError, "insufficient.*501"):
                         function(**inputs)
                 else:
                     actual = function(**inputs)
@@ -512,10 +527,10 @@ class CustomQuoteTests(unittest.TestCase):
             ("12345678901.12345678", "98765.4321", "1.23456789"),
             ("1000000000000000", "1000000000000000", "10000"),
         ):
-            minimum = quote_for_principal(*rates, 500)["total_toman"]
+            minimum = quote_for_principal(*rates, 501)["total_toman"]
             for budget in (0, minimum - 1):
                 with self.subTest(rates=rates, budget=budget):
-                    with self.assertRaisesRegex(ValueError, "insufficient.*500"):
+                    with self.assertRaisesRegex(ValueError, "insufficient.*501"):
                         quote_for_budget(*rates, budget)
             boundary = quote_for_budget(*rates, minimum)
             self.assertEqual(boundary["total_toman"], minimum)
@@ -528,7 +543,7 @@ class CustomQuoteTests(unittest.TestCase):
         inverse = getattr(pricing, "quote_for_budget", None)
         self.assertTrue(callable(inverse), "quote_for_budget must be implemented")
         for btc, usdt, fee, budget in (
-            ("10000000000", "100000", "1.1", 96681),
+            ("10000000000", "100000", "1.1", 96782),
             ("10000000000", "100000", "1.1", 100000),
             ("10000000000", "100000", "1.1", 50000000),
             ("12345678901.12345678", "98765.4321", "1.23456789", 50000001),
@@ -546,7 +561,7 @@ class CustomQuoteTests(unittest.TestCase):
                     subtotal = principal + network + printing
                     return ceiling((subtotal + ceiling(Fraction(3, 20) * subtotal)) * sat_price)
 
-                self.assertGreaterEqual(row["principal_sats"], 500)
+                self.assertGreaterEqual(row["principal_sats"], 501)
                 self.assertLessEqual(row["principal_sats"], pricing.MAX_SATOSHIS)
                 self.assertEqual(row["total_toman"], cost(row["principal_sats"]))
                 self.assertLessEqual(row["total_toman"], budget)
@@ -557,8 +572,8 @@ class CustomQuoteTests(unittest.TestCase):
                 principal_row = pricing.quote_for_principal(btc, usdt, fee, row["principal_sats"])
                 self.assertEqual({**principal_row, "budget_toman": budget,
                                   "remainder_toman": budget - row["total_toman"]}, row)
-        self.assertEqual(inverse("10000000000", "100000", "1.1", 96681)["principal_sats"], 500)
-        self.assertEqual(inverse("10000000000", "100000", "1.1", 96681)["remainder_toman"], 0)
+        self.assertEqual(inverse("10000000000", "100000", "1.1", 96782)["principal_sats"], 501)
+        self.assertEqual(inverse("10000000000", "100000", "1.1", 96782)["remainder_toman"], 0)
         self.assertGreater(inverse("10000000000", "100000", "1.1", 100000)["remainder_toman"], 0)
 
     def test_custom_principal_requires_bounded_unsigned_integer(self):
@@ -590,7 +605,7 @@ class CustomQuoteTests(unittest.TestCase):
         for btc, usdt, fee, principal in (
             ("10000000000", "100000", "1.1", 3000),
             ("12345678901.12345678", "98765.4321", "1.23456789", 3000),
-            ("999999999999999.999999999999999999", "0.000000000000000001", "9999.999999999999999999", 500),
+            ("999999999999999.999999999999999999", "0.000000000000000001", "9999.999999999999999999", 501),
             ("0.000000000000000001", "1000000000000000", "0.000000000000000001", pricing.MAX_SATOSHIS),
         ):
             with self.subTest(btc=btc, principal=principal):

@@ -149,9 +149,9 @@ def quote_for_principal(btc_toman, usdt_toman, fee_rate, principal_sats, *, incl
 
     The returned row also includes the table's rates, assumptions and costs.
     Rates follow quote_table. Principal accepts int (not bool) or unsigned ASCII
-    digits, at most 64 characters, in [500, MAX_SATOSHIS]. Otherwise ValueError.
+    digits, at most 64 characters, in [501, MAX_SATOSHIS]. Otherwise ValueError.
     """
-    principal = _unsigned_integer(principal_sats, "principal_sats", 500, MAX_SATOSHIS)
+    principal = _unsigned_integer(principal_sats, "principal_sats", 501, MAX_SATOSHIS)
     satoshi_toman, network, printing, tag, metadata = _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag)
     with localcontext(Context(prec=128)):
         row = _quote_row(principal, network, printing, satoshi_toman, tag=tag)
@@ -159,23 +159,23 @@ def quote_for_principal(btc_toman, usdt_toman, fee_rate, principal_sats, *, incl
 
 
 def quote_for_budget(btc_toman, usdt_toman, fee_rate, budget_toman, *, include_tag=False) -> dict:
-    """Return the largest principal in [500, MAX_SATOSHIS] fitting the budget.
+    """Return the largest principal in [501, MAX_SATOSHIS] fitting the budget.
 
     Budget is a whole toman amount: int (not bool) or unsigned ASCII digits,
-    at most 64 digits. There is no table's 2,000,000-toman cap. If 500 satoshis
+    at most 64 digits. There is no table's 2,000,000-toman cap. If 501 satoshis
     cannot be afforded, ValueError is raised (no fictitious principal or row).
     Successful rows include rates/assumptions/costs and the unspent remainder.
     """
     budget = _unsigned_integer(budget_toman, "budget_toman", 0, 10**64 - 1)
     satoshi_toman, network, printing, tag, metadata = _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag)
     with localcontext(Context(prec=128)):
-        minimum = _quote_row(500, network, printing, satoshi_toman, tag=tag)
+        minimum = _quote_row(501, network, printing, satoshi_toman, tag=tag)
         if minimum["total_toman"] > budget:
             raise ValueError(
-                f"budget_toman insufficient for minimum 500-satoshi package; "
+                f"budget_toman insufficient for minimum 501-satoshi package; "
                 f"requires {minimum['total_toman']} toman"
             )
-        low, high = 500, MAX_SATOSHIS
+        low, high = 501, MAX_SATOSHIS
         while low < high:
             middle = (low + high + 1) // 2
             candidate = _quote_row(middle, network, printing, satoshi_toman, tag=tag)
@@ -207,7 +207,7 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
                          * adjusted_satoshi_toman)
       total_rial = total_toman * 10
     The 141 vB estimate assumes one P2WPKH input and two P2WPKH outputs.
-    A first 500-satoshi quote is always shown, even above 2,000,000 toman.
+    A first 501-satoshi quote is always shown, even above 2,000,000 toman.
     Budget rows begin at the next strictly greater 100,000-toman multiple;
     binary search finds the largest supply-bounded principal that fits each
     ceiling. Remainder is budget minus actual rounded cost (zero without a
@@ -215,11 +215,11 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
     """
     satoshi_toman, network_sats, print_sats, tag, metadata = _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag)
     with localcontext(Context(prec=128)):
-        first = _quote_row(500, network_sats, print_sats, satoshi_toman, tag=tag)
+        first = _quote_row(501, network_sats, print_sats, satoshi_toman, tag=tag)
         rows = [first]
         first_budget = (first["total_toman"] // 100_000 + 1) * 100_000
         for budget in range(first_budget, 2_000_001, 100_000):
-            low, high = 500, MAX_SATOSHIS
+            low, high = 501, MAX_SATOSHIS
             while low < high:
                 middle = (low + high + 1) // 2
                 candidate = _quote_row(middle, network_sats, print_sats, satoshi_toman, tag=tag)

@@ -19,6 +19,18 @@ class CalculatorUI(unittest.TestCase):
         self.assertTrue((ROOT / "templates" / template_name).is_file(), f"Missing public page: {template_name}")
         return env.get_template(template_name).render(**context)
 
+    def test_browser_rejects_500_and_accepts_501(self):
+        self.run_script(r'''
+handler=async()=>({ok:true,json:async()=>marketFixture()});
+load(); await tick();
+await edit('quote-amount','500'); await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-result'].hidden,true);
+assert.equal(ids['quote-status'].dataset.state,'error');
+await edit('quote-amount','501'); await ids['quote-form'].emit('submit');
+assert.equal(ids['quote-result'].hidden,false);
+assert.equal(ids['quote-principal'].textContent,'501');
+''', page="market")
+
     def test_market_loading_stops_when_request_times_out(self):
         self.run_script(r'''
 const originalTimeout=AbortSignal.timeout.bind(AbortSignal);
@@ -207,7 +219,7 @@ assert.equal(requests.length,1);
     def test_costs_page_discloses_formula_sources_cache_and_network_uncertainty(self):
         source = self.render("costs.html")
         document = Document(source)
-        for phrase in ("۵۰۰", "حداقل بسته", "حداقل همگانی", "۰٫۵", "۱۵", "۰٫۱۵", "۱۴۱", "یک ورودی", "دو خروجی", "سگویت", "اقتصادی", "روزها", "حذف", "تضمین", "۶۰ ثانیه", "۳۰۰ ثانیه", "ریال", "باقی‌مانده", "سرور"):
+        for phrase in ("۵۰۱", "حداقل بسته", "حداقل همگانی", "۰٫۵", "۱۵", "۰٫۱۵", "۱۴۱", "یک ورودی", "دو خروجی", "سگویت", "اقتصادی", "روزها", "حذف", "تضمین", "۶۰ ثانیه", "۳۰۰ ثانیه", "ریال", "باقی‌مانده", "سرور"):
             self.assertIn(phrase, source)
         self.assertNotIn("BlueWallet", source)
         for name in ("market-stale", "market-data"):
@@ -240,12 +252,12 @@ assert.equal(ids['sat-price'].textContent,'100');
 assert.equal(ids['quote-rows'].children.length,2);
 const first=ids['quote-rows'].children[0];
 assert.equal(first.children.length,3,'Keep the three primary columns');
-assert.ok(all(first).some(node=>node.textContent==='500'));
-assert.ok(all(first).some(node=>node.textContent==='0.00000500'));
-assert.ok(all(first).some(node=>node.textContent==='94,500'));
+assert.ok(all(first).some(node=>node.textContent==='501'));
+assert.ok(all(first).some(node=>node.textContent==='0.00000501'));
+assert.ok(all(first).some(node=>node.textContent==='94,600'));
 assert.ok(all(first).some(node=>node.tagName==='details'));
 const detailText=all(first).map(node=>node.textContent).join(' ');
-for (const word of ['شبکه','چاپ','گرداننده','ریال','945,000','124','180','141']) assert.ok(detailText.includes(word),word);
+for (const word of ['شبکه','چاپ','گرداننده','ریال','946,000','124','180','141']) assert.ok(detailText.includes(word),word);
 const secondText=all(ids['quote-rows'].children[1]).map(node=>node.textContent).join(' ');
 assert.match(secondText,/باقی‌مانده/);
 assert.ok(secondText.includes('48,000'));
@@ -309,7 +321,7 @@ assert.equal(requests[0].options.body,undefined);
             network = ceiling(Fraction(fee) * 141)
             printing = ceiling(Fraction(18, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
             tag = ceiling(Fraction(12, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
-            minimum = ceiling(ceiling(Fraction(23, 20) * (500 + network + printing + tag)) * sat)
+            minimum = ceiling(ceiling(Fraction(23, 20) * (501 + network + printing + tag)) * sat)
             options = {variant: quote_table(btc, usdt, fee, include_tag=enabled)
                        for variant, enabled in [('no_tag', False), ('with_tag', True)]}
             for budget in (minimum - 1, minimum, minimum + 1, minimum + 100001, 10**32 - 1):
@@ -324,7 +336,7 @@ for(const test of cases) {
   ids['quote-tag'].checked=true; await ids['quote-tag'].emit('change');
   ids['quote-mode'].value='budget_toman'; await ids['quote-mode'].emit('change');
   await edit('quote-amount',test.budget); await ids['quote-form'].emit('submit');
-  if(BigInt(test.principal)<500n) {
+  if(BigInt(test.principal)<501n) {
     assert.equal(ids['quote-result'].hidden,true);
     assert.equal(ids['quote-status'].dataset.state,'error');
   } else {
@@ -437,7 +449,7 @@ assert.equal(ids['quote-principal'].textContent,'1,418');
 assert.equal(ids['quote-remainder'].textContent,'99');
 ids['quote-mode'].value='principal_sats'; await ids['quote-mode'].emit('change');
 assert.equal(ids['quote-result'].hidden,true,'Changing units invalidates the previous quote');
-await edit('quote-amount','500'); await ids['quote-form'].emit('submit');
+await edit('quote-amount','501'); await ids['quote-form'].emit('submit');
 assert.equal(ids['quote-budget-details'].hidden,true);
 assert.equal(requests.length,1);
 ''', page="market")
@@ -463,7 +475,7 @@ assert.equal(requests.length,1);
         self.assertEqual(document.by_id("quote-result")["aria-live"], "polite")
         for value in ("principal_sats", "budget_toman"):
             self.assertTrue(any(tag == "option" and attrs.get("value") == value for tag, attrs in document.elements))
-        for phrase in ("۳۲", "۵۰۰", "۲۱ میلیون", "ارسال نمی‌شود", "محاسبه", "اصل مبلغ خالص", "باقی‌مانده"):
+        for phrase in ("۳۲", "۵۰۱", "۲۱ میلیون", "ارسال نمی‌شود", "محاسبه", "اصل مبلغ خالص", "باقی‌مانده"):
             self.assertIn(phrase, source)
         css = (ROOT / "static/site.css").read_text()
         for selector in (".quote-calculator", ".quote-controls", ".quote-result", ".quote-breakdown"):
@@ -476,7 +488,7 @@ assert.equal(requests.length,1);
 handler=async()=>({ok:true,json:async()=>marketFixture()}); load(); await tick();
 for(const mode of ['principal_sats','budget_toman']) {
   ids['quote-mode'].value=mode; await ids['quote-mode'].emit('change');
-  const bad=['','0','-1','+500','1e3','1.0','1,000','۵۰۰','٥٠٠',' 500','500 ','500\n','500\r','0500','9'.repeat(33),...(mode==='principal_sats'?['499','2100000000000001']:['94499'])];
+  const bad=['','0','-1','+500','1e3','1.0','1,000','۵۰۰','٥٠٠',' 500','500 ','500\n','500\r','0500','9'.repeat(33),...(mode==='principal_sats'?['499','500','2100000000000001']:['94599'])];
   for(const value of bad) {
     await edit('quote-amount',mode==='principal_sats'?'3000':'200000');
     await ids['quote-form'].emit('submit');
@@ -486,12 +498,12 @@ for(const mode of ['principal_sats','budget_toman']) {
     for(const key of ['principal','btc','network','print','operator','total-sats','total-toman','total-rial','budget','remainder']) assert.equal(ids['quote-'+key].textContent,'','Clear old result: '+value);
     assert.equal(ids['quote-amount'].getAttribute('aria-invalid'),'true',JSON.stringify(value));
     assert.equal(ids['quote-status'].dataset.state,'error');
-    if(value==='94499') assert.match(ids['quote-status'].textContent,/کافی نیست/);
+    if(value==='94599') assert.match(ids['quote-status'].textContent,/کافی نیست/);
   }
 }
-await edit('quote-amount','94500'); await ids['quote-form'].emit('submit');
+await edit('quote-amount','94600'); await ids['quote-form'].emit('submit');
 assert.equal(ids['quote-amount'].getAttribute('aria-invalid'),null);
-assert.equal(ids['quote-principal'].textContent,'500');
+assert.equal(ids['quote-principal'].textContent,'501');
 assert.equal(ids['quote-remainder'].textContent,'0');
 assert.equal(requests.length,1);
 ''', page="market")
@@ -547,12 +559,12 @@ assert.equal(requests.length,1);
                         "operator": str(operator), "total-sats": str(total),
                         "total-toman": str(cost), "total-rial": str(cost * 10)}
 
-            for principal in (500, 501, 3000, maximum - 1, maximum):
+            for principal in (501, 502, 3000, maximum - 1, maximum):
                 scenarios.append({"mode": "principal_sats", "input": str(principal), "rate": rate_text,
                                   "network": network, "printing": printing, "expected": quote(principal)})
-            for budget in (int(quote(500)["total-toman"]), int(quote(3000)["total-toman"]) + 1,
+            for budget in (int(quote(501)["total-toman"]), int(quote(3000)["total-toman"]) + 1,
                            int(quote(maximum)["total-toman"]), 10 ** 32 - 1):
-                low, high = 500, maximum
+                low, high = 501, maximum
                 while low < high:
                     middle = (low + high + 1) // 2
                     if int(quote(middle)["total-toman"]) <= budget:
@@ -569,7 +581,7 @@ for(const test of scenarios) {
   payload.rates.satoshi_toman=test.rate;
   payload.costs.network_sats=test.network; payload.costs.print_sats=test.printing;
   payload.rows=payload.rows.slice(0,1);
-  Object.assign(payload.rows[0],{network_sats:test.network,print_sats:test.printing,total_sats:500+test.network+test.printing+124});
+  Object.assign(payload.rows[0],{network_sats:test.network,print_sats:test.printing,total_sats:501+test.network+test.printing+124});
   handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
   ids['quote-mode'].value=test.mode; await ids['quote-mode'].emit('change');
   await edit('quote-amount',test.input); await ids['quote-form'].emit('submit');
@@ -588,12 +600,12 @@ assert.equal(requests.length,scenarios.length,'One snapshot for each independent
             # JSON costs are rejected, never rounded into a usable browser quote.
             metadata = expected or vectors[0]["expected"]
             costs = {key: int(value) for key, value in metadata["costs"].items()}
-            subtotal = 500 + costs["network_sats"] + costs["print_sats"]
+            subtotal = 501 + costs["network_sats"] + costs["print_sats"]
             operator = (subtotal * 15 + 99) // 100
             total = subtotal + operator
             rate = Fraction(metadata["rates"]["satoshi_toman"])
             toman = (total * rate.numerator + rate.denominator - 1) // rate.denominator
-            row = {"principal_sats": 500, "btc": "0.00000500", **costs,
+            row = {"principal_sats": 501, "btc": "0.00000501", **costs,
                    "operator_sats": operator, "total_sats": total, "total_toman": toman,
                    "total_rial": toman * 10, "budget_toman": None, "remainder_toman": 0}
             assumptions = {**metadata["assumptions"], "transaction_vbytes": 141}
@@ -911,7 +923,7 @@ const marketFixture=()=>({status:'fresh',fetched_at:'2026-10-30T10:00:00+00:00',
   rates:{btc_toman:'10000000000',usdt_toman:'100000',satoshi_toman:'100'},
   assumptions:{exchange_fee_percent:'0.5',operator_fee_percent:'15',print_usd:'0.18',transaction_vbytes:141,network_fee_rate:'1'},
   costs:{network_sats:141,print_sats:180},
-  rows:[{principal_sats:500,btc:'0.00000500',network_sats:141,print_sats:180,operator_sats:124,total_sats:945,total_toman:94500,total_rial:945000,budget_toman:null,remainder_toman:0},
+  rows:[{principal_sats:501,btc:'0.00000501',network_sats:141,print_sats:180,operator_sats:124,total_sats:946,total_toman:94600,total_rial:946000,budget_toman:null,remainder_toman:0},
         {principal_sats:1000,btc:'0.00001000',network_sats:141,print_sats:180,operator_sats:199,total_sats:1520,total_toman:152000,total_rial:1520000,budget_toman:200000,remainder_toman:48000}]});
 const load=()=>{
   // A reload gets a new DOM, not another set of listeners on the previous page.
