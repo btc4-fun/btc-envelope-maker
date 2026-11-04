@@ -114,7 +114,8 @@ original wallet images are absent. The shared Caddy configuration was unchanged.
 
 The native preview was activated before extended tests at the user's request.
 Public /api/market returned a fresh quote; /costs rendered nineteen actual quote
-rows in a real browser, beginning with 500 principal satoshis. /satoshi converted
+rows in a real browser, beginning with 501 principal satoshis. The satoshi
+explanation now lives in the guide; /satoshi redirects to that section.
 one satoshi exactly in both directions. Six public pages on each new hostname
 were checked at 360px: twelve page results, zero horizontal overflow and zero
 automatic third-party resource requests. The only public-serial fixture used a

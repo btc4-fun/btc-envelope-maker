@@ -18,7 +18,7 @@ class PublicBrandingContract(unittest.TestCase):
         service.token.return_value = 'SYNTHETIC_FORM_TOKEN'
         app = module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None, 'CONTACT_SERVICE': service})
         for host in ('https://btc4.fun', 'https://go.btc4.fun'):
-            for route in ('/', '/guide', '/terms', '/t', '/costs', '/satoshi', '/contact', '/lookup'):
+            for route in ('/', '/guide', '/terms', '/t', '/costs', '/contact', '/lookup'):
                 with self.subTest(host=host, route=route):
                     response = app.test_client().get(route, base_url=host)
                     self.assertEqual(response.status_code, 200)
@@ -46,6 +46,15 @@ class PublicBrandingContract(unittest.TestCase):
         response = app.test_client().get('/kids')
         self.assertEqual(response.status_code, 301)
         self.assertEqual(response.headers['Location'], '/guide')
+
+    def test_retired_satoshi_route_redirects_into_the_guide(self):
+        spec = importlib.util.spec_from_file_location('branding_app', ROOT / 'bitcoin4funsite/app.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        app = module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
+        response = app.test_client().get('/satoshi')
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.headers['Location'], '/guide#satoshi')
 
     def test_current_public_docs_link_the_new_endpoints(self):
         self.assertIn('https://btc4.fun', (ROOT / 'README.md').read_text())

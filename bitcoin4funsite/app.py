@@ -72,6 +72,20 @@ def create_app(config=None):
     app.extensions['market_service'] = app.config.get('MARKET_SERVICE') or MarketService()
     app.config['MAX_CONTENT_LENGTH'] = 16384
 
+    @app.context_processor
+    def seo_context():
+        # Canonicals are fixed to the public informational allowlist. Never
+        # derive this URL from Host or another request-controlled value.
+        canonical_paths = {
+            '/': 'https://btc4.fun/',
+            '/guide': 'https://btc4.fun/guide',
+            '/security': 'https://btc4.fun/security',
+            '/terms': 'https://btc4.fun/terms',
+            '/t': 'https://btc4.fun/terms',
+            '/download': 'https://btc4.fun/download',
+        }
+        return {'canonical_url': canonical_paths.get(request.path)}
+
     @app.before_request
     def validate_api_serial():
         if request.endpoint in {'lookup_page', 'serial_page', 'wallet', 'wallet_qr'}:
@@ -145,7 +159,20 @@ def create_app(config=None):
 
     @app.get('/satoshi')
     def satoshi():
-        return render_template('satoshi.html')
+        # Keep old bookmarks useful after folding the unit explainer into the guide.
+        return redirect('/guide#satoshi', code=301)
+
+    @app.get('/robots.txt')
+    def robots():
+        return Response('User-agent: *\nAllow: /\nDisallow: /lookup\nDisallow: /s/\nDisallow: /api/\nDisallow: /contact\nDisallow: /costs\nSitemap: https://btc4.fun/sitemap.xml\n', mimetype='text/plain')
+
+    @app.get('/sitemap.xml')
+    def sitemap():
+        pages = ('/', '/guide', '/security', '/terms', '/download')
+        body = ''.join(f'<url><loc>https://btc4.fun{path}</loc></url>' for path in pages)
+        return Response('<?xml version="1.0" encoding="UTF-8"?>'
+                        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                        + body + '</urlset>', mimetype='application/xml')
 
     @app.get('/costs')
     def costs():

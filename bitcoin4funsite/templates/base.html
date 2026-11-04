@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="بیت‌کوین برای تجربه کردن؛ راهنمای نگهداری امن پاکت کاغذی و مشاهدهٔ آدرس عمومی با شمارهٔ سریال.">
+  <meta name="description" content="{% block meta_description %}بیت‌کوین برای تجربه کردن؛ راهنمای سادهٔ پاکت کاغذی، یادگیری و نگهداری مسئولانه.{% endblock %}">
   <meta name="color-scheme" content="light">
   <title>{% block title %}بیت‌کوین برای سرگرمی؛ یک تجربهٔ کاغذی{% endblock %}</title>
+  {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
   <link rel="stylesheet" href="/static/site.css">
   <script src="/static/site.js" defer></script>
   {% block scripts %}{% endblock %}
@@ -20,8 +21,8 @@
     <nav aria-label="راهنمای سایت">
       <a href="/guide"{% if page == 'guide' %} aria-current="page"{% endif %}>راهنمای پاکت</a>
       <a href="/security"{% if page == 'security' %} aria-current="page"{% endif %}>امنیت پاکت</a>
-      <a href="/satoshi"{% if page == 'satoshi' %} aria-current="page"{% endif %}>ساتوشی چیست؟</a>
-      <a href="/costs"{% if page == 'costs' %} aria-current="page"{% endif %}>قیمت و خرید</a>
+      <a href="/guide#satoshi">بیت‌کوین و ساتوشی</a>
+      <a href="/costs"{% if page == 'costs' %} aria-current="page"{% endif %}>هزینه‌ها</a>
       <a href="/download"{% if page == 'download' %} aria-current="page"{% endif %}>دانلود برنامه</a>
       <a href="/contact"{% if page == 'contact' %} aria-current="page"{% endif %}>تماس</a>
       <a class="nav-terms" href="/t"{% if page == 'terms' %} aria-current="page"{% endif %}>شرایط استفاده</a>

@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 {% set page = 'home' %}
+{% block meta_description %}پاکت بیت‌کوین برای یک سرمایهٔ کوچک، هدیه، یادگیری و تمرین نگهداری مسئولانه؛ راهنمای ساده برای شروع.{% endblock %}
 {% block content %}
 <section class="hero shell" aria-labelledby="hero-title">
   <div class="hero-copy">
     <p class="eyebrow"><span class="tiny-dot" aria-hidden="true"></span> با مقدار کمی بیت‌کوین یاد بگیریم</p>
     <h1 id="hero-title">بیت‌کوین،<br>در یک پاکت<span class="accent">.</span></h1>
-    <p class="hero-description">این یک پاکت کاغذی است که داخلش مقدار کمی بیت‌کوین واقعی قرار دارد. ارزش آن پول نیست؛ این است که کار با بیت‌کوین را از صفر یاد بگیرید.</p>
+    <p class="hero-description">این یک پاکت کاغذی با مقدار کمی بیت‌کوین واقعی است؛ یک سرمایهٔ کوچک، هدیه‌ای متفاوت و راهی ساده برای یادگیری از صفر.</p>
     <p class="hero-detail">بیت‌کوین پولی دیجیتال است که هیچ بانکی آن را نگه نمی‌دارد. دسترسی به آن به‌جای رمز بانکی، با چند کلمه است: کلمات بازیابی. هرکس آن‌ها را داشته باشد، می‌تواند پول را بردارد. برای همین، این کلمات روی کاغذ و فقط پیش خودتان نگه داشته می‌شوند.</p>
     <p class="hero-detail">اگر تا امروز با بیت‌کوین یا هر رمزارز دیگری کار نکرده‌اید هم اشکالی ندارد؛ هیچ دانش قبلی لازم نیست.</p>
     <div class="actions"><a class="button" href="/guide">از اینجا شروع کنید <span aria-hidden="true">←</span></a><a class="text-link" href="/lookup">شمارهٔ سریال دارم <span aria-hidden="true">↖</span></a></div>
-    <p class="quiet-note">نه پیشنهاد سرمایه‌گذاری؛ فقط یک شروع برای یادگیری.</p>
-    <a class="text-link" href="/costs">قیمت پاکت و ریز هزینه‌ها <span aria-hidden="true">←</span></a>
+    <p class="quiet-note">ارزش بیت‌کوین تغییر می‌کند؛ این صفحه وعدهٔ سود نمی‌دهد.</p>
+    <a class="text-link" href="/costs">دیدن ریز هزینه‌ها <span aria-hidden="true">←</span></a>
   </div>
   <div class="paper-scene" aria-hidden="true">
     <span class="scene-orbit"></span>
@@ -23,13 +24,17 @@
 <section class="intro-strip shell" aria-label="اصل مهم امنیت">
   <span class="strip-number" aria-hidden="true">!</span><div><h2>آدرس برای دریافت پول است؛ کلمات بازیابی برای خرج کردن.</h2><p>برای دیدن آدرس، فقط شمارهٔ سریال روی پاکت را وارد کنید. کلمات بازیابی را در این سایت ننویسید و برای کسی نفرستید.</p></div><a class="text-link" href="/lookup">دیدن آدرس عمومی <span aria-hidden="true">←</span></a>
 </section>
+<section class="intro-strip shell" aria-label="محدودیت نگهداری آفلاین">
+  <span class="strip-number" aria-hidden="true">i</span><div><h2>آفلاین یعنی کمتر در معرض اینترنت؛ نه بی‌خطر.</h2><p>نگهداری کلمات روی کاغذ و دور از اینترنت، تماس با خطرهای آنلاین را کمتر می‌کند؛ اما کپی، سرقت، آتش، رطوبت و آسیب هنوز ممکن‌اند. پشتیبان معتبر و مراقبت لازم است.</p></div><a class="text-link" href="/guide#keep">راهنمای نگهداری <span aria-hidden="true">←</span></a>
+</section>
 <section class="home-paths shell" aria-labelledby="paths-title">
   <div class="prose">{% include '_purchase_warning.html' %}</div>
-  <div class="section-heading"><p class="eyebrow">پیش از باز کردن پاکت</p><h2 id="paths-title">اول بخوانیم، بعد تجربه کنیم.</h2></div>
+  <div class="section-heading"><p class="eyebrow">چهار هدف ساده</p><h2 id="paths-title">یک پاکت برای چهار تجربه.</h2></div>
   <div class="path-grid">
-    <a class="path-card" href="/guide"><span class="path-index">۰۱ / شروع امن</span><h3>راهنمای کامل: این پاکت چطور کار می‌کند؟</h3><p>از شناخت کلمات بازیابی تا بررسی موجودی و انتقال به کیف پول شخصی؛ برای بزرگسالانی که می‌خواهند از صفر یاد بگیرند.</p><span class="card-cta">راهنمای بزرگ‌ترها <span aria-hidden="true">←</span></span></a>
-    <a class="path-card" href="/security"><span class="path-index">۰۲ / با هم یاد بگیریم</span><h3>امنیت پاکت و گوشی</h3><p>ده پرسش ساده برای پیدا کردن کارهایی که پیش از باز کردن پاکت باید بررسی کنید.</p><span class="card-cta">آماده‌ام یا نه؟ <span aria-hidden="true">←</span></span></a>
-    <a class="path-card" href="/terms"><span class="path-index">۰۳ / روشن و بی‌حاشیه</span><h3>شرایط و مسئولیت‌ها</h3><p>چه چیزهایی را هنگام تحویل بررسی کنید و مسئولیت نگهداری پول با چه کسی است.</p><span class="card-cta">چه چیزی را باید بدانم؟ <span aria-hidden="true">←</span></span></a>
+    <a class="path-card" href="/costs"><span class="path-index">۰۱ / سرمایهٔ کوچک</span><h3>مقدار و هزینه‌ها روشن باشد</h3><p>اصل بیت‌کوین دریافتی را از هزینهٔ شبکه، چاپ، مهر و کارمزد جدا ببینید.</p><span class="card-cta">دیدن هزینه‌ها <span aria-hidden="true">←</span></span></a>
+    <a class="path-card" href="/guide"><span class="path-index">۰۲ / هدیه</span><h3>یک شروع متفاوت برای هدیه</h3><p>پاکت را به کسی بدهید که می‌خواهید همراه او یک تجربهٔ تازه و قابل توضیح داشته باشید.</p><span class="card-cta">راهنمای تحویل <span aria-hidden="true">←</span></span></a>
+    <a class="path-card" href="/guide"><span class="path-index">۰۳ / یادگیری</span><h3>بیت‌کوین را از صفر بفهمیم</h3><p>با آدرس عمومی، کلمات بازیابی و ساتوشی آشنا شوید؛ بدون نیاز به دانش قبلی.</p><span class="card-cta">شروع راهنما <span aria-hidden="true">←</span></span></a>
+    <a class="path-card" href="/security"><span class="path-index">۰۴ / مراقبت</span><h3>امنیت با مراقبت روزمره</h3><p>کلمات را محرمانه و پاکت را سالم نگه دارید؛ هیچ پاکتی جای دقت و پشتیبان معتبر را نمی‌گیرد.</p><span class="card-cta">بررسی امنیت <span aria-hidden="true">←</span></span></a>
   </div>
 </section>
 <section class="closing-note shell"><span aria-hidden="true">✳</span><h2>ارزش این تجربه،<br>چیزی است که یاد می‌گیریم.</h2><p>با حوصله بخوانید. پرسش بپرسید. کلمات بازیابی را حتی برای گرفتن کمک به کسی ندهید.</p></section>

@@ -177,7 +177,11 @@ class ApplicationContract(unittest.TestCase):
     def test_short_serial_pages_are_not_indexed(self):
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
         app.jinja_loader = DictLoader({'lookup.html': 'public lookup'})
-        for path in ['/shortserial0587k45300', '/lookup', '/lookup?serial=shortserial0587k45300']:
+        for path in ['/shortserial0587k45300', '/shortserial0587k45300?view=1',
+                     '/lookup', '/lookup?serial=shortserial0587k45300',
+                     '/lookup?serial=shortserial0587k45300&view=1',
+                     '/api/addresses/bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
+                     '/api/tags/synthetic-tag']:
             with self.subTest(path=path):
                 response = app.test_client().get(path)
                 self.assertEqual(response.headers.get('X-Robots-Tag'), 'noindex, nofollow, noarchive')
@@ -206,6 +210,44 @@ class ApplicationContract(unittest.TestCase):
         self.assertEqual(response.status_code, 301)
         self.assertEqual(response.headers['Location'], '/guide')
 
+    def test_retired_satoshi_route_redirects_to_the_guide_section(self):
+        app = self.module.create_app({'TESTING': True})
+        response = app.test_client().get('/satoshi')
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.headers['Location'], '/guide#satoshi')
+
+    def test_seo_routes_only_publish_public_educational_pages(self):
+        app = self.module.create_app({'TESTING': True})
+        client = app.test_client()
+        robots = client.get('/robots.txt')
+        self.assertEqual(robots.status_code, 200)
+        self.assertIn('Sitemap: https://btc4.fun/sitemap.xml', robots.text)
+        self.assertIn('Disallow: /api/', robots.text)
+        sitemap = client.get('/sitemap.xml')
+        self.assertEqual(sitemap.status_code, 200)
+        self.assertIn('https://btc4.fun/guide', sitemap.text)
+        for private_or_operational in ('/lookup', '/costs', '/contact', '/api/'):
+            self.assertNotIn('https://btc4.fun' + private_or_operational, sitemap.text)
+
+    def test_canonical_is_fixed_to_safe_informational_allowlist(self):
+        app = self.module.create_app({'TESTING': True})
+        client = app.test_client()
+        for path, canonical in {
+            '/': 'https://btc4.fun/',
+            '/guide': 'https://btc4.fun/guide',
+            '/security': 'https://btc4.fun/security',
+            '/terms': 'https://btc4.fun/terms',
+            '/t': 'https://btc4.fun/terms',
+            '/download': 'https://btc4.fun/download',
+        }.items():
+            with self.subTest(path=path):
+                response = client.get(path, base_url='https://evil.example')
+                self.assertIn(f'<link rel="canonical" href="{canonical}">', response.text)
+                self.assertNotIn('evil.example', response.text)
+        for path in ('/costs', '/contact', '/lookup', '/s/0587k45300'):
+            with self.subTest(path=path):
+                self.assertNotIn('rel="canonical"', client.get(path).text)
+
     def test_database_query_uses_only_public_columns_bound_serial_and_readonly(self):
         from unittest.mock import patch
         import os
@@ -231,8 +273,8 @@ class ApplicationContract(unittest.TestCase):
     def test_new_public_pages_work_without_market_access(self):
         market = Mock()
         app = self.module.create_app({'TESTING': True, 'MARKET_SERVICE': market})
-        app.jinja_loader = DictLoader({name + '.html': name for name in ('satoshi', 'costs', 'contact')})
-        for path in ['/satoshi', '/costs', '/contact']:
+        app.jinja_loader = DictLoader({name + '.html': name for name in ('costs', 'contact')})
+        for path in ['/costs', '/contact']:
             self.assertEqual(app.test_client().get(path).status_code, 200)
         market.snapshot.assert_not_called()
 

@@ -2,6 +2,9 @@ Required Notice: Copyright Saeb Molaee — btc4.fun
 
 Original project code, documentation and site content are licensed under
 PolyForm Noncommercial License 1.0.0; see LICENSE.md.
+The proprietary seal artwork bitcoin4funsite/static/seal.svg is excluded from
+that general license; see bitcoin4funsite/static/SEAL-LICENSE.md. Publication
+is not permission to manufacture a seal using that design.
 
 This is source-available software, not OSI-approved open-source software.
 Commercial use not permitted by that license requires a separate prior written

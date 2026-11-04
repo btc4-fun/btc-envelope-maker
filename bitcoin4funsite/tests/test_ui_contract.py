@@ -40,7 +40,7 @@ class UIContract(unittest.TestCase):
         self.assertIn('href="#main-content"', source)
         self.assertIn('id="main-content"', source)
         links = {attrs.get("href") for tag, attrs in document.elements if tag == "a"}
-        self.assertTrue({"/", "/guide", "/terms", "/lookup", "/satoshi", "/costs", "/contact"} <= links)
+        self.assertTrue({"/", "/guide", "/guide#satoshi", "/terms", "/lookup", "/costs", "/contact"} <= links)
         self.assertIn("بیت‌کوین،", source)
         self.assertIn("در یک پاکت", source)
         self.assertIn("کلمات بازیابی", source)
@@ -58,8 +58,11 @@ class UIContract(unittest.TestCase):
                 if key in attrs:
                     self.assertTrue(attrs[key].startswith("/"), attrs)
             if tag == "link":
-                self.assertEqual(attrs.get("rel"), "stylesheet")
-                self.assertEqual(attrs.get("href"), "/static/site.css")
+                if attrs.get("rel") == "stylesheet":
+                    self.assertEqual(attrs.get("href"), "/static/site.css")
+                else:
+                    self.assertEqual(attrs.get("rel"), "canonical")
+                    self.assertTrue(attrs.get("href", "").startswith("https://btc4.fun/"))
             if tag == "script":
                 self.assertEqual(attrs.get("src"), "/static/site.js")
                 self.assertIn("defer", attrs)
@@ -86,6 +89,12 @@ class UIContract(unittest.TestCase):
                 self.assertIn("شرایط استفاده", header)
                 self.assertEqual(links[0].get("aria-current"), "page" if template == "terms.html" else None)
 
+    def test_home_does_not_mark_terms_as_current(self):
+        header = self.render("index.html").split('<header class="site-header shell">', 1)[1].split('</header>', 1)[0]
+        terms = next(attrs for tag, attrs in Document(header).elements
+                     if tag == "a" and attrs.get("href") == "/t")
+        self.assertNotIn("aria-current", terms)
+
     def test_kids_page_is_removed_from_navigation_and_home_cards(self):
         # The child-friendly page was merged into the adult guide, so no
         # navigation link or home card may still promise a separate kids route.
@@ -98,7 +107,7 @@ class UIContract(unittest.TestCase):
                 self.assertNotIn("برای کوچک‌ترها", source)
         main = self.render("index.html").split('<main id="main-content"', 1)[1].split('</main>', 1)[0]
         self.assertNotIn('href="/kids"', main)
-        for href in ('/guide', '/security', '/terms'):
+        for href in ('/guide', '/security', '/costs'):
             self.assertIn('class="path-card" href="' + href + '"', main)
 
     def test_plain_safety_examples_are_shared_on_home_lookup_and_guide(self):
@@ -150,6 +159,23 @@ class UIContract(unittest.TestCase):
         self.assertIn('https://btc4.fun/s/SERIAL', intro)
         self.assertIn('https://go.btc4.fun/SERIAL', intro)
         self.assertIn('نمونهٔ آموزشی', intro)
+
+    def test_guide_explains_seal_limits_and_links_its_exception(self):
+        source = self.render("guide.html")
+        seal = source.split('<section id="seal"', 1)[1].split('</section>', 1)[0]
+        self.assertIn('/static/seal.svg', seal)
+        self.assertIn('alt="مهر تزئینی بیت‌کوین روی پاکت"', seal)
+        self.assertIn('اجازهٔ کتبی', seal)
+        self.assertIn('اثبات اصالت', seal)
+        self.assertIn('href="/static/SEAL-LICENSE.md"', seal)
+
+    def test_home_qualifies_offline_storage_without_absolute_claims(self):
+        source = self.render("index.html")
+        self.assertIn('کمتر در معرض اینترنت', source)
+        for phrase in ('کپی', 'سرقت', 'آتش', 'رطوبت', 'پشتیبان معتبر'):
+            self.assertIn(phrase, source)
+        self.assertNotIn('ضد هک', source)
+        self.assertNotIn('غیرقابل هک', source)
 
     def test_adult_guide_explains_safe_full_balance_handover(self):
         source = self.render("guide.html")
@@ -660,7 +686,7 @@ assert.equal(ids['lookup-status'].dataset.state,'error');
         self.assertNotIn("به سرویس خارجی درخواست خودکار نمی‌فرستد", source)
 
     def test_all_pages_keep_strict_csp_safe_origin_and_hidden_contracts(self):
-        for name in ("index.html", "guide.html", "security.html", "terms.html", "lookup.html", "satoshi.html", "costs.html", "contact.html"):
+        for name in ("index.html", "guide.html", "security.html", "terms.html", "lookup.html", "costs.html", "contact.html"):
             with self.subTest(page=name):
                 source = self.render(name)
                 document = Document(source)

@@ -103,6 +103,8 @@ for (const serial of ['admin', 'login', 'TEST-DO-NOT-FUND', '0587k45300\n']) {
                 for path, expected in aliases(serial):
                     with self.subTest(path=path):
                         response = app.test_client().get(path)
+                        # robots.txt is now a real public endpoint, never a serial.
+                        expected = 200 if path == '/robots.txt' else expected
                         self.assertEqual(response.status_code, expected)
             limiter.assert_not_called()
             connect.assert_not_called()

@@ -42,7 +42,6 @@ X-Robots-Tag: noindex, nofollow, noarchive
 /security
 /terms
 /costs
-/satoshi
 /download
 /contact
 ```
