@@ -105,14 +105,21 @@ class UIContract(unittest.TestCase):
                                           if tag == "a" and attrs.get("href") == "/kids"), "page")
 
     def test_plain_safety_examples_are_shared_on_home_lookup_and_guide(self):
+        # The home page keeps the plain-language greeting plus only the stranger
+        # purchase warning; the inner/outer card visuals and camera example live
+        # in the lookup page and the guide so beginners are not overloaded.
         for template in ('index.html', 'lookup.html', 'guide.html'):
+            with self.subTest(template=template):
+                source = self.render(template)
+                self.assertIn('از غریبه پاکت نخرید', source)
+        for template in ('lookup.html', 'guide.html'):
             with self.subTest(template=template):
                 source = self.render(template)
                 self.assertIn('id="quick-guide"', source)
                 self.assertIn('دوربین مداربسته', source)
-                self.assertIn('از غریبه پاکت نخرید', source)
                 self.assertIn('/static/guide-inner-example.png', source)
                 self.assertIn('/static/guide-outer-example.png', source)
+        self.assertNotIn('id="quick-guide"', self.render('index.html'))
         terms = self.render('terms.html')
         for phrase in ('یک تراکنش واریز اولیه', 'مسئولیت فروشنده نسبت به شما تمام شده',
                        'تأییدنشده نهایی نیست', 'جعل', 'حقوق آمره'):
