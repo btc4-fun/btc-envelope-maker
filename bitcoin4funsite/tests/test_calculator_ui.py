@@ -19,6 +19,41 @@ class CalculatorUI(unittest.TestCase):
         self.assertTrue((ROOT / "templates" / template_name).is_file(), f"Missing public page: {template_name}")
         return env.get_template(template_name).render(**context)
 
+    def test_market_loading_stops_when_request_times_out(self):
+        self.run_script(r'''
+const originalTimeout=AbortSignal.timeout.bind(AbortSignal);
+AbortSignal.timeout=ms=>{assert.equal(ms,20000); return originalTimeout(5);};
+let requestedSignal;
+handler=(url,options)=>{requestedSignal=options.signal; return new Promise((resolve,reject)=>options.signal?.addEventListener('abort',()=>reject(new Error('timeout'))));};
+load(); assert.ok(requestedSignal, 'A bounded request needs an abort signal'); await new Promise(resolve=>setTimeout(resolve,20));
+assert.equal(ids['market-loading'].hidden,true);
+assert.equal(ids['market-status'].dataset.state,'error');
+''', page="market")
+
+    def test_costs_payment_follows_quotes_and_has_jump_link(self):
+        source = self.render("costs.html")
+        self.assertLess(source.index('id="quote-form"'), source.index('id="payment-details"'))
+        self.assertLess(source.index('href="#payment-details"'), source.index('id="payment-details"'))
+        self.assertIn('چاپ و مهر', source)
+        self.assertIn('۰٫۱۸', source)
+        self.assertIn('یک مهر', source)
+
+    def test_market_loading_indicator_settles_on_success_and_failure(self):
+        self.run_script(r'''
+for (const fails of [false,true]) {
+  let finish;
+  handler=()=>new Promise((resolve,reject)=>{finish=()=>fails ? reject(new Error('offline')) : resolve({ok:true,json:async()=>marketFixture()});});
+  load();
+  assert.equal(ids['market-loading'].hidden,false);
+  assert.match(ids['market-status'].textContent,/لطفاً صبر کنید/);
+  assert.equal(ids['market-panel'].getAttribute('aria-busy'),'true');
+  finish(); await tick(); await tick();
+  assert.equal(ids['market-loading'].hidden,true);
+  assert.equal(ids['market-panel'].getAttribute('aria-busy'),'false');
+  assert.equal(ids['market-status'].dataset.state,fails ? 'error' : 'success');
+}
+''', page="market")
+
     def test_satoshi_explainer_has_accessible_offline_bidirectional_converter(self):
         source = self.render("satoshi.html")
         document = Document(source)
@@ -207,13 +242,13 @@ const first=ids['quote-rows'].children[0];
 assert.equal(first.children.length,3,'Keep the three primary columns');
 assert.ok(all(first).some(node=>node.textContent==='500'));
 assert.ok(all(first).some(node=>node.textContent==='0.00000500'));
-assert.ok(all(first).some(node=>node.textContent==='91,000'));
+assert.ok(all(first).some(node=>node.textContent==='94,500'));
 assert.ok(all(first).some(node=>node.tagName==='details'));
 const detailText=all(first).map(node=>node.textContent).join(' ');
-for (const word of ['شبکه','چاپ','گرداننده','ریال','910,000','119','150','141']) assert.ok(detailText.includes(word),word);
+for (const word of ['شبکه','چاپ','گرداننده','ریال','945,000','124','180','141']) assert.ok(detailText.includes(word),word);
 const secondText=all(ids['quote-rows'].children[1]).map(node=>node.textContent).join(' ');
 assert.match(secondText,/باقی‌مانده/);
-assert.ok(secondText.includes('51,500'));
+assert.ok(secondText.includes('48,000'));
 assert.equal(all(ids['market-data']).filter(node=>['img','iframe','a'].includes(node.tagName)).length,0);
 await tick();
 assert.equal(requests.length,1,'No external requests or automatic polling');
@@ -272,7 +307,7 @@ assert.equal(requests[0].options.body,undefined);
                                ('0.000000000000000001', '0.000000000000000001', '0.000000000000000001')]:
             sat = Fraction(btc) * Fraction(201, 200) / 100000000
             network = ceiling(Fraction(fee) * 141)
-            printing = ceiling(Fraction(15, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
+            printing = ceiling(Fraction(18, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
             tag = ceiling(Fraction(12, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
             minimum = ceiling(ceiling(Fraction(23, 20) * (500 + network + printing + tag)) * sat)
             options = {variant: quote_table(btc, usdt, fee, include_tag=enabled)
@@ -372,7 +407,7 @@ await edit('quote-amount','3000');
 assert.equal(ids['quote-result'].hidden,true,'Typing must not calculate');
 await ids['quote-form'].emit('submit');
 assert.equal(ids['quote-result'].hidden,false);
-for(const [field,value] of Object.entries({principal:'3,000',btc:'0.00003',network:'141',print:'150',operator:'494','total-sats':'3,785','total-toman':'378,500','total-rial':'3,785,000'})) {
+for(const [field,value] of Object.entries({principal:'3,000',btc:'0.00003',network:'141',print:'180',operator:'499','total-sats':'3,820','total-toman':'382,000','total-rial':'3,820,000'})) {
   assert.equal(ids['quote-'+field].textContent,value,field);
 }
 assert.equal(ids['quote-status'].dataset.state,'success');
@@ -388,7 +423,7 @@ handler=async()=>({ok:true,json:async()=>marketFixture()});
 load(); await tick();
 ids['quote-mode'].value='budget_toman'; await ids['quote-mode'].emit('change');
 await edit('quote-amount','200000'); await ids['quote-form'].emit('submit');
-assert.equal(ids['quote-principal'].textContent,'1,448');
+assert.equal(ids['quote-principal'].textContent,'1,418');
 assert.equal(ids['quote-operator'].textContent,'261');
 assert.equal(ids['quote-total-sats'].textContent,'2,000');
 assert.equal(ids['quote-total-toman'].textContent,'200,000');
@@ -398,7 +433,7 @@ assert.equal(ids['quote-budget-details'].hidden,false);
 await edit('quote-amount','200099');
 assert.equal(ids['quote-result'].hidden,true,'Editing invalidates the previous quote');
 await ids['quote-form'].emit('submit');
-assert.equal(ids['quote-principal'].textContent,'1,448');
+assert.equal(ids['quote-principal'].textContent,'1,418');
 assert.equal(ids['quote-remainder'].textContent,'99');
 ids['quote-mode'].value='principal_sats'; await ids['quote-mode'].emit('change');
 assert.equal(ids['quote-result'].hidden,true,'Changing units invalidates the previous quote');
@@ -441,7 +476,7 @@ assert.equal(requests.length,1);
 handler=async()=>({ok:true,json:async()=>marketFixture()}); load(); await tick();
 for(const mode of ['principal_sats','budget_toman']) {
   ids['quote-mode'].value=mode; await ids['quote-mode'].emit('change');
-  const bad=['','0','-1','+500','1e3','1.0','1,000','۵۰۰','٥٠٠',' 500','500 ','500\n','500\r','0500','9'.repeat(33),...(mode==='principal_sats'?['499','2100000000000001']:['90999'])];
+  const bad=['','0','-1','+500','1e3','1.0','1,000','۵۰۰','٥٠٠',' 500','500 ','500\n','500\r','0500','9'.repeat(33),...(mode==='principal_sats'?['499','2100000000000001']:['94499'])];
   for(const value of bad) {
     await edit('quote-amount',mode==='principal_sats'?'3000':'200000');
     await ids['quote-form'].emit('submit');
@@ -451,10 +486,10 @@ for(const mode of ['principal_sats','budget_toman']) {
     for(const key of ['principal','btc','network','print','operator','total-sats','total-toman','total-rial','budget','remainder']) assert.equal(ids['quote-'+key].textContent,'','Clear old result: '+value);
     assert.equal(ids['quote-amount'].getAttribute('aria-invalid'),'true',JSON.stringify(value));
     assert.equal(ids['quote-status'].dataset.state,'error');
-    if(value==='90999') assert.match(ids['quote-status'].textContent,/کافی نیست/);
+    if(value==='94499') assert.match(ids['quote-status'].textContent,/کافی نیست/);
   }
 }
-await edit('quote-amount','91000'); await ids['quote-form'].emit('submit');
+await edit('quote-amount','94500'); await ids['quote-form'].emit('submit');
 assert.equal(ids['quote-amount'].getAttribute('aria-invalid'),null);
 assert.equal(ids['quote-principal'].textContent,'500');
 assert.equal(ids['quote-remainder'].textContent,'0');
@@ -534,7 +569,7 @@ for(const test of scenarios) {
   payload.rates.satoshi_toman=test.rate;
   payload.costs.network_sats=test.network; payload.costs.print_sats=test.printing;
   payload.rows=payload.rows.slice(0,1);
-  Object.assign(payload.rows[0],{network_sats:test.network,print_sats:test.printing,total_sats:500+test.network+test.printing+119});
+  Object.assign(payload.rows[0],{network_sats:test.network,print_sats:test.printing,total_sats:500+test.network+test.printing+124});
   handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
   ids['quote-mode'].value=test.mode; await ids['quote-mode'].emit('change');
   await edit('quote-amount',test.input); await ids['quote-form'].emit('submit');
@@ -854,7 +889,7 @@ class Element {
   async emit(name) { await Promise.all((this.listeners[name] || []).map(handler=>handler({preventDefault(){}}))); }
 }
 const names = process.argv[2] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status','gross-valuation','gross-status','gross-result','gross-toman','gross-raw-price','gross-fetched-at','gross-stale'] :
-  process.argv[2] === 'market' ? ['market-panel','market-status','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-print','quote-tag-cost-result','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
+  process.argv[2] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-print','quote-tag-cost-result','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
 const ids=Object.fromEntries(names.map(name=>[name,new Element()]));
 if(ids['gross-result']) ids['gross-result'].hidden=true;
 if(ids['gross-stale']) ids['gross-stale'].hidden=true;
@@ -874,10 +909,10 @@ const marketFixture=()=>({status:'fresh',fetched_at:'2026-10-30T10:00:00+00:00',
   source:{prices:'https://swapwallet.app/api/v1/market/prices',fees:'https://mempool.space/api/v1/fees/recommended'},
   raw_rates:{btc_toman:'9950248756.21890547263681592039800995',usdt_toman:'99502.4875621890547263681592039800995'},
   rates:{btc_toman:'10000000000',usdt_toman:'100000',satoshi_toman:'100'},
-  assumptions:{exchange_fee_percent:'0.5',operator_fee_percent:'15',print_usd:'0.15',transaction_vbytes:141,network_fee_rate:'1'},
-  costs:{network_sats:141,print_sats:150},
-  rows:[{principal_sats:500,btc:'0.00000500',network_sats:141,print_sats:150,operator_sats:119,total_sats:910,total_toman:91000,total_rial:910000,budget_toman:null,remainder_toman:0},
-        {principal_sats:1000,btc:'0.00001000',network_sats:141,print_sats:150,operator_sats:194,total_sats:1485,total_toman:148500,total_rial:1485000,budget_toman:200000,remainder_toman:51500}]});
+  assumptions:{exchange_fee_percent:'0.5',operator_fee_percent:'15',print_usd:'0.18',transaction_vbytes:141,network_fee_rate:'1'},
+  costs:{network_sats:141,print_sats:180},
+  rows:[{principal_sats:500,btc:'0.00000500',network_sats:141,print_sats:180,operator_sats:124,total_sats:945,total_toman:94500,total_rial:945000,budget_toman:null,remainder_toman:0},
+        {principal_sats:1000,btc:'0.00001000',network_sats:141,print_sats:180,operator_sats:199,total_sats:1520,total_toman:152000,total_rial:1520000,budget_toman:200000,remainder_toman:48000}]});
 const load=()=>{
   // A reload gets a new DOM, not another set of listeners on the previous page.
   for(const name of names) ids[name]=new Element();

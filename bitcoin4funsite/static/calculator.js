@@ -25,6 +25,7 @@
     if (!marketRequest) {
       marketRequest = fetch("/api/market", {
         method: "GET", credentials: "same-origin", redirect: "error", cache: "no-store",
+        signal: AbortSignal.timeout(20000),
         headers: { Accept: "application/json" }
       }).then(response => {
         if (!response.ok) throw new Error("Market unavailable");
@@ -275,7 +276,7 @@
         !market.rates || ![market.rates.btc_toman, market.rates.usdt_toman, market.rates.satoshi_toman].every(positiveDecimal) ||
         market.assumptions?.exchange_fee_percent !== "0.5" ||
         market.assumptions?.operator_fee_percent !== "15" ||
-        market.assumptions?.print_usd !== "0.15" || market.assumptions?.transaction_vbytes !== 141 ||
+        market.assumptions?.print_usd !== "0.18" || market.assumptions?.transaction_vbytes !== 141 ||
         !positiveDecimal(market.assumptions?.network_fee_rate) ||
         !integer(market.costs?.network_sats) || !integer(market.costs?.print_sats) ||
         !integer(market.costs?.tag_sats ?? 0) ||
@@ -313,7 +314,7 @@
     const dollarCost = cents => ceilDivide(cents * usdt.numerator * sat.denominator,
       100n * usdt.denominator * sat.numerator);
     const network = ceilDivide(fee.numerator * 141n, fee.denominator);
-    const printing = dollarCost(15n);
+    const printing = dollarCost(18n);
     const tagCost = withTag ? dollarCost(12n) : 0n;
     if (BigInt(choice.costs.network_sats) !== network || BigInt(choice.costs.print_sats) !== printing ||
         BigInt(choice.costs.tag_sats) !== tagCost) return false;
@@ -352,7 +353,7 @@
     const breakdown = element("dl");
     for (const [label, value] of [
       ["اصل مبلغ؛ ساتوشی", row.principal_sats], ["شبکه؛ ساتوشی", row.network_sats],
-      ["چاپ؛ ساتوشی", row.print_sats], ["برچسب؛ ساتوشی", row.tag_sats ?? 0],
+      ["چاپ و مهر؛ ساتوشی", row.print_sats], ["برچسب؛ ساتوشی", row.tag_sats ?? 0],
       ["گرداننده؛ ساتوشی", row.operator_sats],
       ["جمع؛ ساتوشی", row.total_sats], ["معادل ریال", row.total_rial],
       ...(row.budget_toman === null ? [] : [["بودجه؛ تومان", row.budget_toman], ["باقی‌مانده؛ تومان", row.remainder_toman]])
@@ -374,7 +375,8 @@
     calculate.disabled = true;
     quoteStatus.dataset.state = "loading";
     quoteStatus.textContent = "محاسبه پس از دریافت نرخ از سرور همین سایت آماده می‌شود…";
-    status.textContent = "در حال دریافت نرخ و برآورد از سرور سایت…";
+    document.getElementById("market-loading").hidden = false;
+    status.textContent = "در حال دریافت قیمت و کارمزد شبکه؛ لطفاً صبر کنید…";
     status.dataset.state = "loading";
     try {
       const market = await fetchMarket();
@@ -428,6 +430,7 @@
       status.textContent = "قیمت و برآورد فعلاً در دسترس نیست. هیچ نرخ صفر یا جایگزینی فرض نشده است؛ بعداً صفحه را بازخوانی کنید.";
       status.dataset.state = "error";
     } finally {
+      document.getElementById("market-loading").hidden = true;
       panel.setAttribute("aria-busy", "false");
     }
   }

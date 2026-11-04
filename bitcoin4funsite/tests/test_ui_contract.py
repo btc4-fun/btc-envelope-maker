@@ -40,7 +40,7 @@ class UIContract(unittest.TestCase):
         self.assertIn('href="#main-content"', source)
         self.assertIn('id="main-content"', source)
         links = {attrs.get("href") for tag, attrs in document.elements if tag == "a"}
-        self.assertTrue({"/", "/guide", "/kids", "/terms", "/lookup", "/satoshi", "/costs", "/contact"} <= links)
+        self.assertTrue({"/", "/guide", "/terms", "/lookup", "/satoshi", "/costs", "/contact"} <= links)
         self.assertIn("بیت‌کوین،", source)
         self.assertIn("در یک پاکت", source)
         self.assertIn("کلمات بازیابی", source)
@@ -75,7 +75,7 @@ class UIContract(unittest.TestCase):
             self.assertFalse(script.strip(), "Scripts must be external for strict CSP")
 
     def test_header_prominently_links_to_short_terms_route(self):
-        for template in ("index.html", "kids.html", "terms.html", "contact.html"):
+        for template in ("index.html", "terms.html", "contact.html"):
             with self.subTest(template=template):
                 source = self.render(template)
                 header = source.split('<header class="site-header shell">', 1)[1].split('</header>', 1)[0]
@@ -86,23 +86,20 @@ class UIContract(unittest.TestCase):
                 self.assertIn("شرایط استفاده", header)
                 self.assertEqual(links[0].get("aria-current"), "page" if template == "terms.html" else None)
 
-    def test_kids_label_is_consistent_in_navigation_home_and_breadcrumb(self):
-        label = "راهنما برای ۷ ساله‌ها"
-        for template in ("index.html", "kids.html"):
+    def test_kids_page_is_removed_from_navigation_and_home_cards(self):
+        # The child-friendly page was merged into the adult guide, so no
+        # navigation link or home card may still promise a separate kids route.
+        for template in ("index.html", "guide.html", "terms.html", "contact.html"):
             with self.subTest(template=template):
                 source = self.render(template)
                 header = source.split('<header class="site-header shell">', 1)[1].split('</header>', 1)[0]
-                self.assertRegex(header, r'<a href="/kids"[^>]*>' + label + r'</a>')
+                self.assertNotIn('href="/kids"', header)
+                self.assertNotIn("راهنما برای ۷ ساله‌ها", source)
                 self.assertNotIn("برای کوچک‌ترها", source)
-                if template == "index.html":
-                    main = source.split('<main id="main-content"', 1)[1].split('</main>', 1)[0]
-                    card = re.search(r'<a class="path-card" href="/kids">(.*?)</a>', main, re.S)
-                    self.assertIsNotNone(card)
-                    self.assertIn("<h3>" + label + "</h3>", card.group(1))
-                else:
-                    self.assertRegex(source, r'<a class="breadcrumb"[^>]*>[^<]*<span[^>]*>/</span> ' + label + r'</a>')
-                    self.assertEqual(next(attrs.get("aria-current") for tag, attrs in Document(header).elements
-                                          if tag == "a" and attrs.get("href") == "/kids"), "page")
+        main = self.render("index.html").split('<main id="main-content"', 1)[1].split('</main>', 1)[0]
+        self.assertNotIn('href="/kids"', main)
+        for href in ('/guide', '/security', '/terms'):
+            self.assertIn('class="path-card" href="' + href + '"', main)
 
     def test_plain_safety_examples_are_shared_on_home_lookup_and_guide(self):
         # The home page keeps the plain-language greeting plus only the stranger
@@ -168,13 +165,22 @@ class UIContract(unittest.TestCase):
         self.assertIn('href="/lookup"', source)
         self.assertIn('href="/terms"', source)
 
-    def test_age_seven_guide_is_supervised_learning_not_buying(self):
-        source = self.render("kids.html")
-        self.assertEqual(sum(tag == "h1" for tag, _ in Document(source).elements), 1)
-        for phrase in ("یک بزرگ‌تر", "صندوق پست", "آدرس عمومی", "کلمات بازیابی", "کلید", "خرید", "سرمایه‌گذاری", "نفرست"):
-            self.assertIn(phrase, source)
-        self.assertIn('href="/guide"', source)
-        self.assertNotRegex(source, r'<(?:input|textarea)')
+    def test_beginners_start_from_zero_before_any_term_is_used(self):
+        source = self.render("guide.html")
+        self.assertLess(source.index('id="basics"'), source.index('id="two-things"'))
+        self.assertLess(source.index('id="basics"'), source.index('id="quick-guide"'))
+        basics = source.split('<section id="basics">', 1)[1].split('</section>', 1)[0]
+        for phrase in ("هیچ بانکی آن را نگه نمی‌دارد", "نشانی صندوق پست", "کلید آن صندوق",
+                       "بیت‌کوین داخل کاغذ نیست", "دفتر", "برگرداندن نامه وجود ندارد"):
+            self.assertIn(phrase, basics)
+        self.assertIn("هیچ دانش قبلی لازم نیست", source)
+        inside = source.split('<section id="whats-inside">', 1)[1].split('</section>', 1)[0]
+        for phrase in ("کاغذ بیرونی", "کاغذ داخلی", "دوازده کلمه"):
+            self.assertIn(phrase, inside)
+        self.assertIn('href="/security"', source)
+
+    def test_retired_kids_template_stays_deleted(self):
+        self.assertFalse((ROOT / "templates" / "kids.html").exists())
 
     def test_terms_preserve_payment_risks_legal_rights_and_source_license(self):
         source = self.render("terms.html")
@@ -654,7 +660,7 @@ assert.equal(ids['lookup-status'].dataset.state,'error');
         self.assertNotIn("به سرویس خارجی درخواست خودکار نمی‌فرستد", source)
 
     def test_all_pages_keep_strict_csp_safe_origin_and_hidden_contracts(self):
-        for name in ("index.html", "guide.html", "kids.html", "terms.html", "lookup.html", "satoshi.html", "costs.html", "contact.html"):
+        for name in ("index.html", "guide.html", "security.html", "terms.html", "lookup.html", "satoshi.html", "costs.html", "contact.html"):
             with self.subTest(page=name):
                 source = self.render(name)
                 document = Document(source)

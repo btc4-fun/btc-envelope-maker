@@ -192,13 +192,19 @@ class ApplicationContract(unittest.TestCase):
 
     def test_all_pages_and_serial_shortcut_are_registered(self):
         app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
-        app.jinja_loader = DictLoader({name + '.html': '<html lang="fa" dir="rtl">{{ serial }}</html>' for name in ('index', 'guide', 'kids', 'terms', 'lookup')})
-        for path in ['/', '/guide', '/kids', '/terms', '/lookup', '/s/0587k45300', '/0587k45300']:
+        app.jinja_loader = DictLoader({name + '.html': '<html lang="fa" dir="rtl">{{ serial }}</html>' for name in ('index', 'guide', 'terms', 'lookup')})
+        for path in ['/', '/guide', '/terms', '/lookup', '/s/0587k45300', '/0587k45300']:
             with self.subTest(path=path):
                 response = app.test_client().get(path)
                 self.assertEqual(response.status_code, 200)
                 self.assertIn('dir="rtl"', response.text)
         self.assertEqual(app.test_client().get('/no/such/page').status_code, 404)
+
+    def test_retired_kids_route_redirects_permanently_to_the_guide(self):
+        app = self.module.create_app({'TESTING': True, 'WALLET_LOOKUP': lambda serial: None})
+        response = app.test_client().get('/kids')
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.headers['Location'], '/guide')
 
     def test_database_query_uses_only_public_columns_bound_serial_and_readonly(self):
         from unittest.mock import patch

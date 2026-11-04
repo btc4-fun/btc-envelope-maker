@@ -127,7 +127,8 @@ def create_app(config=None):
 
     @app.get('/kids')
     def kids():
-        return render_template('kids.html')
+        # The child-friendly explainer was merged into the adult guide.
+        return redirect('/guide', code=301)
 
     @app.get('/security')
     def security():
