@@ -2,6 +2,14 @@
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>
 
+## Brand and logo restriction (additional notice)
+
+This notice is additional to, and does not replace, the PolyForm Noncommercial terms below. It applies to the project's logo artwork (`bitcoin4funsite/static/logo.png`, `bitcoin4funsite/static/favicon.png`), the seal artwork (`bitcoin4funsite/static/seal.svg`, see `bitcoin4funsite/static/SEAL-LICENSE.md`), and the names **btc4fun** and **bitcoin4fun**.
+
+Commercial use of the logo, the seal, or either name is not permitted without the rights holder's prior written permission. This restriction does not grant any trademark right and does not claim exclusive ownership of the Bitcoin symbol, the idea of a wax seal, or any generic design element. It does not prove legal enforceability or technically prevent copying. Mandatory statutory rights and third-party rights remain unaffected.
+
+Permission requests: 09113458375@btc4.fun.
+
 ## Acceptance
 
 In order to get any license under these terms, you must agree to them as both strict obligations and conditions to all your licenses.

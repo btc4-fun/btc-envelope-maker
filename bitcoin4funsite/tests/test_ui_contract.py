@@ -60,6 +60,8 @@ class UIContract(unittest.TestCase):
             if tag == "link":
                 if attrs.get("rel") == "stylesheet":
                     self.assertEqual(attrs.get("href"), "/static/site.css")
+                elif attrs.get("rel") == "icon":
+                    self.assertEqual(attrs.get("href"), "/static/favicon.png")
                 else:
                     self.assertEqual(attrs.get("rel"), "canonical")
                     self.assertTrue(attrs.get("href", "").startswith("https://btc4.fun/"))
@@ -160,14 +162,13 @@ class UIContract(unittest.TestCase):
         self.assertIn('https://go.btc4.fun/SERIAL', intro)
         self.assertIn('نمونهٔ آموزشی', intro)
 
-    def test_guide_explains_seal_limits_and_links_its_exception(self):
+    def test_guide_explains_seal_limits_without_license_detail(self):
         source = self.render("guide.html")
         seal = source.split('<section id="seal"', 1)[1].split('</section>', 1)[0]
         self.assertIn('/static/seal.svg', seal)
         self.assertIn('alt="مهر تزئینی بیت‌کوین روی پاکت"', seal)
-        self.assertIn('اجازهٔ کتبی', seal)
         self.assertIn('اثبات اصالت', seal)
-        self.assertIn('href="/static/SEAL-LICENSE.md"', seal)
+        self.assertNotIn('SEAL-LICENSE.md', seal)
 
     def test_home_qualifies_offline_storage_without_absolute_claims(self):
         source = self.render("index.html")
@@ -407,7 +408,7 @@ assert.ok(all().some(n=>/موجودی.*دسترس نیست/.test(n.textContent))
         initial = Document(self.render("lookup.html", serial=dangerous))
         self.assertEqual(initial.by_id("serial")["value"], dangerous)
         self.assertEqual([attrs['src'] for tag, attrs in initial.elements if tag == 'img'],
-                         ['/static/guide-inner-example.png', '/static/guide-outer-example.png'])
+                         ['/static/logo.png', '/static/guide-inner-example.png', '/static/guide-outer-example.png'])
         self.assertFalse(any(key.startswith("on") for _, attrs in initial.elements for key in attrs))
 
     def run_lookup_script(self, scenario, initial="", initial_state="", retry_after="", initial_balance="null", balance_error="", initial_address="bc1qsyntheticpublicfixture"):
@@ -697,9 +698,11 @@ assert.equal(ids['lookup-status'].dataset.state,'error');
                     self.assertFalse(any(key.startswith("on") or key == "style" for key in attrs))
                     if "src" in attrs:
                         self.assertTrue(attrs["src"].startswith("/static/"))
-                    if tag == "link":
-                        self.assertEqual(attrs["rel"], "stylesheet")
+                    if tag == "link" and attrs["rel"] == "stylesheet":
                         self.assertEqual(attrs["href"], "/static/site.css")
+                    elif tag == "link":
+                        self.assertEqual(attrs["rel"], "icon")
+                        self.assertEqual(attrs["href"], "/static/favicon.png")
                     if tag == "a" and attrs.get("href", "").startswith("https://"):
                         self.assertEqual(attrs.get("target"), "_blank")
                         self.assertEqual(attrs.get("rel"), "noopener noreferrer")

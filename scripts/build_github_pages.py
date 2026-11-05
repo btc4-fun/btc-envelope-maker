@@ -26,6 +26,8 @@ ASSET_ALLOWLIST = tuple(
         "site.css",
         "site.js",
         "security.js",
+        "logo.png",
+        "favicon.png",
         "seal.svg",
         "SEAL-LICENSE.md",
         "guide-inner-example.png",

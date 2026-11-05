@@ -760,8 +760,10 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source));
         self.assertIn("hidden", document.by_id("contact-honeypot"))
         self.assertEqual(controls["website"][1]["tabindex"], "-1")
         self.assertEqual(controls["website"][1]["autocomplete"], "off")
-        self.assertFalse(any(tag == "img" or any(key.startswith("on") for key in attrs)
+        self.assertFalse(any(any(key.startswith("on") for key in attrs)
                              for tag, attrs in document.elements))
+        self.assertEqual([attrs["src"] for tag, attrs in document.elements if tag == "img"],
+                         ["/static/logo.png"])
         self.assertTrue(any(tag == "button" and attrs.get("type") == "submit"
                             for tag, attrs in document.elements))
 
@@ -790,8 +792,10 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source));
                         self.assertIn(error, source)
                 for secret in private_fields.values():
                     self.assertNotIn(secret, source)
-                self.assertFalse(any(tag == "img" or any(key.startswith("on") for key in attrs)
+                self.assertFalse(any(any(key.startswith("on") for key in attrs)
                                      for tag, attrs in document.elements))
+                self.assertEqual([attrs["src"] for tag, attrs in document.elements if tag == "img"],
+                                 ["/static/logo.png"])
 
     def test_contact_without_a_token_disables_submission_and_offers_email_and_reload(self):
         for token in (None, ""):
@@ -840,8 +844,11 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source));
         for tag, attrs in document.elements:
             if "src" in attrs:
                 self.assertTrue(attrs["src"].startswith("/static/"))
-            if tag == "link":
-                self.assertEqual(attrs.get("rel"), "stylesheet")
+            if tag == "link" and attrs.get("rel") == "stylesheet":
+                self.assertEqual(attrs.get("href"), "/static/site.css")
+            elif tag == "link":
+                self.assertEqual(attrs.get("rel"), "icon")
+                self.assertEqual(attrs.get("href"), "/static/favicon.png")
         self.assertNotIn("calculator.js", source)
 
     def test_contact_controls_and_terms_link_have_local_accessible_styles(self):

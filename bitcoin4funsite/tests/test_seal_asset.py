@@ -20,10 +20,13 @@ class SealAssetContract(unittest.TestCase):
                 if name.endswith('href'):
                     self.assertTrue(value.startswith('#'), (name, value))
 
-    def test_guide_points_to_proprietary_seal_license_exception(self):
+    def test_guide_keeps_seal_authenticity_warning_without_license_detail(self):
+        # The owner asked that logo/seal/license detail leave the site text; the
+        # authenticity warning must stay, and the license text stays in the repo.
         guide = (ROOT / 'templates' / 'guide.html').read_text(encoding='utf-8')
         license_text = (ROOT / 'static' / 'SEAL-LICENSE.md').read_text(encoding='utf-8')
-        self.assertIn('href="/static/SEAL-LICENSE.md"', guide)
+        self.assertNotIn('SEAL-LICENSE.md', guide)
+        self.assertIn('اثبات اصالت', guide)
         self.assertIn('excluded from the repository\'s general PolyForm Noncommercial license', license_text)
         self.assertIn('prior written permission', license_text)
 
