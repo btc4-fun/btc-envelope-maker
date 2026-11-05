@@ -31,9 +31,11 @@ GET https://btc4.fun/api/addresses/<address>
 
 ## Responses
 
-A successful response contains **only** `address`, `serial`, and `lookup_url`.
-Illustrative offline fixture; this does not claim the address is registered on the
-live site, and this public test wallet must not be funded:
+A successful response contains **only** `address`, `serial`, and `lookup_url` — no
+query string, no other keys. The released Android app (1.1.5) rejects any other key
+count, so this endpoint stays frozen at three keys. Illustrative offline fixture;
+this does not claim the address is registered on the live site, and this public
+test wallet must not be funded:
 
 ```json
 {
@@ -52,10 +54,46 @@ headers, and query parameters cannot replace it.
 | HTTP status | JSON body | Meaning |
 | --- | --- | --- |
 | 200 | Object above | Registered public mapping found |
-| 400 | `{"error":"invalid_address"}` | Invalid address or unsupported query string |
+| 400 | `{"error":"invalid_address"}` | Invalid address |
+| 400 | `{"error":"invalid_lookup_request"}` | Query string is not exactly the single `balance=1` |
 | 404 | `{"error":"not_found"}` | Valid address, no registered mapping |
 | 429 | `{"error":"rate_limited","retry_after":43}` | Shared quota exhausted; example delay |
 | 503 | `{"error":"unavailable"}` | Admission/DB failure or invalid stored mapping |
+| 503 | `{"error":"balance_unavailable", ...}` | Optional balance requested but upstream failed |
+
+### Optional balance and public metadata
+
+Without a query string the body is frozen at the three keys above. Exactly one
+query, `?balance=1`, is admitted; repeats, other values, or any other key are
+rejected with `400 {"error":"invalid_lookup_request"}` before quota or DB access.
+The check runs in `before_request` against the raw query string, and a raw path
+containing control bytes or percent-escapes is `400 invalid_address`.
+
+`?balance=1` adds the same `balance` object `/api/wallets` returns (see
+`docs/serial-balance.fa.md`) and, when the wallet has any, an optional `public`
+object:
+
+```json
+{
+  "address": "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu",
+  "serial": "TEST-DO-NOT-FUND-0587k45300",
+  "lookup_url": "https://btc4.fun/s/TEST-DO-NOT-FUND-0587k45300",
+  "balance": {"address": "...", "confirmed_sats": 500, "pending_delta_sats": -50,
+              "source": "https://blockstream.info/api", "fetched_at": "1970-01-01T00:16:40+00:00"},
+  "public": {
+    "notes": "یادداشت عمومی آزمایشی",
+    "site": {"key": "btc4.fun", "url": "https://btc4.fun/"},
+    "image_url": "https://btc4.fun/static/logo.png"
+  }
+}
+```
+
+Shape rules: `notes` is always present in `public` and may be `null`; `site` and
+`image_url` appear only when set. `site_key` and `site_url` are published together
+or not at all. Values are seller-supplied text, not proof of authenticity or a
+balance. They are never read from the private contact columns, and a value that
+fails sanitization (control/format/bidi characters, non-https, host outside the
+allowlist, userinfo or port) is dropped rather than shown.
 
 A `429` also has `Retry-After` with the same number of seconds as `retry_after`.
 Errors contain no serial, URL, private fields, connection details, or guessed data.
@@ -77,14 +115,29 @@ The production DB path extends `database_lookup(..., by_address=True)`, selectin
 only existing public columns with a bound address:
 
 ```sql
-SELECT serial, address FROM public.wallets WHERE address = %s LIMIT 1
+SELECT serial, address, public_notes, site_key, site_url, image_url
+FROM public.wallets WHERE address = %s LIMIT 1
 ```
 
-Column selection is an internal allowlist (`serial`, `nfc_uid`, `address`), not
-request text. Simultaneous `by_tag=True` and `by_address=True` are rejected before
-credential access. Existing read-only connection settings and timeouts are kept.
-There are no new private-column reads, schema changes, grants, or wallet writes.
-The existing public `serial,address` read permissions suffice for this query.
+The serial lookup uses the same six columns; the tag (`nfc_uid`) lookup keeps its
+original two-column read and never returns public metadata. Column selection is an
+internal allowlist, not request text. Simultaneous `by_tag=True` and
+`by_address=True` are rejected before credential access. Existing read-only
+connection settings and timeouts are kept.
+
+The four added columns are nullable TEXT and only ever carry values the seller
+chose to publish; they are never populated from `contact_type`, `contact_value`, or
+`notes`. The read role needs `SELECT` on the four public columns only — never on the
+private contact columns — and this module never issues `GRANT` itself. Creating
+the columns is a separate, explicit step:
+
+```sh
+python btc_db.py migrate-public --db "sqlite:///wallets.db"
+```
+
+It is idempotent and takes a bounded lock (SQLite `BEGIN IMMEDIATE`; PostgreSQL
+`lock_timeout`/`statement_timeout` with an access-exclusive lock). Applying it in
+production is the owner's deployment step, not this API's.
 
 ## Android seller flow: offline capture first
 

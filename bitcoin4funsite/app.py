@@ -7,6 +7,7 @@ import ipaddress
 import time
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from address_validation import valid_address
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request
@@ -26,6 +27,66 @@ SERIAL_PATTERN = (
     r'(?:[0-5][0-9][0-5][0-9]|[0-9a-zA-X]{2})[0-9a-z]+'
 )
 SERIAL_RE = re.compile(SERIAL_PATTERN)
+
+# Allowed hosts for the optional public site/image URLs (must mirror the generator).
+PUBLIC_URL_HOSTS = frozenset({'btc4.fun', 'btc.saeb.id.ir', 'b.tc4fun.ir'})
+SITE_KEY_RE = re.compile(r'[A-Za-z0-9._-]{1,64}')
+_URL_RE = re.compile(r'https://[^\s/]+(?:/[^\s]*)?')
+# Control/format characters: same admission rule as contact text, plus bidi marks.
+_UNSAFE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]')
+
+
+def _public_text(value, maximum):
+    """Return a stripped string or None; drop anything unsafe/oversized."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or len(text) > maximum or _UNSAFE.search(text):
+        return None
+    return text
+
+
+def _public_url(value):
+    """Allow only absolute https URLs on the allowlisted hosts, with no port or userinfo."""
+    text = _public_text(value, 512)
+    if text is None or _URL_RE.fullmatch(text) is None:
+        return None
+    try:
+        parts = urlsplit(text)
+        port = parts.port
+    except ValueError:
+        return None
+    if (parts.scheme != 'https' or parts.hostname is None
+            or parts.hostname.lower() not in PUBLIC_URL_HOSTS
+            or port is not None or parts.username or parts.password):
+        return None
+    return text
+
+
+def public_payload(record):
+    """Build the optional `public` dict, or None when there is nothing to show.
+
+    Shape: {"notes": str|null, "site": {"key", "url"} } plus "image_url" when set.
+    site_key and site_url are published together or not at all."""
+    if not isinstance(record, dict):
+        return None
+    notes = _public_text(record.get('public_notes'), 500)
+    site_key = _public_text(record.get('site_key'), 64)
+    site_url = _public_url(record.get('site_url'))
+    image_url = _public_url(record.get('image_url'))
+    if site_key is not None and (SITE_KEY_RE.fullmatch(site_key) is None or site_url is None):
+        site_key = site_url = None
+    site = {'key': site_key, 'url': site_url} if site_key is not None else None
+    if notes is None and site is None and image_url is None:
+        return None
+    payload: dict = {'notes': notes}
+    if site is not None:
+        payload['site'] = site
+    if image_url is not None:
+        payload['image_url'] = image_url
+    return payload
 
 
 def database_lookup(serial, *, by_tag=False, by_address=False):
@@ -47,9 +108,19 @@ def database_lookup(serial, *, by_tag=False, by_address=False):
     ) as connection:
         connection.read_only = True
         with connection.cursor() as cursor:
-            cursor.execute(f'SELECT serial, address FROM public.wallets WHERE {column} = %s LIMIT 1', (serial,))
+            if by_tag:
+                cursor.execute('SELECT serial, address FROM public.wallets WHERE nfc_uid = %s LIMIT 1', (serial,))
+                row = cursor.fetchone()
+                return {'serial': row[0], 'address': row[1]} if row else None
+            # Only the optional PUBLIC columns may be selected; private
+            # contact_type/contact_value/notes are never read by the website.
+            cursor.execute(f'SELECT serial, address, public_notes, site_key, site_url, image_url '
+                           f'FROM public.wallets WHERE {column} = %s LIMIT 1', (serial,))
             row = cursor.fetchone()
-    return {'serial': row[0], 'address': row[1]} if row else None
+    if not row:
+        return None
+    return {'serial': row[0], 'address': row[1], 'public_notes': row[2],
+            'site_key': row[3], 'site_url': row[4], 'image_url': row[5]}
 
 
 def create_app(config=None):
@@ -100,9 +171,21 @@ def create_app(config=None):
                         and not request.args.get('serial'))):
                 return jsonify(error='invalid_lookup_request'), 400
         if request.path.startswith('/api/addresses/'):
-            address = request.path.removeprefix('/api/addresses/')
-            if request.query_string or not valid_address(address):
+            # Validate the raw (still percent-encoded) path segment so control
+            # characters and malformed percent-escapes can never reach routing.
+            raw = request.path.removeprefix('/api/addresses/')
+            if re.fullmatch(r'[\x21-\x7e]+', raw) is None:
                 return jsonify(error='invalid_address'), 400
+        if (request.endpoint == 'address_serial'
+                and request.view_args and isinstance(request.view_args.get('address'), str)
+                and not valid_address(request.view_args['address'])):
+            return jsonify(error='invalid_address'), 400
+        if request.endpoint == 'address_serial' and request.query_string:
+            # Without the flag the response stays exactly the historical 3-key
+            # body. With it, accept only a single balance=1.
+            if (set(request.args) != {'balance'} or len(request.args.getlist('balance')) != 1
+                    or request.args['balance'] != '1'):
+                return jsonify(error='invalid_lookup_request'), 400
         # Operator-supplied wallet originals are never public guide assets.
         if (request.endpoint == 'static' and
                 Path(request.view_args.get('filename', '')).name.lower() in {'privatekey.png', 'publickey.png'}):
@@ -380,8 +463,22 @@ def create_app(config=None):
             serial = record['serial']
             if record['address'] != address or SERIAL_RE.fullmatch(serial) is None:
                 raise ValueError('Invalid public wallet')
-            return jsonify(address=address, serial=serial,
-                           lookup_url='https://btc4.fun/s/' + serial)
+            body = dict(address=address, serial=serial, lookup_url='https://btc4.fun/s/' + serial)
+            if request.args.get('balance') == '1':
+                # Same balance object as /api/wallets?balance=1.
+                service = app.config.get('SERIAL_BALANCE')
+                if service is None:
+                    from chain_activity import ChainActivity
+                    service = ChainActivity()
+                try:
+                    body['balance'] = service.balance(address)
+                except Exception:
+                    app.logger.warning('Public address balance unavailable')
+                    return jsonify(**body, error='balance_unavailable'), 503
+                public = public_payload(record)
+                if public is not None:
+                    body['public'] = public
+            return jsonify(body)
         except Exception:
             app.logger.warning('Public address lookup unavailable')
             return jsonify(error='unavailable'), 503
@@ -427,6 +524,16 @@ def create_app(config=None):
                 except Exception:
                     app.logger.warning('Public serial balance unavailable')
                     return jsonify(**public, balance_error='unavailable'), 503
+                extra = public_payload(record)
+                if extra is not None:
+                    public['public'] = extra
+            # The browser page renders optional metadata from this same lookup;
+            # attach it only where the caller asked for it (never to the 3-key
+            # /api/addresses body, whose shape the released app depends on).
+            if request.path.startswith('/s/') or request.path.startswith('/lookup'):
+                extra = public_payload(record)
+                if extra is not None:
+                    public['public'] = extra
             return jsonify(public)
         except Exception:
             app.logger.warning('Public wallet lookup unavailable')

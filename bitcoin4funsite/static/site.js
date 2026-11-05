@@ -119,6 +119,71 @@
       wallet.explorer_url === 'https://mempool.space/address/' + wallet.address;
   }
 
+  const PUBLIC_HOSTS = ["btc4.fun", "btc.saeb.id.ir", "b.tc4fun.ir"];
+  const UNSAFE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/;
+
+  function publicText(value, max) {
+    if (typeof value !== "string") return null;
+    const text = value.trim();
+    if (!text || text.length > max || UNSAFE.test(text)) return null;
+    return text;
+  }
+
+  function publicUrl(value) {
+    const text = publicText(value, 512);
+    if (text === null || !text.startsWith("https://")) return null;
+    let url;
+    try { url = new URL(text); } catch { return null; }
+    if (url.protocol !== "https:" || !PUBLIC_HOSTS.includes(url.hostname) ||
+        url.host !== url.hostname || url.username || url.password ||
+        !["", "/"].includes(url.port)) {
+      return null;
+    }
+    return text;
+  }
+
+  function publicBlock(wallet) {
+    const source = wallet.public;
+    if (!source || typeof source !== "object") return null;
+    const notes = publicText(source.notes, 500);
+    let site = null;
+    if (source.site && typeof source.site === "object") {
+      const key = publicText(source.site.key, 64);
+      const href = publicUrl(source.site.url);
+      if (key && href && /^[A-Za-z0-9._-]{1,64}$/.test(key)) site = { key, href };
+    }
+    const image = publicUrl(source.image_url);
+    if (notes === null && site === null && image === null) return null;
+    const section = element("section");
+    section.setAttribute("aria-label", "اطلاعات اختیاری پاکت");
+    if (notes !== null) {
+      section.append(element("p", "result-label", "یادداشت عمومی"), element("p", "public-notes", notes));
+    }
+    if (site !== null) {
+      const link = element("a", "ltr-block", site.key);
+      link.dir = "ltr";
+      link.href = site.href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      const wrap = element("p");
+      wrap.append(link);
+      section.append(element("p", "result-label", "سایت"), wrap);
+    }
+    if (image !== null) {
+      const img = element("img");
+      img.src = image;
+      img.alt = "";
+      img.width = 320;
+      img.height = 180;
+      img.loading = "lazy";
+      img.referrerPolicy = "no-referrer";
+      img.addEventListener("error", () => { img.hidden = true; });
+      section.append(element("p", "result-label", "تصویر"), img);
+    }
+    section.append(element("p", "", "این اطلاعات اختیاری را فروشنده نوشته است؛ تأیید موجودی یا اصالت پاکت نیست."));
+    return section;
+  }
+
   const balanceUnavailable = "موجودی فعلاً در دسترس نیست؛ این خطا به معنی صفر نیست. آدرس و کد تصویری همچنان قابل استفاده‌اند.";
 
   function showBalance(wallet) {
@@ -219,7 +284,11 @@
       explorers.append(explorer);
     }
     const warning = element("p", "result-warning", "هر پیوند، یک سایت خارجی را در زبانهٔ جدید باز می‌کند و آدرس عمومی را با آن سرویس به اشتراک می‌گذارد. مرورگر هیچ درخواست خودکاری به این سرویس‌ها نمی‌فرستد. نمایش آدرس، تضمین موجودی یا تأیید تراکنش نیست.");
-    result.replaceChildren(heading, serialLabel, serial, addressLabel, address, copy, figure, explorers, warning);
+    const nodes = [heading, serialLabel, serial, addressLabel, address, copy, figure];
+    const optional = publicBlock(wallet);
+    if (optional !== null) nodes.push(optional);
+    nodes.push(explorers, warning);
+    result.replaceChildren(...nodes);
     result.hidden = false;
     showBalance(wallet);
   }

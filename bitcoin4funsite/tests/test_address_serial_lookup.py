@@ -64,9 +64,20 @@ class AddressSerialLookup(unittest.TestCase):
                    'tb1q' + ADDRESS[4:], 'bc1q' + 'q' * 58, 'bc1p' + 'q' * 58,
                    ADDRESS + '/qr.svg', "x' OR 1=1--", 'bc1q' + 'q' * 10000]
         paths = ['/api/addresses/' + quote(value, safe='') for value in invalid]
-        paths += [PATH + query for query in (
+        # Malformed addresses keep the historical invalid_address error.
+        for path in paths:
+            with self.subTest(path=path[:100]):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json, {'error': 'invalid_address'})
+                self.assert_headers(response)
+        # Contract change: query strings are now admitted only as a single
+        # balance=1 (GET /api/addresses/<address>?balance=1); everything else
+        # still fails before quota, database, or secret access.
+        paths = [PATH + query for query in (
             '?url=https://evil.invalid', '?lookup_url=https://evil.invalid',
-            '?qr=1', '?after_txid=', '?unknown', '?a=1&a=2', '?%00=x', '?&')]
+            '?qr=1', '?after_txid=', '?unknown', '?a=1&a=2', '?%00=x', '?&',
+            '?balance=0', '?balance=1&balance=1', '?balance=1&x=2', '?Balance=1')]
         with patch.object(self.module, 'database_lookup') as database, \
                 patch.object(self.module.psycopg, 'connect') as connect, \
                 patch.object(self.module.Path, 'read_text') as read:
@@ -74,7 +85,7 @@ class AddressSerialLookup(unittest.TestCase):
                 with self.subTest(path=path[:100]):
                     response = self.client.get(path)
                     self.assertEqual(response.status_code, 400)
-                    self.assertEqual(response.json, {'error': 'invalid_address'})
+                    self.assertEqual(response.json, {'error': 'invalid_lookup_request'})
                     self.assert_headers(response)
             self.limiter.admit.assert_not_called()
             self.lookup.assert_not_called()
@@ -116,7 +127,8 @@ class AddressSerialLookup(unittest.TestCase):
         connection = MagicMock()
         connection.__enter__.return_value = connection
         cursor = connection.cursor.return_value.__enter__.return_value
-        cursor.fetchone.return_value = (SERIAL, ADDRESS)
+        # All four optional public columns are null -> no `public` key is added.
+        cursor.fetchone.return_value = (SERIAL, ADDRESS, None, None, None, None)
         with patch.object(self.module.Path, 'read_text', return_value='SYNTHETIC_PASSWORD\n') as read, \
                 patch.dict(os.environ, {'BTC_DB_USER': 'SYNTHETIC_USER'}), \
                 patch.object(self.module.psycopg, 'connect', return_value=connection) as connect:
@@ -125,7 +137,8 @@ class AddressSerialLookup(unittest.TestCase):
         self.assertEqual(response.json, {'address': ADDRESS, 'serial': SERIAL,
                                         'lookup_url': 'https://btc4.fun/s/' + SERIAL})
         cursor.execute.assert_called_once_with(
-            'SELECT serial, address FROM public.wallets WHERE address = %s LIMIT 1', (ADDRESS,))
+            'SELECT serial, address, public_notes, site_key, site_url, image_url '
+            'FROM public.wallets WHERE address = %s LIMIT 1', (ADDRESS,))
         read.assert_called_once()
         self.assertTrue(connection.read_only)
         self.assertIn('default_transaction_read_only=on', connect.call_args.kwargs['options'])
@@ -139,15 +152,25 @@ class AddressSerialLookup(unittest.TestCase):
                 patch.object(self.module.psycopg, 'connect') as connect:
             cursor = connect.return_value.__enter__.return_value.cursor.return_value.__enter__.return_value
             cursor.fetchone.return_value = (SERIAL, ADDRESS)
-            for flags, column in (({}, 'serial'), ({'by_tag': True}, 'nfc_uid'),
-                                  ({'by_address': True}, 'address')):
+            for flags, column in (({}, 'serial'), ({'by_address': True}, 'address')):
                 with self.subTest(flags=flags):
                     cursor.execute.reset_mock()
+                    cursor.fetchone.return_value = (SERIAL, ADDRESS, None, None, None, None)
                     value = "BOUND_ONLY' OR 1=1--"
                     row = self.module.database_lookup(value, **flags)
-                    self.assertEqual(row, {'serial': SERIAL, 'address': ADDRESS})
+                    self.assertEqual(row, {'serial': SERIAL, 'address': ADDRESS,
+                                           'public_notes': None, 'site_key': None,
+                                           'site_url': None, 'image_url': None})
                     cursor.execute.assert_called_once_with(
-                        f'SELECT serial, address FROM public.wallets WHERE {column} = %s LIMIT 1', (value,))
+                        'SELECT serial, address, public_notes, site_key, site_url, image_url '
+                        f'FROM public.wallets WHERE {column} = %s LIMIT 1', (value,))
+            # The tag path stays narrow: public ledger ids only, never public metadata.
+            cursor.fetchone.return_value = (SERIAL, ADDRESS)
+            value = "BOUND_ONLY' OR 1=1--"
+            self.assertEqual(self.module.database_lookup(value, by_tag=True),
+                             {'serial': SERIAL, 'address': ADDRESS})
+            cursor.execute.assert_called_with(
+                'SELECT serial, address FROM public.wallets WHERE nfc_uid = %s LIMIT 1', (value,))
             cursor.fetchone.return_value = None
             self.assertIsNone(self.module.database_lookup(ADDRESS, by_address=True))
         with patch.object(self.module.Path, 'read_text') as read, \

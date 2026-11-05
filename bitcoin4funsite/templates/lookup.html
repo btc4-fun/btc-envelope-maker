@@ -44,6 +44,23 @@
         {% elif wallet.balance_error %}
         <p role="status">موجودی فعلاً در دسترس نیست؛ این خطا به معنی صفر نیست. آدرس و کد تصویری همچنان قابل استفاده‌اند.</p>
         {% endif %}
+        {% if wallet.public %}
+        <section aria-label="اطلاعات اختیاری پاکت">
+          {% if wallet.public.notes %}
+          <p class="result-label">یادداشت عمومی</p>
+          <p class="public-notes">{{ wallet.public.notes }}</p>
+          {% endif %}
+          {% if wallet.public.site %}
+          <p class="result-label">سایت</p>
+          <p><a class="ltr-block" dir="ltr" href="{{ wallet.public.site.url }}" rel="noopener noreferrer" target="_blank">{{ wallet.public.site.key }}</a></p>
+          {% endif %}
+          {% if wallet.public.image_url %}
+          <p class="result-label">تصویر</p>
+          <img src="{{ wallet.public.image_url }}" alt="" width="320" height="180" loading="lazy" referrerpolicy="no-referrer" onerror="this.hidden=true">
+          {% endif %}
+          <p>این اطلاعات اختیاری را فروشنده نوشته است؛ تأیید موجودی یا اصالت پاکت نیست.</p>
+        </section>
+        {% endif %}
         <div class="explorer-links">
           <a class="explorer-link" href="https://mempool.space/address/{{ wallet.address }}" target="_blank" rel="noopener noreferrer">کاوشگر مم‌پول ↗</a>
           <a class="explorer-link" href="https://blockstream.info/address/{{ wallet.address }}" target="_blank" rel="noopener noreferrer">کاوشگر بلاک‌استریم ↗</a>
