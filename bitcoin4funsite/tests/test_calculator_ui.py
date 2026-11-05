@@ -825,7 +825,7 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source));
     def test_contact_channels_are_opt_in_and_set_honest_response_expectations(self):
         source = self.render("contact.html", contact_token="synthetic-token")
         document = Document(source)
-        channels = {"https://t.me/btc4_fun", "https://www.instagram.com/btc4.fun/",
+        channels = {"https://t.me/b_tc4fun_ir", "https://www.instagram.com/b.tc4fun.ir/",
                     "https://x.com/btc4_fun"}
         links = {attrs["href"]: attrs for tag, attrs in document.elements if tag == "a"}
         self.assertTrue(channels <= links.keys(), "All three social channels need opt-in links")

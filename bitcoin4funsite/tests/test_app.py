@@ -216,18 +216,30 @@ class ApplicationContract(unittest.TestCase):
         self.assertEqual(response.status_code, 301)
         self.assertEqual(response.headers['Location'], '/guide#satoshi')
 
-    def test_seo_routes_only_publish_public_educational_pages(self):
+    def test_seo_routes_publish_costs_and_keep_operational_pages_out(self):
         app = self.module.create_app({'TESTING': True})
         client = app.test_client()
         robots = client.get('/robots.txt')
         self.assertEqual(robots.status_code, 200)
         self.assertIn('Sitemap: https://btc4.fun/sitemap.xml', robots.text)
         self.assertIn('Disallow: /api/', robots.text)
+        self.assertIn('Disallow: /lookup', robots.text)
+        self.assertNotIn('Disallow: /costs', robots.text)
+        self.assertNotIn('Disallow: /contact', robots.text)
         sitemap = client.get('/sitemap.xml')
         self.assertEqual(sitemap.status_code, 200)
-        self.assertIn('https://btc4.fun/guide', sitemap.text)
-        for private_or_operational in ('/lookup', '/costs', '/contact', '/api/'):
+        for public_page in ('/guide', '/security', '/terms', '/download', '/costs'):
+            self.assertIn('https://btc4.fun' + public_page, sitemap.text)
+        for private_or_operational in ('/lookup', '/contact', '/api/'):
             self.assertNotIn('https://btc4.fun' + private_or_operational, sitemap.text)
+
+    def test_contact_is_crawlable_for_noindex_while_costs_is_indexable(self):
+        client = self.module.create_app({'TESTING': True}).test_client()
+        contact = client.get('/contact')
+        self.assertEqual(contact.headers.get('X-Robots-Tag'), 'noindex, nofollow, noarchive')
+        costs = client.get('/costs')
+        self.assertIsNone(costs.headers.get('X-Robots-Tag'))
+        self.assertIn('<link rel="canonical" href="https://btc4.fun/costs">', costs.text)
 
     def test_canonical_is_fixed_to_safe_informational_allowlist(self):
         app = self.module.create_app({'TESTING': True})
@@ -239,12 +251,13 @@ class ApplicationContract(unittest.TestCase):
             '/terms': 'https://btc4.fun/terms',
             '/t': 'https://btc4.fun/terms',
             '/download': 'https://btc4.fun/download',
+            '/costs': 'https://btc4.fun/costs',
         }.items():
             with self.subTest(path=path):
                 response = client.get(path, base_url='https://evil.example')
                 self.assertIn(f'<link rel="canonical" href="{canonical}">', response.text)
                 self.assertNotIn('evil.example', response.text)
-        for path in ('/costs', '/contact', '/lookup', '/s/0587k45300'):
+        for path in ('/contact', '/lookup', '/s/0587k45300'):
             with self.subTest(path=path):
                 self.assertNotIn('rel="canonical"', client.get(path).text)
 

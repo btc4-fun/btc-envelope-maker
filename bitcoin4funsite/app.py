@@ -83,6 +83,7 @@ def create_app(config=None):
             '/terms': 'https://btc4.fun/terms',
             '/t': 'https://btc4.fun/terms',
             '/download': 'https://btc4.fun/download',
+            '/costs': 'https://btc4.fun/costs',
         }
         return {'canonical_url': canonical_paths.get(request.path)}
 
@@ -127,7 +128,8 @@ def create_app(config=None):
         response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
         if not request.path.startswith('/static/'):
             response.headers['Cache-Control'] = 'no-store'
-        if request.path.startswith('/api/') or request.endpoint in {'lookup_page', 'serial_page'}:
+        if (request.path.startswith('/api/')
+                or request.endpoint in {'lookup_page', 'serial_page', 'contact'}):
             response.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
         return response
 
@@ -164,11 +166,11 @@ def create_app(config=None):
 
     @app.get('/robots.txt')
     def robots():
-        return Response('User-agent: *\nAllow: /\nDisallow: /lookup\nDisallow: /s/\nDisallow: /api/\nDisallow: /contact\nDisallow: /costs\nSitemap: https://btc4.fun/sitemap.xml\n', mimetype='text/plain')
+        return Response('User-agent: *\nAllow: /\nDisallow: /lookup\nDisallow: /s/\nDisallow: /api/\nSitemap: https://btc4.fun/sitemap.xml\n', mimetype='text/plain')
 
     @app.get('/sitemap.xml')
     def sitemap():
-        pages = ('/', '/guide', '/security', '/terms', '/download')
+        pages = ('/', '/guide', '/security', '/terms', '/download', '/costs')
         body = ''.join(f'<url><loc>https://btc4.fun{path}</loc></url>' for path in pages)
         return Response('<?xml version="1.0" encoding="UTF-8"?>'
                         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
