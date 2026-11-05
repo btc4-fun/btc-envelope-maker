@@ -373,8 +373,7 @@ class GitHubPagesSnapshotTest(unittest.TestCase):
     # a passing test must never claim a rule that is not in the file.
     def test_agrank_instruction_pins_refresh_rule(self):
         agents = (REPOSITORY_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-        if "هم‌به‌روز نگه‌داشتن نسخهٔ آموزشی گیت‌هاب پیجز" not in agents:
-            self.skipTest("AGENTS.md refresh rule not yet approved by the owner")
+        self.assertIn("هم‌به‌رو نگه‌داشتن نسخهٔ آموزشی گیت‌هاب پیجز", agents)
         self.assertIn("https://github.com/btc4-fun/btc4-fun.github.io", agents)
         self.assertIn("python3 scripts/build_github_pages.py", agents)
         self.assertIn("test_github_pages_snapshot.py", agents)
