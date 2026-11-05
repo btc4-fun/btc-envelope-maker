@@ -105,6 +105,85 @@ The existing public `serial,address` read permissions suffice for this query.
 This change implements only the server lookup contract. Android UI, NFC writing,
 and optional online provisioning remain separate client work.
 
+## Customer-only address details contract (design-only; not implemented here)
+
+This section is the contract for a future private customer projection. It adds no
+route, database field, grant, migration, or operational behavior to this release.
+The public endpoint above remains public and must never be used as customer proof.
+
+### Identity and ownership
+
+- **Customer identity** is a server-authenticated, non-guessable customer principal
+  (for example, a provider subject mapped to an internal immutable `customer_id`).
+  An address, serial, NFC UID, contact value, request header, or caller-supplied
+  customer identifier is not an identity proof.
+- **Wallet ownership binding** is a durable server-side relation between that
+  `customer_id` and the wallet record, established only by an authorized binding
+  workflow with an auditable proof and explicit revocation state. Public lookup
+  results and possession of an identifier never create or imply this relation.
+- The private service must fail closed when identity, binding, revocation, or
+  policy state is missing, ambiguous, expired, or unavailable. It must not fall
+  back to the public address/serial/UID lookup.
+
+### Private endpoint and projection
+
+Proposed endpoint: `GET /api/customer/addresses/<address>/details` (private,
+customer-authenticated). It is a contract placeholder, not an implementation
+instruction for this change. The handler must authorize the authenticated
+principal against the server-side ownership binding before reading private fields.
+Its allowlisted response projection is only the approved customer-owned fields,
+for example:
+
+```json
+{
+  "address": "<canonical public address>",
+  "customer_id": "<opaque internal id>",
+  "details": {"label": "<customer-visible label>"},
+  "binding": {"status": "active", "expires_at": "<UTC timestamp>"}
+}
+```
+
+The exact private `details` fields require product approval; do not expose
+`contact_type`, `contact_value`, notes, recovery material, credentials, raw
+provider claims, or unrelated customers. The response must use an explicit
+allowlist and `Cache-Control: no-store`; public `address`, `serial`, or `nfc_uid`
+may be correlation inputs only after authentication and ownership authorization.
+
+### Errors and lifecycle
+
+| HTTP status | JSON body | Contract meaning |
+| --- | --- | --- |
+| 401 | `{"error":"unauthorized"}` | Missing, invalid, or expired customer authentication |
+| 403 | `{"error":"forbidden"}` | Authenticated customer has no active binding to this wallet |
+| 404 | `{"error":"not_found"}` | Authorized binding exists but the address/detail record is absent; do not use 404 to reveal an unbound wallet |
+| 429 | `{"error":"rate_limited","retry_after":<seconds>}` | Private quota exhausted; include `Retry-After`; quota identity is the authenticated customer plus abuse controls |
+| 503 | `{"error":"unavailable"}` | Identity/binding store, policy, audit, or dependency unavailable; fail closed without private data |
+
+For anti-enumeration, deployments may intentionally normalize an unbound or
+absent wallet to one externally documented response, but must not vary body,
+private fields, or timing based on guessed address/serial/UID. Error bodies never
+contain ownership, contact, notes, SQL, provider claims, or credentials.
+
+Bindings require an explicit expiry policy, immediate revocation support, and
+server-side checks on every request; expiry and revocation invalidate access
+without deleting audit history. Audit records must capture the authenticated
+principal, wallet/binding identifier, action, outcome, reason class, request
+correlation id, and UTC timestamp, while excluding address-linked private values,
+secrets, tokens, and raw request bodies. Audit failure is fail-closed for the
+private operation. Retention and deletion must follow the applicable policy.
+
+### Synthetic contract tests (future implementation gate)
+
+Before enabling the endpoint, tests must use only disposable synthetic identities,
+wallets, bindings, and private values and must cover: valid own binding and
+allowlisted projection; missing/expired/revoked identity (401); another customer
+or absent binding (403/normalized 404); missing detail (404); quota (429 plus
+`Retry-After`); dependency/audit outage (503); expiry at the exact boundary;
+revocation immediately before access; one audit event per admitted attempt; no
+private values in responses/logs/errors; and no cache. A fail-closed regression
+must prove that public address, serial, or NFC UID alone cannot authorize the
+private projection, including after the public lookup succeeds.
+
 ## Offline verification
 
 ```sh

@@ -241,7 +241,32 @@ class AddressSerialLookup(unittest.TestCase):
                 self.assertEqual(address_lookup.call_count, 4)
                 serial_lookup.assert_called_once_with(SERIAL)
 
-    def test_address_lookup_has_no_network_or_private_data_dependency(self):
+    def test_public_identifiers_alone_never_authorize_customer_projection(self):
+        """Public address/serial and an untrusted customer header stay fail-closed."""
+        public_record = {
+            'address': ADDRESS, 'serial': SERIAL, 'nfc_uid': 'SYNTHETIC_UID',
+            'customer_id': 'SYNTHETIC_CUSTOMER',
+            'details': {'label': 'SYNTHETIC_PRIVATE'},
+        }
+        self.lookup.return_value = public_record
+        serial_lookup = Mock(return_value=public_record)
+        self.app.config['WALLET_LOOKUP'] = serial_lookup
+        headers = {'X-Customer-ID': 'SYNTHETIC_CUSTOMER'}
+
+        address_response = self.client.get(PATH, headers=headers)
+        serial_response = self.client.get('/api/wallets/' + SERIAL, headers=headers)
+        proposed_private_response = self.client.get(
+            '/api/customer/addresses/' + ADDRESS + '/details', headers=headers)
+
+        for response in (address_response, serial_response):
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn('customer_id', response.json)
+            self.assertNotIn('details', response.json)
+            self.assertNotIn('SYNTHETIC_PRIVATE', response.text)
+        self.assertEqual(proposed_private_response.status_code, 404)
+        self.assertNotIn('SYNTHETIC_PRIVATE', proposed_private_response.text)
+        serial_lookup.assert_called_once_with(SERIAL)
+
         import socket
         private = {'mnemonic': 'SYNTHETIC_PRIVATE', 'private_key': 'SYNTHETIC_PRIVATE',
                    'nfc_uid': 'SYNTHETIC_PRIVATE', 'contact_type': 'SYNTHETIC_PRIVATE',
