@@ -26,6 +26,7 @@ class SealAssetContract(unittest.TestCase):
         guide = (ROOT / 'templates' / 'guide.html').read_text(encoding='utf-8')
         license_text = (ROOT / 'static' / 'SEAL-LICENSE.md').read_text(encoding='utf-8')
         self.assertNotIn('SEAL-LICENSE.md', guide)
+        self.assertNotIn('/static/seal.svg', guide)
         self.assertIn('اثبات اصالت', guide)
         self.assertIn('excluded from the repository\'s general PolyForm Noncommercial license', license_text)
         self.assertIn('prior written permission', license_text)

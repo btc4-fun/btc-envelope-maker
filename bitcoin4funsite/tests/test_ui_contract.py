@@ -163,12 +163,14 @@ class UIContract(unittest.TestCase):
         self.assertIn('نمونهٔ آموزشی', intro)
 
     def test_guide_explains_seal_limits_without_license_detail(self):
+        # The owner asked that logo/seal/license detail leave the site text, so
+        # the seal artwork and its own section are gone; the authenticity
+        # warning must survive in plain prose.
         source = self.render("guide.html")
-        seal = source.split('<section id="seal"', 1)[1].split('</section>', 1)[0]
-        self.assertIn('/static/seal.svg', seal)
-        self.assertIn('alt="مهر تزئینی بیت‌کوین روی پاکت"', seal)
-        self.assertIn('اثبات اصالت', seal)
-        self.assertNotIn('SEAL-LICENSE.md', seal)
+        self.assertNotIn('id="seal"', source)
+        self.assertNotIn('/static/seal.svg', source)
+        self.assertIn('اثبات اصالت', source)
+        self.assertNotIn('SEAL-LICENSE.md', source)
 
     def test_home_qualifies_offline_storage_without_absolute_claims(self):
         source = self.render("index.html")
