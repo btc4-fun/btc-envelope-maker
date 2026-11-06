@@ -207,7 +207,7 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
                          * adjusted_satoshi_toman)
       total_rial = total_toman * 10
     The 141 vB estimate assumes one P2WPKH input and two P2WPKH outputs.
-    A first 501-satoshi quote is always shown, even above 2,000,000 toman.
+    A first 501-satoshi quote is always shown, even above 3,000,000 toman.
     Budget rows begin at the next strictly greater 100,000-toman multiple;
     binary search finds the largest supply-bounded principal that fits each
     ceiling. Remainder is budget minus actual rounded cost (zero without a
@@ -218,7 +218,7 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
         first = _quote_row(501, network_sats, print_sats, satoshi_toman, tag=tag)
         rows = [first]
         first_budget = (first["total_toman"] // 100_000 + 1) * 100_000
-        for budget in range(first_budget, 2_000_001, 100_000):
+        for budget in range(first_budget, 3_000_001, 100_000):
             low, high = 501, MAX_SATOSHIS
             while low < high:
                 middle = (low + high + 1) // 2

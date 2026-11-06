@@ -179,9 +179,9 @@ class QuoteTableTests(unittest.TestCase):
 
         quote = quote_table("10000000000", "100000", "1.1")
         rows = quote["rows"]
-        budgets = list(range(100000, 2000001, 100000))
+        budgets = list(range(100000, 3000001, 100000))
         self.assertEqual([row["budget_toman"] for row in rows[1:]], budgets)
-        self.assertEqual(len(rows), 21)
+        self.assertEqual(len(rows), 31)
         self.assertTrue(any(row["remainder_toman"] > 0 for row in rows[1:]))
         previous = rows[0]
         for row in rows[1:]:
@@ -236,7 +236,7 @@ class QuoteTableTests(unittest.TestCase):
         quote = quote_table("17185231012", "1", "0.001")
         self.assertEqual(quote["rows"][0]["total_toman"], 100000)
         self.assertEqual(quote["rows"][1]["budget_toman"], 200000)
-        self.assertEqual(quote["rows"][-1]["budget_toman"], 2000000)
+        self.assertEqual(quote["rows"][-1]["budget_toman"], 3000000)
 
     def test_first_quote_survives_when_no_budget_row_is_affordable(self):
         from pricing import quote_table
@@ -244,7 +244,7 @@ class QuoteTableTests(unittest.TestCase):
         quote = quote_table(1000000000000000, 1000000000000000, 10000)
         self.assertEqual(len(quote["rows"]), 1)
         self.assertEqual(quote["rows"][0]["principal_sats"], 501)
-        self.assertGreater(quote["rows"][0]["total_toman"], 2000000)
+        self.assertGreater(quote["rows"][0]["total_toman"], 3000000)
 
     def test_fractional_rates_match_exact_rational_ceiling_oracle_and_json(self):
         from decimal import Decimal

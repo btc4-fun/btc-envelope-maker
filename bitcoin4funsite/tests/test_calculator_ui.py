@@ -1,9 +1,11 @@
 """Offline template and executable JavaScript contracts for the public calculators."""
 from fractions import Fraction
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 import unittest
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -704,7 +706,7 @@ for(const change of invalid) {
   assert.equal(ids['quote-rows'].children.length,0);
   assert.equal(ids['market-status'].dataset.state,'error');
 }
-const source=fs.readFileSync(process.argv[1],'utf8');
+const source=fs.readFileSync(process.argv[2],'utf8');
 assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source));
 ''', page="market")
 
@@ -897,6 +899,8 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source));
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+// The calculator is evaluated with runInThisContext, which has no module scope.
+globalThis.require = require;
 class Element {
   constructor(tag='div') { this.tagName=tag; this.children=[]; this.attributes={}; this.dataset={}; this.listeners={}; this.textContent=''; this.hidden=false; this.value=''; }
   setAttribute(key,value) { this.attributes[key]=String(value); }
@@ -907,8 +911,8 @@ class Element {
   replaceChildren(...nodes) { this.children=[...nodes]; this.textContent=''; }
   async emit(name) { await Promise.all((this.listeners[name] || []).map(handler=>handler({preventDefault(){}}))); }
 }
-const names = process.argv[2] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status','gross-valuation','gross-status','gross-result','gross-toman','gross-raw-price','gross-fetched-at','gross-stale'] :
-  process.argv[2] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-print','quote-tag-cost-result','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
+const names = process.argv[3] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status','gross-valuation','gross-status','gross-result','gross-toman','gross-raw-price','gross-fetched-at','gross-stale'] :
+  process.argv[3] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-print','quote-tag-cost-result','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
 const ids=Object.fromEntries(names.map(name=>[name,new Element()]));
 if(ids['gross-result']) ids['gross-result'].hidden=true;
 if(ids['gross-stale']) ids['gross-stale'].hidden=true;
@@ -940,10 +944,18 @@ const load=()=>{
   if(ids['quote-speed']) ids['quote-speed'].value='economy';
   if(ids['quote-tag']) ids['quote-tag'].checked=false;
   if(ids['quote-calculate']) ids['quote-calculate'].disabled=true;
-  vm.runInThisContext(fs.readFileSync(process.argv[1],'utf8'));
+  vm.runInThisContext(fs.readFileSync(process.argv[2],'utf8'));
 };
 '''
-        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/calculator.js"), page], capture_output=True, text=True, timeout=15)
+        # Pass the scenario through a file, not argv: a single argv entry is capped
+        # at MAX_ARG_STRLEN (128 KiB) and the budget-row fixtures exceed it.
+        with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False, encoding="utf-8") as handle:
+            handle.write(harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});")
+            script_path = handle.name
+        try:
+            result = subprocess.run(["node", script_path, str(ROOT / "static/calculator.js"), page], capture_output=True, text=True, timeout=15)
+        finally:
+            os.unlink(script_path)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 

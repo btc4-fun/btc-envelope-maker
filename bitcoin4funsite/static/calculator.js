@@ -280,7 +280,7 @@
         !positiveDecimal(market.assumptions?.network_fee_rate) ||
         !integer(market.costs?.network_sats) || !integer(market.costs?.print_sats) ||
         !integer(market.costs?.tag_sats ?? 0) ||
-        !Array.isArray(market.rows) || market.rows.length < 1 || market.rows.length > 21) return false;
+        !Array.isArray(market.rows) || market.rows.length < 1 || market.rows.length > 31) return false;
     return market.rows.every((row, index) => {
       if (!row || ![row.principal_sats, row.network_sats, row.print_sats, row.tag_sats ?? 0, row.operator_sats,
           row.total_sats, row.total_toman, row.total_rial, row.remainder_toman].every(integer) ||
@@ -293,7 +293,7 @@
           BigInt(row.principal_sats) + BigInt(row.network_sats) + BigInt(row.print_sats) + BigInt(row.tag_sats ?? 0) + BigInt(row.operator_sats) !== BigInt(row.total_sats) ||
           BigInt(row.total_toman) * 10n !== BigInt(row.total_rial)) return false;
       if (index === 0) return row.principal_sats === 501 && row.budget_toman === null && row.remainder_toman === 0;
-      return integer(row.budget_toman) && row.budget_toman >= 100000 && row.budget_toman <= 2000000 &&
+      return integer(row.budget_toman) && row.budget_toman >= 100000 && row.budget_toman <= 3000000 &&
         BigInt(row.budget_toman) % 100000n === 0n && row.total_toman <= row.budget_toman &&
         BigInt(row.remainder_toman) === BigInt(row.budget_toman) - BigInt(row.total_toman) &&
         (index === 1 || row.budget_toman > market.rows[index - 1].budget_toman);
