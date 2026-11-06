@@ -84,7 +84,7 @@ class GitHubPagesSnapshotTest(unittest.TestCase):
                 )
 
     def test_local_links_resolve_and_server_routes_use_the_main_site(self):
-        dynamic_prefixes = ("/costs", "/contact", "/lookup", "/api")
+        dynamic_prefixes = ("/costs", "/contact", "/lookup", "/api", "/aml")
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "pages"
             self.build(output)

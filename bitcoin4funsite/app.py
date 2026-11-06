@@ -162,6 +162,7 @@ def create_app(config=None):
             '/t': 'https://btc4.fun/terms',
             '/download': 'https://btc4.fun/download',
             '/costs': 'https://btc4.fun/costs',
+            '/aml': 'https://btc4.fun/aml',
         }
         return {'canonical_url': canonical_paths.get(request.path)}
 
@@ -249,6 +250,10 @@ def create_app(config=None):
     def terms():
         return render_template('terms.html')
 
+    @app.get('/aml')
+    def aml():
+        return render_template('aml.html')
+
     @app.get('/satoshi')
     def satoshi():
         # Keep old bookmarks useful after folding the unit explainer into the guide.
@@ -260,7 +265,7 @@ def create_app(config=None):
 
     @app.get('/sitemap.xml')
     def sitemap():
-        pages = ('/', '/guide', '/security', '/terms', '/download', '/costs')
+        pages = ('/', '/guide', '/security', '/terms', '/download', '/costs', '/aml')
         body = ''.join(f'<url><loc>https://btc4.fun{path}</loc></url>' for path in pages)
         return Response('<?xml version="1.0" encoding="UTF-8"?>'
                         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'

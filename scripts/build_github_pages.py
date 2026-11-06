@@ -65,7 +65,7 @@ PAGES = (
     ("/terms", "terms.html", Path("terms/index.html"), "https://btc4.fun/terms"),
     ("/download", "download.html", Path("download/index.html"), "https://btc4.fun/download"),
 )
-DYNAMIC_ROUTE_PREFIXES = ("/costs", "/contact", "/lookup", "/api")
+DYNAMIC_ROUTE_PREFIXES = ("/costs", "/contact", "/lookup", "/api", "/aml")
 LOCAL_ATTRIBUTE = re.compile(
     r"(?P<prefix>\b(?:href|src|action)\s*=\s*)(?P<quote>[\"'])(?P<url>/[^\"']*)(?P=quote)",
     re.IGNORECASE,
