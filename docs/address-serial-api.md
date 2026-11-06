@@ -83,17 +83,30 @@ object:
   "public": {
     "notes": "یادداشت عمومی آزمایشی",
     "site": {"key": "btc4.fun", "url": "https://btc4.fun/"},
-    "image_url": "https://btc4.fun/static/logo.png"
+    "image_url": "https://btc4.fun/static/logo.png",
+    "links": {"instagram": "https://instagram.com/btc4fun", "telegram": "https://t.me/btc4fun"}
   }
 }
 ```
 
-Shape rules: `notes` is always present in `public` and may be `null`; `site` and
-`image_url` appear only when set. `site_key` and `site_url` are published together
-or not at all. Values are seller-supplied text, not proof of authenticity or a
-balance. They are never read from the private contact columns, and a value that
-fails sanitization (control/format/bidi characters, non-https, host outside the
-allowlist, userinfo or port) is dropped rather than shown.
+Shape rules: `notes` is always present in `public` and may be `null`; `site`,
+`image_url`, and `links` appear only when set. `site_key` and `site_url` are
+published together or not at all, and the `site.url` host must match `site_key`
+(equal, or starting with `site_key + "."`). Values are seller-supplied text, not
+proof of authenticity or a balance. They are never read from the private contact
+columns, and a value that fails sanitization (control/format/bidi characters,
+non-https, host outside the allowlist, userinfo or port) is dropped rather than
+shown.
+
+`links` is an optional flat map of short seller-chosen labels to absolute https
+addresses — social accounts and contact routes. Rules: at most 20 entries; each
+key is 1–32 characters of `a-z 0-9 . _ -`, lowercased, starting with a letter or
+digit; each value is an absolute https URL with no control, bidi, or format
+character. A single invalid entry is dropped on its own — one bad link never hides
+the rest of the card. `links` is stored in the `public_links` TEXT column as JSON
+and is never derived from `contact_type`, `contact_value`, or `notes`. A client
+that reads this payload must treat `links` as optional so payloads written before
+the column existed still parse.
 
 A `429` also has `Retry-After` with the same number of seconds as `retry_after`.
 Errors contain no serial, URL, private fields, connection details, or guessed data.
@@ -115,21 +128,23 @@ The production DB path extends `database_lookup(..., by_address=True)`, selectin
 only existing public columns with a bound address:
 
 ```sql
-SELECT serial, address, public_notes, site_key, site_url, image_url
+SELECT serial, address, public_notes, site_key, site_url, image_url, public_links
 FROM public.wallets WHERE address = %s LIMIT 1
 ```
 
-The serial lookup uses the same six columns; the tag (`nfc_uid`) lookup keeps its
+The serial lookup uses the same seven columns; the tag (`nfc_uid`) lookup keeps its
 original two-column read and never returns public metadata. Column selection is an
 internal allowlist, not request text. Simultaneous `by_tag=True` and
 `by_address=True` are rejected before credential access. Existing read-only
 connection settings and timeouts are kept.
 
-The four added columns are nullable TEXT and only ever carry values the seller
-chose to publish; they are never populated from `contact_type`, `contact_value`, or
-`notes`. The read role needs `SELECT` on the four public columns only — never on the
-private contact columns — and this module never issues `GRANT` itself. Creating
-the columns is a separate, explicit step:
+The five added columns are nullable and only ever carry values the seller chose to
+publish; they are never populated from `contact_type`, `contact_value`, or `notes`.
+`public_notes`, `site_key`, `site_url`, and `image_url` are TEXT; `public_links` is
+TEXT holding a JSON object (`{"instagram":"https://…"}`) so the same schema works on
+SQLite and PostgreSQL. The read role needs `SELECT` on the five public columns only
+— never on the private contact columns — and this module never issues `GRANT`
+itself. Creating the columns is a separate, explicit step:
 
 ```sh
 python btc_db.py migrate-public --db "sqlite:///wallets.db"
