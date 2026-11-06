@@ -21,10 +21,17 @@ from market import MarketService
 # Prefix is operator-defined; retain the existing website's ASCII/64-char
 # envelope, accepting any prefix within it and any positive base36 index width.
 # This is shape admission, not a proof of issuance or a unique parse.
+# Two accepted shapes after the optional operator prefix:
+#   legacy (9-char stem): YY(2) + M + D + H + (MMSS digits | MS base60) + index
+#   short  (5-char stem): Y(1,base36) + M + D + H + X(1,base36) + index
+# Both are shape admission only, not a proof of issuance or a unique parse.
 SERIAL_PATTERN = (
     r'(?=[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$)[A-Za-z0-9_\-]*'
-    r'[0-9]{2}[0-9ab][0-9a-u][0-9a-mz]'
-    r'(?:[0-5][0-9][0-5][0-9]|[0-9a-zA-X]{2})[0-9a-z]+'
+    r'(?:'
+    r'[0-9]{2}[0-9ab][0-9a-u][0-9a-mz](?:[0-5][0-9][0-5][0-9]|[0-9a-zA-X]{2})[0-9a-z]+'
+    r'|'
+    r'[0-9a-z][0-9ab][0-9a-u][0-9a-mz][0-9a-z][0-9a-z]+'
+    r')'
 )
 SERIAL_RE = re.compile(SERIAL_PATTERN)
 
