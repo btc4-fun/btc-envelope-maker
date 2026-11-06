@@ -74,15 +74,71 @@ def _public_url(value):
 
 
 LINK_KEY_RE = re.compile(r'[a-z0-9][a-z0-9._-]{0,31}')
+MAX_LABEL_CHARS = 32
 MAX_PUBLIC_LINKS = 20
+# A contact route may be an https site or a mailto:/tel: address.
+LINK_SCHEMES = ('https', 'mailto', 'tel')
+_EMAIL_RE = re.compile(r'[^@\s]+@[^@\s]+\.[^@\s]+')
+_PHONE_RE = re.compile(r'[+0-9][0-9 ().-]*')
+
+
+def _link_href(value):
+    """A public link value: https anywhere, mailto:/tel:, or a bare email/phone.
+
+    A public link is the seller's own profile page (Instagram, Telegram, ...),
+    so unlike site_url/image_url it is NOT limited to our hosts: only the shape
+    is checked. A bare email or phone (no scheme) becomes mailto:/tel:.
+    """
+    text = _public_text(value, 512)
+    if text is None:
+        return None
+    if any(c.isspace() for c in text) and '@' not in text and _PHONE_RE.fullmatch(text) is None:
+        return None
+    scheme = text.split(':', 1)[0].lower()
+    if scheme in ('mailto', 'tel'):
+        target = text.split(':', 1)[1].strip()
+        if not target:
+            return None
+        if scheme == 'tel':
+            if _PHONE_RE.fullmatch(target) is None:
+                return None
+            digits = re.sub(r'[ ().-]', '', target)
+            return 'tel:' + digits if len(digits) >= 5 else None
+        return 'mailto:' + target if _EMAIL_RE.fullmatch(target) else None
+    if '@' in text and '/' not in text:
+        return 'mailto:' + text if _EMAIL_RE.fullmatch(text) else None
+    if _PHONE_RE.fullmatch(text):
+        digits = re.sub(r'[ ().-]', '', text)
+        return 'tel:' + digits if len(digits) >= 5 else None
+    # A seller's own page; any host is fine, but the shape must be safe. A host
+    # with an underscore (e.g. a t.me alias) is accepted on purpose.
+    if scheme != 'https':
+        return None
+    try:
+        parts = urlsplit(text)
+        port = parts.port
+    except ValueError:
+        return None
+    if not parts.netloc or parts.username or parts.password or port is not None:
+        return None
+    return text
+
+
+def _link_label(raw_key):
+    """An ASCII slug (lowercased) or short human text such as a Persian name."""
+    label = _public_text(raw_key, MAX_LABEL_CHARS)
+    if label is None:
+        return None
+    return label.lower() if LINK_KEY_RE.fullmatch(label.lower()) else label
 
 
 def _public_links(value):
-    """Optional key/value public links (instagram, telegram, ...) or None.
+    """Optional label/value public links (instagram, telegram, ...) or None.
 
-    Stored as JSON text in one column. Each value must be an absolute https URL
-    on an allowlisted host; unsafe or off-allowlist entries are dropped one by
-    one so a single bad link never hides the rest.
+    Stored as JSON text in one column. A label is an ASCII slug or short human
+    text; a value is any absolute https URL, a mailto:/tel: route, or a bare
+    email/phone. Unsafe or rejected entries are dropped one by one so a single
+    bad link never hides the rest.
     """
     if value is None:
         return None
@@ -98,12 +154,12 @@ def _public_links(value):
         return None
     links = {}
     for raw_key, raw_value in value.items():
-        key = str(raw_key).strip().lower()
-        if LINK_KEY_RE.fullmatch(key) is None:
+        label = _link_label(raw_key)
+        if label is None or label in links:
             continue
-        url = _public_url(raw_value)
-        if url is not None:
-            links[key] = url
+        href = _link_href(raw_value)
+        if href is not None:
+            links[label] = href
         if len(links) >= MAX_PUBLIC_LINKS:
             break
     return links or None

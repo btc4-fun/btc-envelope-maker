@@ -205,23 +205,41 @@ class PublicMetadataApi(unittest.TestCase):
             'links': LINKS,
         })
 
-    def test_unsafe_or_off_allowlist_links_are_dropped_one_by_one(self):
+    def test_unsafe_links_are_dropped_one_by_one(self):
+        # Any https host is allowed; only unsafe or malformed values are dropped.
         record = {'address': ADDRESS, 'serial': SERIAL, 'public_links': json.dumps({
             'instagram': 'https://btc4.fun/instagram',
-            'evil': 'https://evil.invalid/x',
+            'userinfo': 'https://user:pw@btc4.fun/x',
             'http': 'http://btc4.fun/x',
-            'bad key': 'https://btc4.fun/x',
+            'javascript': 'javascript:alert(1)',
             'bidi': 'https://btc4.fun/a\u202eb',
         })}
         client = self.build(record)
         response = client.get(SERIAL_PATH + '?balance=1')
         self.assertEqual(response.json['public'], {'notes': None,
                                                    'links': {'instagram': 'https://btc4.fun/instagram'}})
-        self.assertNotIn('evil', response.text)
+        for dropped in ('user:pw@', 'javascript:', 'bidi'):
+            with self.subTest(dropped=dropped):
+                self.assertNotIn(dropped, response.text)
+
+    def test_persian_labels_and_contact_routes_are_published(self):
+        # The owner's real config uses Persian labels plus mailto: and https.
+        # A link keeps the https host allowlist, so off-allowlist hosts are dropped.
+        links = {'اینستاگرام': 'https://b.tc4fun.ir/instagram',
+                 'ایمیل': 'mailto:09113458375@btc4.fun',
+                 'سایت': 'https://btc.saeb.id.ir'}
+        client = self.build({'address': ADDRESS, 'serial': SERIAL, 'public_links': json.dumps(links)})
+        response = client.get(SERIAL_PATH + '?balance=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['public']['links'], links)
+        html = client.get('/s/' + SERIAL).text
+        self.assertIn('ایمیل', html)
+        self.assertIn('href="mailto:09113458375@btc4.fun"', html)
 
     def test_links_with_no_valid_entry_omit_public(self):
         client = self.build({'address': ADDRESS, 'serial': SERIAL,
-                             'public_links': json.dumps({'x': 'https://evil.invalid/'})})
+                             'public_links': json.dumps({'x': 'javascript:alert(1)',
+                                                         'y': 'http://btc4.fun/x'})})
         response = client.get(SERIAL_PATH + '?balance=1')
         self.assertNotIn('public', response.json)
 

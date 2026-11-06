@@ -84,7 +84,9 @@ object:
     "notes": "یادداشت عمومی آزمایشی",
     "site": {"key": "btc4.fun", "url": "https://btc4.fun/"},
     "image_url": "https://btc4.fun/static/logo.png",
-    "links": {"instagram": "https://instagram.com/btc4fun", "telegram": "https://t.me/btc4fun"}
+    "links": {"اینستاگرام": "https://instagram.com/b.tc4fun.ir",
+              "تلگرام": "https://b_tc4fun_ir.t.me",
+              "ایمیل": "mailto:09113458375@btc.fun"}
   }
 }
 ```
@@ -95,18 +97,28 @@ published together or not at all, and the `site.url` host must match `site_key`
 (equal, or starting with `site_key + "."`). Values are seller-supplied text, not
 proof of authenticity or a balance. They are never read from the private contact
 columns, and a value that fails sanitization (control/format/bidi characters,
-non-https, host outside the allowlist, userinfo or port) is dropped rather than
-shown.
+non-https, userinfo or port, or — for `site_url`/`image_url` only — a host outside
+the allowlist) is dropped rather than shown.
 
-`links` is an optional flat map of short seller-chosen labels to absolute https
-addresses — social accounts and contact routes. Rules: at most 20 entries; each
-key is 1–32 characters of `a-z 0-9 . _ -`, lowercased, starting with a letter or
-digit; each value is an absolute https URL with no control, bidi, or format
-character. A single invalid entry is dropped on its own — one bad link never hides
-the rest of the card. `links` is stored in the `public_links` TEXT column as JSON
-and is never derived from `contact_type`, `contact_value`, or `notes`. A client
-that reads this payload must treat `links` as optional so payloads written before
-the column existed still parse.
+`links` is an optional flat map of short seller-chosen labels to contact routes —
+social accounts, email and phone. Rules: at most 20 entries; each label is either
+a slug of 1–32 characters of `a-z 0-9 . _ -` (lowercased) or short human text such
+as a Persian name, kept as written. Each value is one of:
+
+- an absolute `https` URL on **any** host (the seller's own profile); no port, no
+  userinfo, no control/bidi/format character. A host with an underscore, e.g.
+  `b_tc4fun_ir.t.me`, is accepted. The `site_url`/`image_url` host allowlist does
+  not apply to links.
+- a `mailto:` or `tel:` route;
+- a bare email such as `someone@example.com`, stored as `mailto:…`, or a bare
+  phone number such as `0911 345 8375`, stored as `tel:09113458375` (spaces and
+  dashes removed).
+
+A single invalid entry is dropped on its own — one bad link never hides the rest
+of the card. `links` is stored in the `public_links` TEXT column as JSON and is
+never derived from `contact_type`, `contact_value`, or `notes`. A client that
+reads this payload must treat `links` as optional so payloads written before the
+column existed still parse.
 
 A `429` also has `Retry-After` with the same number of seconds as `retry_after`.
 Errors contain no serial, URL, private fields, connection details, or guessed data.

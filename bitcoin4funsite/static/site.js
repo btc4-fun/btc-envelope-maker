@@ -144,16 +144,61 @@
 
   const LINK_KEY = /^[a-z0-9][a-z0-9._-]{0,31}$/;
   const MAX_LINKS = 20;
+  const MAX_LABEL = 32;
+
+  const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  const PHONE = /^[+0-9][0-9 ().-]*$/;
+
+  function phone(text) {
+    if (!PHONE.test(text)) return null;
+    const digits = text.replace(/[ ().-]/g, "");
+    return digits.length >= 5 ? "tel:" + digits : null;
+  }
+
+  // A public link is the seller's own profile page (Instagram, Telegram, ...), so
+  // unlike site_url it is not limited to our hosts; only the shape is checked.
+  // A bare email or phone (no scheme) becomes mailto:/tel:.
+  function linkHref(value) {
+    const text = publicText(value, 512);
+    if (text === null) return null;
+    if (/\s/.test(text) && !text.includes("@") && !PHONE.test(text)) return null;
+    const cut = text.indexOf(":");
+    const scheme = cut === -1 ? "" : text.slice(0, cut).toLowerCase();
+    if (scheme === "mailto") {
+      const target = text.slice(cut + 1).trim();
+      return EMAIL.test(target) ? "mailto:" + target : null;
+    }
+    if (scheme === "tel") return phone(text.slice(cut + 1).trim());
+    if (text.includes("@") && !text.includes("/")) return EMAIL.test(text) ? "mailto:" + text : null;
+    const tel = phone(text);
+    if (tel !== null) return tel;
+    if (scheme !== "https") return null;
+    // Any host is fine for a link (the seller's own profile), but only the shape:
+    // https, no userinfo and no explicit port. A host with an underscore (a t.me
+    // alias) is accepted on purpose, so no URL() host validation here.
+    let url;
+    try { url = new URL(text); } catch { return null; }
+    if (url.protocol !== "https:" || !url.host || url.username || url.password ||
+        !["", "/"].includes(url.port)) {
+      return null;
+    }
+    return text;
+  }
 
   function publicLinks(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
     const out = [];
+    const seen = new Set();
     for (const [rawKey, rawUrl] of Object.entries(value)) {
       if (out.length >= MAX_LINKS) break;
-      const key = typeof rawKey === "string" ? rawKey.trim().toLowerCase() : "";
-      if (!LINK_KEY.test(key)) continue;
-      const href = publicUrl(rawUrl);
-      if (href !== null) out.push({ key, href });
+      if (typeof rawKey !== "string") continue;
+      const label = publicText(rawKey, MAX_LABEL);
+      if (label === null || seen.has(label)) continue;
+      const href = linkHref(rawUrl);
+      if (href !== null) {
+        seen.add(label);
+        out.push({ key: LINK_KEY.test(label.toLowerCase()) ? label.toLowerCase() : label, href });
+      }
     }
     return out.length ? out : null;
   }
@@ -203,8 +248,11 @@
         const link = element("a", "ltr-block", href);
         link.dir = "ltr";
         link.href = href;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
+        // mailto:/tel: open the phone's own app; a blank tab would be empty.
+        if (href.startsWith("https://")) {
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        }
         const item = element("li");
         item.append(element("span", "public-link-key", key), document.createTextNode(" "), link);
         list.append(item);

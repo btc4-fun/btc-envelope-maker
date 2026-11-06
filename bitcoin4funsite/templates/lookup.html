@@ -62,7 +62,8 @@
           <p class="result-label">شبکه‌های اجتماعی و راه‌های تماس</p>
           <ul class="public-links">
             {% for key, url in wallet.public.links.items() %}
-            <li><span class="public-link-key">{{ key }}</span> <a class="ltr-block" dir="ltr" href="{{ url }}" rel="noopener noreferrer" target="_blank">{{ url }}</a></li>
+            {# mailto:/tel: open the phone's own app, so only https opens a new tab. #}
+            <li><span class="public-link-key">{{ key }}</span> <a class="ltr-block" dir="ltr" href="{{ url }}"{% if url.startswith('https://') %} rel="noopener noreferrer" target="_blank"{% endif %}>{{ url }}</a></li>
             {% endfor %}
           </ul>
           {% endif %}
