@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import io
+import json
 import re
 import ipaddress
 import time
@@ -72,27 +73,67 @@ def _public_url(value):
     return text
 
 
+LINK_KEY_RE = re.compile(r'[a-z0-9][a-z0-9._-]{0,31}')
+MAX_PUBLIC_LINKS = 20
+
+
+def _public_links(value):
+    """Optional key/value public links (instagram, telegram, ...) or None.
+
+    Stored as JSON text in one column. Each value must be an absolute https URL
+    on an allowlisted host; unsafe or off-allowlist entries are dropped one by
+    one so a single bad link never hides the rest.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            value = json.loads(text)
+        except ValueError:
+            return None
+    if not isinstance(value, dict):
+        return None
+    links = {}
+    for raw_key, raw_value in value.items():
+        key = str(raw_key).strip().lower()
+        if LINK_KEY_RE.fullmatch(key) is None:
+            continue
+        url = _public_url(raw_value)
+        if url is not None:
+            links[key] = url
+        if len(links) >= MAX_PUBLIC_LINKS:
+            break
+    return links or None
+
+
 def public_payload(record):
     """Build the optional `public` dict, or None when there is nothing to show.
 
-    Shape: {"notes": str|null, "site": {"key", "url"} } plus "image_url" when set.
-    site_key and site_url are published together or not at all."""
+    Shape: {"notes": str|null, "site": {"key", "url"} } plus "image_url" and
+    "links" (a key/value map) when set. site_key and site_url are published
+    together or not at all."""
     if not isinstance(record, dict):
         return None
     notes = _public_text(record.get('public_notes'), 500)
     site_key = _public_text(record.get('site_key'), 64)
     site_url = _public_url(record.get('site_url'))
     image_url = _public_url(record.get('image_url'))
+    links = _public_links(record.get('public_links'))
     if site_key is not None and (SITE_KEY_RE.fullmatch(site_key) is None or site_url is None):
         site_key = site_url = None
     site = {'key': site_key, 'url': site_url} if site_key is not None else None
-    if notes is None and site is None and image_url is None:
+    if notes is None and site is None and image_url is None and links is None:
         return None
     payload: dict = {'notes': notes}
     if site is not None:
         payload['site'] = site
     if image_url is not None:
         payload['image_url'] = image_url
+    if links is not None:
+        payload['links'] = links
     return payload
 
 
@@ -121,13 +162,14 @@ def database_lookup(serial, *, by_tag=False, by_address=False):
                 return {'serial': row[0], 'address': row[1]} if row else None
             # Only the optional PUBLIC columns may be selected; private
             # contact_type/contact_value/notes are never read by the website.
-            cursor.execute(f'SELECT serial, address, public_notes, site_key, site_url, image_url '
-                           f'FROM public.wallets WHERE {column} = %s LIMIT 1', (serial,))
+            cursor.execute(f'SELECT serial, address, public_notes, site_key, site_url, image_url, '
+                           f'public_links FROM public.wallets WHERE {column} = %s LIMIT 1', (serial,))
             row = cursor.fetchone()
     if not row:
         return None
     return {'serial': row[0], 'address': row[1], 'public_notes': row[2],
-            'site_key': row[3], 'site_url': row[4], 'image_url': row[5]}
+            'site_key': row[3], 'site_url': row[4], 'image_url': row[5],
+            'public_links': row[6]}
 
 
 def create_app(config=None):

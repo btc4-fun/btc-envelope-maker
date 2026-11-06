@@ -276,14 +276,14 @@ class ApplicationContract(unittest.TestCase):
             cursor.__exit__ = Mock(return_value=False)
             connection.cursor.return_value = cursor
             cursor.fetchone.return_value = ('abc', 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
-                                            None, None, None, None)
+                                            None, None, None, None, None)
             with patch.dict(os.environ, {'BTC_DB_PASSWORD_FILE': secret.name, 'BTC_DB_USER': 'SYNTHETIC_USER'}), patch.object(self.module.psycopg, 'connect', return_value=connection) as connect:
                 row = self.module.database_lookup('abc')
             self.assertEqual(row['serial'], 'abc')
             # Public columns only; the private contact/notes columns are never selected.
             cursor.execute.assert_called_once_with(
-                'SELECT serial, address, public_notes, site_key, site_url, image_url '
-                'FROM public.wallets WHERE serial = %s LIMIT 1', ('abc',))
+                'SELECT serial, address, public_notes, site_key, site_url, image_url, '
+                'public_links FROM public.wallets WHERE serial = %s LIMIT 1', ('abc',))
             self.assertTrue(connection.read_only)
             self.assertIn('default_transaction_read_only=on', connect.call_args.kwargs['options'])
 

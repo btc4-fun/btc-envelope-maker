@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -21,6 +22,12 @@ FULL_PUBLIC = {
     'site_key': 'btc4.fun',
     'site_url': 'https://btc4.fun/',
     'image_url': 'https://btc4.fun/static/logo.png',
+}
+# Public key/value links: the site's own allowlisted host only.
+LINKS = {
+    'instagram': 'https://btc4.fun/instagram',
+    'telegram': 'https://btc4.fun/telegram',
+    'youtube': 'https://btc4.fun/youtube',
 }
 
 
@@ -177,6 +184,64 @@ class PublicMetadataApi(unittest.TestCase):
         html = client.get('/s/' + SERIAL).text
         self.assertNotIn('یادداشت عمومی', html)
         self.assertNotIn('اطلاعات اختیاری پاکت', html)
+        self.assertNotIn('شبکه‌های اجتماعی', html)
+
+    # -- public links (key/value) -------------------------------------------
+    def test_public_links_are_published_as_a_key_value_map(self):
+        client = self.build({'address': ADDRESS, 'serial': SERIAL,
+                             'public_links': json.dumps(LINKS)})
+        response = client.get(SERIAL_PATH + '?balance=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['public'], {'notes': None, 'links': LINKS})
+
+    def test_public_links_combine_with_notes_site_and_image(self):
+        client = self.build(dict(address=ADDRESS, serial=SERIAL, **FULL_PUBLIC,
+                                 public_links=json.dumps(LINKS)))
+        response = client.get(SERIAL_PATH + '?balance=1')
+        self.assertEqual(response.json['public'], {
+            'notes': FULL_PUBLIC['public_notes'],
+            'site': {'key': FULL_PUBLIC['site_key'], 'url': FULL_PUBLIC['site_url']},
+            'image_url': FULL_PUBLIC['image_url'],
+            'links': LINKS,
+        })
+
+    def test_unsafe_or_off_allowlist_links_are_dropped_one_by_one(self):
+        record = {'address': ADDRESS, 'serial': SERIAL, 'public_links': json.dumps({
+            'instagram': 'https://btc4.fun/instagram',
+            'evil': 'https://evil.invalid/x',
+            'http': 'http://btc4.fun/x',
+            'bad key': 'https://btc4.fun/x',
+            'bidi': 'https://btc4.fun/a\u202eb',
+        })}
+        client = self.build(record)
+        response = client.get(SERIAL_PATH + '?balance=1')
+        self.assertEqual(response.json['public'], {'notes': None,
+                                                   'links': {'instagram': 'https://btc4.fun/instagram'}})
+        self.assertNotIn('evil', response.text)
+
+    def test_links_with_no_valid_entry_omit_public(self):
+        client = self.build({'address': ADDRESS, 'serial': SERIAL,
+                             'public_links': json.dumps({'x': 'https://evil.invalid/'})})
+        response = client.get(SERIAL_PATH + '?balance=1')
+        self.assertNotIn('public', response.json)
+
+    def test_malformed_links_json_is_ignored(self):
+        for value in ('not json', '[]', '"text"', '{}', ''):
+            with self.subTest(value=value):
+                client = self.build({'address': ADDRESS, 'serial': SERIAL, 'public_links': value})
+                response = client.get(SERIAL_PATH + '?balance=1')
+                self.assertNotIn('public', response.json)
+
+    def test_no_js_template_renders_public_links(self):
+        client = self.build({'address': ADDRESS, 'serial': SERIAL,
+                             'public_links': json.dumps(LINKS)})
+        html = client.get('/s/' + SERIAL).text
+        self.assertIn('شبکه‌های اجتماعی و راه‌های تماس', html)
+        for key, url in LINKS.items():
+            with self.subTest(key=key):
+                self.assertIn(key, html)
+                self.assertIn('href="' + url + '"', html)
+        self.assertIn('rel="noopener noreferrer"', html)
 
 
 class PublicPayloadUnit(unittest.TestCase):

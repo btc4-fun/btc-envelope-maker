@@ -142,6 +142,22 @@
     return text;
   }
 
+  const LINK_KEY = /^[a-z0-9][a-z0-9._-]{0,31}$/;
+  const MAX_LINKS = 20;
+
+  function publicLinks(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const out = [];
+    for (const [rawKey, rawUrl] of Object.entries(value)) {
+      if (out.length >= MAX_LINKS) break;
+      const key = typeof rawKey === "string" ? rawKey.trim().toLowerCase() : "";
+      if (!LINK_KEY.test(key)) continue;
+      const href = publicUrl(rawUrl);
+      if (href !== null) out.push({ key, href });
+    }
+    return out.length ? out : null;
+  }
+
   function publicBlock(wallet) {
     const source = wallet.public;
     if (!source || typeof source !== "object") return null;
@@ -153,7 +169,8 @@
       if (key && href && /^[A-Za-z0-9._-]{1,64}$/.test(key)) site = { key, href };
     }
     const image = publicUrl(source.image_url);
-    if (notes === null && site === null && image === null) return null;
+    const links = publicLinks(source.links);
+    if (notes === null && site === null && image === null && links === null) return null;
     const section = element("section");
     section.setAttribute("aria-label", "اطلاعات اختیاری پاکت");
     if (notes !== null) {
@@ -179,6 +196,20 @@
       img.referrerPolicy = "no-referrer";
       img.addEventListener("error", () => { img.hidden = true; });
       section.append(element("p", "result-label", "تصویر"), img);
+    }
+    if (links !== null) {
+      const list = element("ul", "public-links");
+      for (const { key, href } of links) {
+        const link = element("a", "ltr-block", href);
+        link.dir = "ltr";
+        link.href = href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        const item = element("li");
+        item.append(element("span", "public-link-key", key), document.createTextNode(" "), link);
+        list.append(item);
+      }
+      section.append(element("p", "result-label", "شبکه‌های اجتماعی و راه‌های تماس"), list);
     }
     section.append(element("p", "", "این اطلاعات اختیاری را فروشنده نوشته است؛ تأیید موجودی یا اصالت پاکت نیست."));
     return section;

@@ -58,6 +58,14 @@
           <p class="result-label">تصویر</p>
           <img src="{{ wallet.public.image_url }}" alt="" width="320" height="180" loading="lazy" referrerpolicy="no-referrer" onerror="this.hidden=true">
           {% endif %}
+          {% if wallet.public.links %}
+          <p class="result-label">شبکه‌های اجتماعی و راه‌های تماس</p>
+          <ul class="public-links">
+            {% for key, url in wallet.public.links.items() %}
+            <li><span class="public-link-key">{{ key }}</span> <a class="ltr-block" dir="ltr" href="{{ url }}" rel="noopener noreferrer" target="_blank">{{ url }}</a></li>
+            {% endfor %}
+          </ul>
+          {% endif %}
           <p>این اطلاعات اختیاری را فروشنده نوشته است؛ تأیید موجودی یا اصالت پاکت نیست.</p>
         </section>
         {% endif %}

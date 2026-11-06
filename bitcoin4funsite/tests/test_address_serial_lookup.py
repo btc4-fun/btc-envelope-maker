@@ -127,8 +127,8 @@ class AddressSerialLookup(unittest.TestCase):
         connection = MagicMock()
         connection.__enter__.return_value = connection
         cursor = connection.cursor.return_value.__enter__.return_value
-        # All four optional public columns are null -> no `public` key is added.
-        cursor.fetchone.return_value = (SERIAL, ADDRESS, None, None, None, None)
+        # All optional public columns are null -> no `public` key is added.
+        cursor.fetchone.return_value = (SERIAL, ADDRESS, None, None, None, None, None)
         with patch.object(self.module.Path, 'read_text', return_value='SYNTHETIC_PASSWORD\n') as read, \
                 patch.dict(os.environ, {'BTC_DB_USER': 'SYNTHETIC_USER'}), \
                 patch.object(self.module.psycopg, 'connect', return_value=connection) as connect:
@@ -137,8 +137,8 @@ class AddressSerialLookup(unittest.TestCase):
         self.assertEqual(response.json, {'address': ADDRESS, 'serial': SERIAL,
                                         'lookup_url': 'https://btc4.fun/s/' + SERIAL})
         cursor.execute.assert_called_once_with(
-            'SELECT serial, address, public_notes, site_key, site_url, image_url '
-            'FROM public.wallets WHERE address = %s LIMIT 1', (ADDRESS,))
+            'SELECT serial, address, public_notes, site_key, site_url, image_url, '
+            'public_links FROM public.wallets WHERE address = %s LIMIT 1', (ADDRESS,))
         read.assert_called_once()
         self.assertTrue(connection.read_only)
         self.assertIn('default_transaction_read_only=on', connect.call_args.kwargs['options'])
@@ -155,15 +155,16 @@ class AddressSerialLookup(unittest.TestCase):
             for flags, column in (({}, 'serial'), ({'by_address': True}, 'address')):
                 with self.subTest(flags=flags):
                     cursor.execute.reset_mock()
-                    cursor.fetchone.return_value = (SERIAL, ADDRESS, None, None, None, None)
+                    cursor.fetchone.return_value = (SERIAL, ADDRESS, None, None, None, None, None)
                     value = "BOUND_ONLY' OR 1=1--"
                     row = self.module.database_lookup(value, **flags)
                     self.assertEqual(row, {'serial': SERIAL, 'address': ADDRESS,
                                            'public_notes': None, 'site_key': None,
-                                           'site_url': None, 'image_url': None})
+                                           'site_url': None, 'image_url': None,
+                                           'public_links': None})
                     cursor.execute.assert_called_once_with(
-                        'SELECT serial, address, public_notes, site_key, site_url, image_url '
-                        f'FROM public.wallets WHERE {column} = %s LIMIT 1', (value,))
+                        'SELECT serial, address, public_notes, site_key, site_url, image_url, '
+                        f'public_links FROM public.wallets WHERE {column} = %s LIMIT 1', (value,))
             # The tag path stays narrow: public ledger ids only, never public metadata.
             cursor.fetchone.return_value = (SERIAL, ADDRESS)
             value = "BOUND_ONLY' OR 1=1--"
