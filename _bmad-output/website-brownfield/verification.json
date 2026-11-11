@@ -1,0 +1,53 @@
+{
+  "scope": "website brownfield documentation only",
+  "review_date": "2026-11-11",
+  "repository": "/home/saeb/PycharmProjects/btc4fun/btc_envelope_maker",
+  "baseline_commit": "34a26be36d4e997823520dffb5d62e715a8e659c",
+  "workflow": {
+    "router": ".agents/skills/bmad-help/SKILL.md",
+    "catalog": "_bmad/_config/bmad-help.csv",
+    "selected": "bmad-project-context",
+    "mode": "evidence discovery plus standalone output-only context; not AGENTS adoption",
+    "config_resolution": "not run because config.toml reads are prohibited",
+    "approval": "user preauthorized autonomous new documentation only",
+    "automatic_context_loading": "not configured or claimed"
+  },
+  "created_files": [
+    "architecture.fa.md",
+    "contracts-and-open-decisions.fa.md",
+    "project-context.md",
+    "verification.json"
+  ],
+  "executed_checks": {
+    "git_baseline_and_status": "completed",
+    "markdown_files_checked": 3,
+    "source_path_and_line_range_occurrences_checked": 82,
+    "invalid_source_references": [],
+    "mixed_persian_latin_source_lines": [],
+    "markdown_link_occurrences": 8,
+    "markdown_links": "seven existing-document occurrences verified; verification.json link verified after manifest creation in final check",
+    "tracked_diff_stat": ".gitignore | 4 ++++ (preexisting)",
+    "preexisting_untracked_documents_preserved": [
+      "docs/android-seller-prompt.fa.md",
+      "docs/new-session-handoff.fa.md",
+      "docs/next-session-prompt.fa.md"
+    ]
+  },
+  "not_executed": [
+    "application unit/UI/integration tests",
+    "real browser verification",
+    "dependency installation",
+    "container build or local runtime server",
+    "database access or migration",
+    "network or production probes",
+    "commit, push, or deployment"
+  ],
+  "limitations": [
+    "AGENTS.md was blocked in supplied context and was not read or edited",
+    "No application test pass is claimed",
+    "Existing deployment reports remain historical evidence only",
+    "Sibling app and generator implementations were not inspected",
+    "Documentation paths and line references verify location, not runtime behavior",
+    "Preexisting file preservation is supported by no write operations targeting those files and unchanged status categories, not initial/final full-content digest comparison"
+  ]
+}

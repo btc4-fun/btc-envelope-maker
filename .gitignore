@@ -33,6 +33,10 @@ secrets/
 **/data/
 **/backups/
 
+# Local BMAD installation; _bmad-output/ remains versionable
+/_bmad/
+/.agents/
+
 # Tooling and generated artifacts
 .venv/
 venv/
