@@ -76,7 +76,9 @@ for (const serial of valid) {
   const before = requests.length;
   await submit(serial);
   assert.equal(requests.length, before+1, serial);
-  assert.equal(requests.at(-1).url, '/api/wallets/'+encodeURIComponent(serial));
+  // submit() exercises the retained explicit-balance JS path; an ordinary
+  // submit is a native GET so the server can render public metadata itself.
+  assert.equal(requests.at(-1).url, '/api/wallets/'+encodeURIComponent(serial)+'?balance=1');
 }
 '''
         test_ui_contract.UIContract().run_lookup_script(scenario)

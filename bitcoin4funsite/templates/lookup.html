@@ -8,7 +8,7 @@
 <header class="page-heading shell"><a class="breadcrumb" href="/">خانه <span aria-hidden="true">/</span> استعلام سریال</a><p class="eyebrow">فقط بخش عمومی پاکت</p><h1>یک سریال.<br>یک آدرس عمومی.</h1><p class="page-deck">شمارهٔ سریال روی پاکت را بنویسید تا آدرس دریافت بیت‌کوین را ببینید. لازم نیست پاکت را باز کنید. کلمات بازیابی را اینجا ننویسید.</p></header>
 <section class="lookup-layout shell" aria-label="استعلام عمومی پاکت">
   <div class="lookup-main">
-    <form id="lookup-form" action="/lookup" method="get" data-initial-serial="{{ serial|default('', true) }}" data-initial-state="{{ 'found' if wallet else lookup_error|default('', true) }}" data-initial-address="{{ wallet.address if wallet else '' }}" data-initial-explorer="{{ 'https://mempool.space/address/' + wallet.address if wallet else '' }}" data-retry-after="{{ lookup_retry_after|default('', true) }}" data-initial-balance='{{ (wallet.balance if wallet and wallet.balance else none)|tojson }}' data-balance-error="{{ wallet.balance_error if wallet and wallet.balance_error else '' }}">
+    <form id="lookup-form" action="/lookup" method="get" data-initial-serial="{{ serial|default('', true) }}" data-initial-state="{{ 'found' if wallet else lookup_error|default('', true) }}" data-initial-address="{{ wallet.address if wallet else '' }}" data-initial-explorer="{{ 'https://mempool.space/address/' + wallet.address if wallet else '' }}" data-retry-after="{{ lookup_retry_after|default('', true) }}" data-initial-balance='{{ (wallet.balance if wallet and wallet.balance else none)|tojson }}' data-initial-public='{{ (wallet.public if wallet and wallet.public else none)|tojson }}' data-balance-error="{{ wallet.balance_error if wallet and wallet.balance_error else '' }}">
       <label for="serial">شمارهٔ سریال پاکت</label>
       <p id="serial-hint" class="field-hint">فقط شمارهٔ سریال؛ با حروف و ارقام انگلیسی، خط تیره یا زیرخط. فاصله وارد نکنید.</p>
       <p class="field-hint">برای هر اتصال اینترنتی، پنج استعلام در شصت ثانیه مجاز است. اگر چند نفر از یک اتصال استفاده کنند، این سهمیه بین آن‌ها مشترک است. دیدن کد تصویری نتیجه تا شصت ثانیه پس از استعلام، از این سهمیه کم نمی‌کند.</p>
@@ -56,7 +56,7 @@
           {% endif %}
           {% if wallet.public.image_url %}
           <p class="result-label">تصویر</p>
-          <img src="{{ wallet.public.image_url }}" alt="" width="320" height="180" loading="lazy" referrerpolicy="no-referrer" onerror="this.hidden=true">
+          <img src="{{ wallet.public.image_url }}" alt="" width="320" height="180" loading="lazy" referrerpolicy="no-referrer">
           {% endif %}
           {% if wallet.public.links %}
           <p class="result-label">شبکه‌های اجتماعی و راه‌های تماس</p>
@@ -86,6 +86,6 @@
   </div>
   <aside class="lookup-aside"><span class="aside-symbol" aria-hidden="true">↗</span><h2>چه چیزی نمایش داده می‌شود؟</h2><p>آدرس عمومی ثبت‌شده و کد تصویری آن را می‌بینید. کد در همین سایت ساخته می‌شود. سه پیوند اختیاری هم برای دیدن تراکنش‌ها در سایت‌های دیگر هست.</p><p>مرورگر هیچ درخواست خودکاری به سایت‌های نمایش تراکنش نمی‌فرستد. به این سایت‌ها «کاوشگر بلاک» می‌گویند. اگر پیوند یکی را باز کنید، آن سایت آدرس عمومی و اطلاعات اتصال اینترنتی شما را می‌بیند.</p><p>شمارهٔ سریال و آدرس ثابت نمی‌کنند که پولی واریز شده، تراکنش تأیید شده یا پول متعلق به شماست.</p><a class="text-link" href="/guide">پیش از واریز، راهنما را بخوانید <span aria-hidden="true">←</span></a></aside>
 </section>
-<div class="shell prose safety-summary">{% include '_wallet_safety.html' %}</div>
+<section class="shell prose safety-summary"><p><strong>از غریبه پاکت نخرید.</strong> استعلام و موجودی، اصالت پاکت یا دسترسی انحصاری شما را ثابت نمی‌کنند.</p><a class="button" href="/guide#quick-guide">راهنمای استفاده و هشدارهای پاکت <span aria-hidden="true">←</span></a></section>
 <section class="article-end shell"><p>اگر کسی برای استعلام از شما کلمات بازیابی خواست، متوقف شوید.</p><a class="text-link" href="/terms">شرایط و مسئولیت‌ها <span aria-hidden="true">←</span></a></section>
 {% endblock %}

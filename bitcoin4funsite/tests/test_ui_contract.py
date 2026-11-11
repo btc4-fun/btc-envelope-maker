@@ -112,21 +112,25 @@ class UIContract(unittest.TestCase):
         for href in ('/guide', '/security', '/costs'):
             self.assertIn('class="path-card" href="' + href + '"', main)
 
-    def test_plain_safety_examples_are_shared_on_home_lookup_and_guide(self):
-        # The home page keeps the plain-language greeting plus only the stranger
-        # purchase warning; the inner/outer card visuals and camera example live
-        # in the lookup page and the guide so beginners are not overloaded.
+    def test_lookup_links_to_guide_instead_of_repeating_safety_examples(self):
+        # Home and lookup retain a purchase warning. Tutorial images and the
+        # camera example belong to the guide, not the lookup result.
         for template in ('index.html', 'lookup.html', 'guide.html'):
             with self.subTest(template=template):
                 source = self.render(template)
                 self.assertIn('از غریبه پاکت نخرید', source)
-        for template in ('lookup.html', 'guide.html'):
+        for template in ('guide.html',):
             with self.subTest(template=template):
                 source = self.render(template)
                 self.assertIn('id="quick-guide"', source)
                 self.assertIn('دوربین مداربسته', source)
                 self.assertIn('/static/guide-inner-example.png', source)
                 self.assertIn('/static/guide-outer-example.png', source)
+        lookup = self.render('lookup.html')
+        self.assertNotIn('id="quick-guide"', lookup)
+        self.assertNotIn('/static/guide-inner-example.png', lookup)
+        self.assertNotIn('/static/guide-outer-example.png', lookup)
+        self.assertIn('href="/guide#quick-guide"', lookup)
         self.assertNotIn('id="quick-guide"', self.render('index.html'))
         terms = self.render('terms.html')
         for phrase in ('یک تراکنش واریز اولیه', 'مسئولیت فروشنده نسبت به شما تمام شده',
@@ -410,10 +414,10 @@ assert.ok(all().some(n=>/موجودی.*دسترس نیست/.test(n.textContent))
         initial = Document(self.render("lookup.html", serial=dangerous))
         self.assertEqual(initial.by_id("serial")["value"], dangerous)
         self.assertEqual([attrs['src'] for tag, attrs in initial.elements if tag == 'img'],
-                         ['/static/logo.png', '/static/guide-inner-example.png', '/static/guide-outer-example.png'])
+                         ['/static/logo.png'])
         self.assertFalse(any(key.startswith("on") for _, attrs in initial.elements for key in attrs))
 
-    def run_lookup_script(self, scenario, initial="", initial_state="", retry_after="", initial_balance="null", balance_error="", initial_address="bc1qsyntheticpublicfixture"):
+    def run_lookup_script(self, scenario, initial="", initial_state="", retry_after="", initial_balance="null", balance_error="", initial_address="bc1qsyntheticpublicfixture", initial_public="null"):
         self.assertIsNotNone(shutil.which("node"), "Node is required for the offline JavaScript behavior contract")
         harness = r'''
 const assert = require('node:assert/strict');
@@ -438,11 +442,12 @@ ids['lookup-form'].dataset.retryAfter=process.argv[5];
 ids['lookup-form'].dataset.initialBalance=process.argv[6];
 ids['lookup-form'].dataset.balanceError=process.argv[7];
 ids['lookup-form'].dataset.initialAddress=process.argv[8];
+ids['lookup-form'].dataset.initialPublic=process.argv[9];
 ids['lookup-form'].dataset.initialExplorer='https://mempool.space/address/'+process.argv[8];
 ids.serial.value=process.argv[2];
 ids.serial.setAttribute('pattern', process.argv[4]);
 ids['lookup-result'].hidden=true;
-global.document={getElementById:id=>ids[id] || null, createElement:tag=>new Element(tag)};
+global.document={getElementById:id=>ids[id] || null, createElement:tag=>new Element(tag), createTextNode:text=>Object.assign(new Element('#text'),{textContent:text})};
 global.window={isSecureContext:true, location:{origin:'http://localhost'}, listeners:{}, addEventListener(name, handler){this.listeners[name]=handler;}};
 let handler=async()=>{throw new Error('Unexpected request');};
 const requests=[];
@@ -450,7 +455,8 @@ global.fetch=async(url, options)=>{requests.push({url,options}); return handler(
 Object.defineProperty(global,'navigator',{value:{}, configurable:true});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const all=()=>{const found=[]; const walk=node=>{found.push(node);node.children.forEach(walk);}; walk(ids['lookup-result']); return found;};
-const submit=async serial=>{ids.serial.value=serial; await ids['lookup-form'].emit('submit'); await tick();};
+// Legacy transport/error scenarios now exercise only the explicit balance enhancement.
+const submit=async serial=>{ids.serial.value=serial; await ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']}); await tick();};
 vm.runInThisContext(fs.readFileSync(process.argv[1], 'utf8'));
 '''
         # Use the rendered production field, not a copied JS grammar.
@@ -462,8 +468,61 @@ vm.runInThisContext(fs.readFileSync(process.argv[1], 'utf8'));
         spec.loader.exec_module(module)
         html = module.create_app({'TESTING': True}).test_client().get('/lookup').text
         pattern = Document(html).by_id('serial')['pattern']
-        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state, pattern, retry_after, initial_balance, balance_error, initial_address], capture_output=True, text=True, timeout=15)
+        result = subprocess.run(["node", "-e", harness + "\n(async()=>{\n" + scenario + "\n})().catch(error=>{console.error(error); process.exitCode=1;});", str(ROOT / "static/site.js"), initial, initial_state, pattern, retry_after, initial_balance, balance_error, initial_address, initial_public], capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_initial_public_hydrates_safely_without_network(self):
+        import json
+        data = json.dumps({'notes': 'safe <script> & text',
+                           'site': {'key': 'btc4.fun', 'url': 'https://btc4.fun/'},
+                           'image_url': 'https://b.tc4fun.ir/example.png',
+                           'links': {'web': 'https://example.invalid/profile',
+                                     'mail': 'mailto:test@example.invalid',
+                                     'phone': 'tel:+123456789', 'bad': 'javascript:alert(1)'}})
+        self.run_lookup_script(r'''
+await tick();assert.equal(requests.length,0);
+assert.ok(all().some(n=>n.textContent==='safe <script> & text'));
+assert.ok(all().some(n=>n.src==='https://b.tc4fun.ir/example.png'));
+const links=all().filter(n=>n.tagName==='a');
+assert.ok(links.some(n=>n.href==='https://example.invalid/profile' && n.target==='_blank' && n.rel==='noopener noreferrer'));
+assert.ok(links.some(n=>n.href==='mailto:test@example.invalid' && !n.target));
+assert.ok(links.some(n=>n.href==='tel:+123456789' && !n.target));
+assert.ok(!links.some(n=>n.href?.startsWith('javascript:')));
+''', initial='Serial_710587k45300', initial_state='found', initial_public=data)
+        for data in ('{bad', 'null', '[]', '42'):
+            self.run_lookup_script(r'''
+await tick();assert.equal(requests.length,0);
+assert.equal(ids['lookup-result'].hidden,false);
+assert.ok(all().some(n=>n.textContent==='bc1qsyntheticpublicfixture'));
+''', initial='Serial_710587k45300', initial_state='found', initial_public=data)
+
+    def test_initial_public_unicode_notes_and_labels_use_codepoint_boundaries(self):
+        import json
+        for size in (251, 500, 501):
+            with self.subTest(notes=size):
+                self.run_lookup_script(f'''
+await tick();assert.equal(requests.length,0);
+const note='😀'.repeat({size});
+assert.equal(all().some(n=>n.textContent===note), {str(size <= 500).lower()});
+''', initial='Serial_710587k45300', initial_state='found',
+                    initial_public=json.dumps({'notes': '😀' * size}, ensure_ascii=False))
+        for size in (17, 32, 33):
+            with self.subTest(label=size):
+                self.run_lookup_script(f'''
+await tick();assert.equal(requests.length,0);
+const label='😀'.repeat({size});
+assert.equal(all().some(n=>n.textContent===label), {str(size <= 32).lower()});
+assert.equal(all().some(n=>n.href==='https://example.invalid/profile'), {str(size <= 32).lower()});
+''', initial='Serial_710587k45300', initial_state='found',
+                    initial_public=json.dumps({'links': {'😀' * size: 'https://example.invalid/profile'}}, ensure_ascii=False))
+
+    def test_ordinary_submit_keeps_native_default_and_does_not_fetch(self):
+        self.run_lookup_script(r'''
+ids.serial.value='Serial_710587k45300';
+let prevented=false;
+await ids['lookup-form'].emit('submit',{submitter:ids['lookup-submit'],preventDefault(){prevented=true;}});
+assert.equal(prevented,false);assert.equal(requests.length,0);
+''')
 
     def test_lookup_waits_for_intent_and_rejects_invalid_without_network(self):
         self.run_lookup_script(r'''
@@ -477,21 +536,21 @@ assert.match(ids['lookup-status'].textContent,/شمارهٔ سریال/);
 assert.equal(ids['lookup-result'].hidden,true);
 ''')
 
-    def test_lookup_fetches_only_same_origin_and_renders_public_result_safely(self):
+    def test_explicit_balance_fetches_only_same_origin_and_renders_safely(self):
         self.run_lookup_script(r'''
 let finish;
 handler=()=>new Promise(resolve=>{finish=resolve;});
 ids.serial.value='Demo_7-20587k45300';
-const pending=ids['lookup-form'].emit('submit');
+const pending=ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
 await tick();
 assert.equal(requests.length,1,'Submitting a valid serial must call the public API');
-assert.equal(requests[0].url,'/api/wallets/Demo_7-20587k45300');
+assert.equal(requests[0].url,'/api/wallets/Demo_7-20587k45300?balance=1');
 assert.equal(requests[0].options.credentials,'same-origin');
 assert.equal(requests[0].options.redirect,'error');
 assert.equal(ids['lookup-status'].dataset.state,'loading');
 assert.equal(ids['lookup-result'].getAttribute('aria-busy'),'true');
 const address='bc1qsyntheticpublicfixture';
-finish({ok:true,status:200,json:async()=>({serial:'Demo_7-20587k45300',address,explorer_url:'https://mempool.space/address/'+address})});
+finish({ok:true,status:200,json:async()=>({serial:'Demo_7-20587k45300',address,explorer_url:'https://mempool.space/address/'+address,balance:{address,confirmed_sats:1,pending_delta_sats:0,source:'https://blockstream.info/api',fetched_at:'2026-11-05T00:00:00+00:00'}})});
 await pending;
 await tick();
 assert.equal(ids['lookup-result'].hidden,false);
@@ -604,7 +663,7 @@ assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|eval\(/.test(source),'Untrust
     def test_copy_address_handles_unsupported_denied_and_successful_clipboard(self):
         self.run_lookup_script(r'''
 const address='bc1q'+'q'.repeat(38);
-handler=async()=>({ok:true,status:200,json:async()=>({serial:'Copy70587k45300',address,explorer_url:'https://mempool.space/address/'+address})});
+handler=async()=>({ok:true,status:200,json:async()=>({serial:'Copy70587k45300',address,explorer_url:'https://mempool.space/address/'+address,balance:{address,confirmed_sats:1,pending_delta_sats:0,source:'https://blockstream.info/api',fetched_at:'2026-11-05T00:00:00+00:00'}})});
 await submit('Copy70587k45300');
 const copy=all().find(node=>node.tagName==='button');
 assert.ok(copy,'Provide a copy-address control');
@@ -627,9 +686,9 @@ const pending=[];
 handler=()=>new Promise(resolve=>pending.push(resolve));
 const response=serial=>({ok:true,status:200,json:async()=>({serial,address:'bc1q'+'q'.repeat(38),explorer_url:'https://mempool.space/address/bc1q'+'q'.repeat(38)})});
 ids.serial.value='First0587k45300';
-const first=ids['lookup-form'].emit('submit');
+const first=ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
 ids.serial.value='Second0587k45300';
-const second=ids['lookup-form'].emit('submit');
+const second=ids['lookup-form'].emit('submit',{submitter:ids['balance-submit']});
 pending[1](response('Second0587k45300'));
 await second;
 assert.ok(all().some(node=>node.textContent==='Second0587k45300'));
@@ -642,7 +701,7 @@ assert.ok(!all().some(node=>node.textContent==='First0587k45300'));
     def test_failed_local_qr_keeps_public_address_readable(self):
         self.run_lookup_script(r'''
 const address='bc1q'+'q'.repeat(38);
-handler=async()=>({ok:true,status:200,json:async()=>({serial:'Qr70587k45300',address,explorer_url:'https://mempool.space/address/'+address})});
+handler=async()=>({ok:true,status:200,json:async()=>({serial:'Qr70587k45300',address,explorer_url:'https://mempool.space/address/'+address,balance:{address,confirmed_sats:1,pending_delta_sats:0,source:'https://blockstream.info/api',fetched_at:'2026-11-05T00:00:00+00:00'}})});
 await submit('Qr70587k45300');
 const qr=all().find(node=>node.tagName==='img');
 await qr.emit('error');

@@ -125,7 +125,7 @@
   function publicText(value, max) {
     if (typeof value !== "string") return null;
     const text = value.trim();
-    if (!text || text.length > max || UNSAFE.test(text)) return null;
+    if (!text || Array.from(text).length > max || UNSAFE.test(text)) return null;
     return text;
   }
 
@@ -455,6 +455,8 @@
   });
 
   form.addEventListener("submit", (event) => {
+    // Ordinary API lookup intentionally omits public metadata; submit natively.
+    if (event.submitter !== balanceSubmit) return;
     event.preventDefault();
     return lookup(field.value, event.submitter === balanceSubmit);
   });
@@ -464,6 +466,8 @@
     const state = form.dataset.initialState;
     const wallet = { serial, address: form.dataset.initialAddress, explorer_url: form.dataset.initialExplorer };
     if (state === 'found' && validSerial.test(serial) && validWallet(wallet, serial)) {
+      try { wallet.public = JSON.parse(form.dataset.initialPublic || 'null'); }
+      catch { wallet.public = null; }
       try { wallet.balance = JSON.parse(form.dataset.initialBalance || 'null'); }
       catch { wallet.balance_error = 'unavailable'; }
       if (form.dataset.balanceError) wallet.balance_error = 'unavailable';

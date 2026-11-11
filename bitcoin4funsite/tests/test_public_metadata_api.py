@@ -91,6 +91,24 @@ class PublicMetadataApi(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.json), {'serial', 'address', 'explorer_url'})
 
+    def test_root_serial_page_transfers_public_metadata_to_initial_browser_state(self):
+        client = self.build(dict(address=ADDRESS, serial=SERIAL, **FULL_PUBLIC))
+        html = client.get('/' + SERIAL).text
+        self.assertIn('data-initial-public=', html)
+        self.assertIn(FULL_PUBLIC['public_notes'], html)
+
+    def test_initial_public_state_is_defensively_json_encoded(self):
+        record = dict(address=ADDRESS, serial=SERIAL,
+                      public_notes='علامت & <script> \" امن')
+        html = self.build(record).get('/' + SERIAL).text
+        self.assertIn('data-initial-public=', html)
+        self.assertNotIn('<script>', html)
+
+    def test_normal_form_submission_does_not_use_json_lookup(self):
+        source = (ROOT / 'static' / 'site.js').read_text()
+        self.assertIn('event.submitter === balanceSubmit', source)
+        self.assertIn('if (event.submitter !== balanceSubmit) return;', source)
+
     def test_serial_balance_flag_adds_optional_public(self):
         client = self.build(dict(address=ADDRESS, serial=SERIAL, **FULL_PUBLIC))
         response = client.get(SERIAL_PATH + '?balance=1')
@@ -126,12 +144,39 @@ class PublicMetadataApi(unittest.TestCase):
                                          'error': 'balance_unavailable'})
         self.assertNotIn('SYNTHETIC_PRIVATE', response.text)
 
+    def test_html_balance_failure_keeps_public_metadata_on_every_alias(self):
+        from html import unescape
+        import re
+        self.balance.balance.side_effect = RuntimeError('SYNTHETIC_PRIVATE_UPSTREAM')
+        record = dict(address=ADDRESS, serial=SERIAL, **FULL_PUBLIC,
+                      public_links=json.dumps(LINKS))
+        client = self.build(record)
+        for path in ('/s/' + SERIAL + '?balance=1',
+                     '/' + SERIAL + '?balance=1',
+                     '/lookup?serial=' + SERIAL + '&balance=1'):
+            with self.subTest(path=path):
+                response = client.get(path)
+                self.assertEqual(response.status_code, 503)
+                self.assertIn(ADDRESS, response.text)
+                self.assertIn('data-balance-error="unavailable"', response.text)
+                match = re.search(r"data-initial-public='([^']*)'", response.text)
+                self.assertIsNotNone(match)
+                self.assertEqual(json.loads(unescape(match[1])), self.module.public_payload(record))
+                self.assertIn(FULL_PUBLIC['public_notes'], response.text)
+                self.assertIn('src="' + FULL_PUBLIC['image_url'] + '"', response.text)
+                self.assertIn('href="' + LINKS['instagram'] + '"', response.text)
+                self.assertNotIn('SYNTHETIC_PRIVATE', response.text)
+        self.assertEqual(self.balance.balance.call_count, 3)
+
     def test_serial_balance_failure_keeps_the_backwards_compatible_error(self):
         self.balance.balance.side_effect = RuntimeError('SYNTHETIC_PRIVATE_UPSTREAM')
         client = self.build(dict(address=ADDRESS, serial=SERIAL, **FULL_PUBLIC))
         response = client.get(SERIAL_PATH + '?balance=1')
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json['balance_error'], 'unavailable')
+        self.assertEqual(response.json, {'serial': SERIAL, 'address': ADDRESS,
+                                         'explorer_url': 'https://mempool.space/address/' + ADDRESS,
+                                         'balance_error': 'unavailable'})
+        self.assertNotIn('SYNTHETIC_PRIVATE', response.text)
 
     # -- sanitizer ----------------------------------------------------------
     def test_unsafe_or_off_allowlist_public_values_are_dropped(self):
@@ -146,6 +191,33 @@ class PublicMetadataApi(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn('public', response.json)
         self.assertNotIn('evil', response.text)
+
+    def test_image_csp_matches_existing_project_host_allowlist(self):
+        response = self.build(dict(address=ADDRESS, serial=SERIAL, **FULL_PUBLIC)).get('/s/' + SERIAL)
+        directives = dict(part.strip().split(' ', 1) for part in response.headers['Content-Security-Policy'].split(';') if ' ' in part.strip())
+        self.assertEqual(set(directives['img-src'].split()), {"'self'", 'https://btc4.fun', 'https://btc.saeb.id.ir', 'https://b.tc4fun.ir'})
+        self.assertNotIn('onerror=', response.text)
+
+    def test_unicode_notes_and_labels_follow_codepoint_boundaries(self):
+        for size in (251, 500, 501):
+            with self.subTest(notes=size):
+                note = '😀' * size
+                client = self.build(dict(address=ADDRESS, serial=SERIAL, public_notes=note))
+                payload = client.get(SERIAL_PATH + '?balance=1').json
+                if size <= 500:
+                    self.assertEqual(payload['public']['notes'], note)
+                else:
+                    self.assertNotIn('public', payload)
+        for size in (17, 32, 33):
+            with self.subTest(label=size):
+                links = {'😀' * size: 'https://example.invalid/profile'}
+                client = self.build(dict(address=ADDRESS, serial=SERIAL,
+                                         public_links=json.dumps(links)))
+                payload = client.get(SERIAL_PATH + '?balance=1').json
+                if size <= 32:
+                    self.assertEqual(payload['public']['links'], links)
+                else:
+                    self.assertNotIn('public', payload)
 
     def test_notes_alone_need_no_site(self):
         client = self.build({'address': ADDRESS, 'serial': SERIAL, 'public_notes': 'تنها یادداشت'})

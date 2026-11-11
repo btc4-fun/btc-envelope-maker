@@ -305,7 +305,7 @@ def create_app(config=None):
     def security_headers(response):
         response.headers['Content-Security-Policy'] = (
             "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; "
-            "img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; "
+            "img-src 'self' https://btc4.fun https://btc.saeb.id.ir https://b.tc4fun.ir; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; "
             "form-action 'self'; object-src 'none'"
         )
         response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -624,6 +624,11 @@ def create_app(config=None):
             if not valid_address(address):
                 raise ValueError('Invalid public Bitcoin address')
             public = dict(serial=serial, address=address, explorer_url='https://mempool.space/address/' + address)
+            # HTML needs metadata even when the optional balance read fails.
+            # Ordinary API responses retain their existing exact key sets.
+            extra = public_payload(record)
+            if extra is not None and request.endpoint in {'serial_page', 'lookup_page'}:
+                public['public'] = extra
             if not qr and request.args.get('balance') == '1':
                 service = app.config.get('SERIAL_BALANCE')
                 if service is None:
@@ -634,14 +639,6 @@ def create_app(config=None):
                 except Exception:
                     app.logger.warning('Public serial balance unavailable')
                     return jsonify(**public, balance_error='unavailable'), 503
-                extra = public_payload(record)
-                if extra is not None:
-                    public['public'] = extra
-            # The browser page renders optional metadata from this same lookup;
-            # attach it only where the caller asked for it (never to the 3-key
-            # /api/addresses body, whose shape the released app depends on).
-            if request.path.startswith('/s/') or request.path.startswith('/lookup'):
-                extra = public_payload(record)
                 if extra is not None:
                     public['public'] = extra
             return jsonify(public)
