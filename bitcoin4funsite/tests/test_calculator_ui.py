@@ -617,7 +617,9 @@ assert.equal(requests.length,scenarios.length,'One snapshot for each independent
             rate = Fraction(metadata["rates"]["satoshi_toman"])
             toman = (total * rate.numerator + rate.denominator - 1) // rate.denominator
             row = {"principal_sats": 501, "btc": "0.00000501", **costs,
-                   "operator_sats": operator, "total_sats": total, "total_toman": toman,
+                   "operator_sats": operator,
+                   "operator_toman": (operator * rate.numerator + rate.denominator - 1) // rate.denominator,
+                   "total_sats": total, "total_toman": toman,
                    "total_rial": toman * 10, "budget_toman": None, "remainder_toman": 0}
             assumptions = {**metadata["assumptions"], "transaction_vbytes": 141}
             unsafe = any(value > 9007199254740991 for value in (*costs.values(), total, toman * 10))
@@ -639,7 +641,7 @@ for(const test of cases) {
     rejected++; continue;
   }
   assert.equal(ids['quote-result'].hidden,false,test.id);
-  for(const [key,field] of Object.entries({principal_sats:'principal',network_sats:'network',materials_sats:'materials',post_sats:'post',operator_sats:'operator',total_sats:'total-sats',total_toman:'total-toman',total_rial:'total-rial'})) {
+  for(const [key,field] of Object.entries({principal_sats:'principal',network_sats:'network',materials_sats:'materials',post_sats:'post',operator_sats:'operator',operator_toman:'operator-toman',total_sats:'total-sats',total_toman:'total-toman',total_rial:'total-rial'})) {
     assert.equal(ids['quote-'+field].textContent.replaceAll(',',''),test.expected[key],test.id+':'+key);
   }
   assert.equal(ids['quote-btc'].textContent,test.expected.btc.replace(/\.?0+$/,''),test.id);
@@ -921,7 +923,7 @@ class Element {
   async emit(name) { await Promise.all((this.listeners[name] || []).map(handler=>handler({preventDefault(){}}))); }
 }
 const names = process.argv[3] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status','gross-valuation','gross-status','gross-result','gross-toman','gross-raw-price','gross-fetched-at','gross-stale'] :
-  process.argv[3] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-materials','quote-post','quote-tag-cost-result','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
+  process.argv[3] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-materials','quote-post','quote-tag-cost-result','quote-operator','quote-operator-toman','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
 const ids=Object.fromEntries(names.map(name=>[name,new Element()]));
 if(ids['gross-result']) ids['gross-result'].hidden=true;
 if(ids['gross-stale']) ids['gross-stale'].hidden=true;
@@ -943,8 +945,8 @@ const marketFixture=()=>({status:'fresh',fetched_at:'2026-10-30T10:00:00+00:00',
   rates:{btc_toman:'10000000000',usdt_toman:'100000',satoshi_toman:'100'},
   assumptions:{exchange_fee_percent:'0.5',operator_fee_percent:'15',materials_usd:'0.11',post_usd:'0.75',tag_usd:'0.12',seal_usd:'0.03',paper_usd:'0.01',print_usd:'0.01',envelope_usd:'0.06',transaction_vbytes:141,network_fee_rate:'1'},
   costs:{network_sats:141,materials_sats:110,post_sats:750,tag_sats:0},
-  rows:[{principal_sats:501,btc:'0.00000501',network_sats:141,materials_sats:110,post_sats:750,tag_sats:0,operator_sats:226,total_sats:1728,total_toman:172800,total_rial:1728000,budget_toman:null,remainder_toman:0},
-        {principal_sats:738,btc:'0.00000738',network_sats:141,materials_sats:110,post_sats:750,tag_sats:0,operator_sats:261,total_sats:2000,total_toman:200000,total_rial:2000000,budget_toman:200000,remainder_toman:0}]});
+  rows:[{principal_sats:501,btc:'0.00000501',network_sats:141,materials_sats:110,post_sats:750,tag_sats:0,operator_sats:226,operator_toman:22600,total_sats:1728,total_toman:172800,total_rial:1728000,budget_toman:null,remainder_toman:0},
+        {principal_sats:738,btc:'0.00000738',network_sats:141,materials_sats:110,post_sats:750,tag_sats:0,operator_sats:261,operator_toman:26100,total_sats:2000,total_toman:200000,total_rial:2000000,budget_toman:200000,remainder_toman:0}]});
 const load=()=>{
   // A reload gets a new DOM, not another set of listeners on the previous page.
   for(const name of names) ids[name]=new Element();

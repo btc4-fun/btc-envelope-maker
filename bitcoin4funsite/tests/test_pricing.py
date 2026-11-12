@@ -183,7 +183,7 @@ class QuoteTableTests(unittest.TestCase):
         self.assertEqual(quote["rows"][0], {
             "principal_sats": 501, "btc": "0.00000501", "network_sats": 156,
             "materials_sats": 110, "post_sats": 750, "tag_sats": 0,
-            "operator_sats": 228, "total_sats": 1745,
+            "operator_sats": 228, "operator_toman": 22914, "total_sats": 1745,
             "total_toman": 175373, "total_rial": 1753730,
             "budget_toman": None, "remainder_toman": 0,
         })

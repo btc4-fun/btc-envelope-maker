@@ -55,11 +55,14 @@ def _quote_row(principal: int, network: int, materials: int, post: int,
     operator = _ceil(Decimal("0.15") * (principal + network + materials + post + tag))
     total_sats = principal + network + materials + post + tag + operator
     total_toman = _ceil(total_sats * satoshi_toman)
+    # The operator's income in toman: the same 15% fee, converted at the same rate and
+    # rounded up once. Never recomputed from total_toman, which would double the ceiling.
+    operator_toman = _ceil(operator * satoshi_toman)
     return {
         "principal_sats": principal, "btc": sats_to_btc(principal),
         "network_sats": network, "materials_sats": materials, "post_sats": post,
         "tag_sats": tag,
-        "operator_sats": operator, "total_sats": total_sats,
+        "operator_sats": operator, "operator_toman": operator_toman, "total_sats": total_sats,
         "total_toman": total_toman, "total_rial": total_toman * 10,
         "budget_toman": budget,
         "remainder_toman": 0 if budget is None else budget - total_toman,
@@ -215,9 +218,13 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
       tag_sats = ceil(0.12 * adjusted_usdt / adjusted_satoshi_toman) if include_tag else 0
       operator_sats = ceil(0.15 * (principal + network_sats + materials_sats
                                    + post_sats + tag_sats))
+      operator_toman = ceil(operator_sats * adjusted_satoshi_toman)
       total_toman = ceil((principal + network_sats + materials_sats + post_sats
                           + tag_sats + operator_sats) * adjusted_satoshi_toman)
       total_rial = total_toman * 10
+    operator_toman is the operator's income for that row: the same 15% fee
+    converted to toman and rounded up once. It is derived from operator_sats,
+    never from total_toman, so the two ceilings are not applied twice.
     The 0.11 USD materials charge is the sum of a 0.03 wax seal, 0.01 paper,
     0.01 print and 0.06 envelope; postage is a separate 0.75 USD per envelope.
     The 141 vB estimate assumes one P2WPKH input and two P2WPKH outputs.

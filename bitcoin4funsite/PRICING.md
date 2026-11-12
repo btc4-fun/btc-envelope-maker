@@ -34,9 +34,12 @@
 طبق قاعدهٔ تأییدشدهٔ قیمت‌گذاری، هزینهٔ برچسب و پست هم مانند مواد پاکت و شبکه مشمول کارمزد گرداننده است. کارمزد گرداننده، پانزده درصد مجموع مبلغ اصلی، هزینهٔ شبکه، مواد پاکت، پست و برچسب است:
 
     operator_sats = ceil(0.15 × (principal_sats + network_sats + materials_sats + post_sats + tag_sats))
+    operator_toman = ceil(operator_sats × satoshi_toman)
     total_sats = principal_sats + network_sats + materials_sats + post_sats + tag_sats + operator_sats
     total_toman = ceil(total_sats × satoshi_toman)
     total_rial = total_toman × 10
+
+`operator_toman` درآمد گرداننده از همان ردیف است: همان کارمزد پانزده درصد، یک بار به تومان تبدیل و رو به بالا گرد می‌شود. این عدد از `total_toman` حساب نمی‌شود، وگرنه سقف گرد کردن دو بار اعمال می‌شد و عدد با `operator_sats` نمی‌خواند.
 
 تمام محاسبات سرور ده‌دهی دقیق‌اند. سهم‌های ساتوشی و مبلغ نهایی تومان رو به بالا گرد می‌شوند و اجزا در پاسخ عمومی قابل مشاهده‌اند.
 

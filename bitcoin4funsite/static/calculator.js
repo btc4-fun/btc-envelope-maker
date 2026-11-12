@@ -169,8 +169,10 @@
     const total = principal + network + materials + post + tagCost + operator;
     const rate = rational(snapshot.rates.satoshi_toman);
     const toman = ceilDivide(total * rate.numerator, rate.denominator);
-    return { principal, network, materials, post, "tag-cost-result": tagCost, operator, "total-sats": total,
-      "total-toman": toman, "total-rial": toman * 10n };
+    // The operator's income in toman: the same 15% fee converted once, never 15% of total-toman.
+    const operatorToman = ceilDivide(operator * rate.numerator, rate.denominator);
+    return { principal, network, materials, post, "tag-cost-result": tagCost, operator, "operator-toman": operatorToman,
+      "total-sats": total, "total-toman": toman, "total-rial": toman * 10n };
   }
 
   form.addEventListener("submit", event => {
@@ -225,7 +227,7 @@
 
   function clearResult() {
     result.hidden = true;
-    for (const name of ["principal", "btc", "network", "materials", "post", "tag-cost-result", "operator", "total-sats", "total-toman",
+    for (const name of ["principal", "btc", "network", "materials", "post", "tag-cost-result", "operator", "operator-toman", "total-sats", "total-toman",
       "total-rial", "budget", "remainder", "result-warning", "result-fetched-at"]) {
       document.getElementById("quote-" + name).textContent = "";
     }
@@ -286,7 +288,7 @@
         !Array.isArray(market.rows) || market.rows.length < 1 || market.rows.length > 31) return false;
     return market.rows.every((row, index) => {
       if (!row || ![row.principal_sats, row.network_sats, row.materials_sats, row.post_sats, row.tag_sats ?? 0, row.operator_sats,
-          row.total_sats, row.total_toman, row.total_rial, row.remainder_toman].every(integer) ||
+          row.operator_toman, row.total_sats, row.total_toman, row.total_rial, row.remainder_toman].every(integer) ||
           row.principal_sats < 501 || row.principal_sats > 2100000000000000 || row.total_toman === 0 ||
           typeof row.btc !== "string" || !/^(?:0|[1-9][0-9]{0,7})\.[0-9]{8}$/.test(row.btc) ||
           row.network_sats !== market.costs.network_sats || row.materials_sats !== market.costs.materials_sats ||
@@ -333,6 +335,7 @@
       const principal = BigInt(row.principal_sats);
       const subtotal = principal + network + materials + post + tagCost;
       return BigInt(row.operator_sats) === ceilDivide(subtotal * 15n, 100n) &&
+        BigInt(row.operator_toman) === ceilDivide(BigInt(row.operator_sats) * sat.numerator, sat.denominator) &&
         BigInt(row.total_toman) === cost(principal) &&
         (row.budget_toman === null || principal === maximum || cost(principal + 1n) > BigInt(row.budget_toman));
     });
@@ -362,6 +365,7 @@
       ["مواد پاکت؛ ساتوشی", row.materials_sats], ["پست؛ ساتوشی", row.post_sats],
       ["برچسب؛ ساتوشی", row.tag_sats ?? 0],
       ["گرداننده؛ ساتوشی", row.operator_sats],
+      ["درآمد گرداننده؛ تومان", row.operator_toman],
       ["جمع؛ ساتوشی", row.total_sats], ["معادل ریال", row.total_rial],
       ...(row.budget_toman === null ? [] : [["بودجه؛ تومان", row.budget_toman], ["باقی‌مانده؛ تومان", row.remainder_toman]])
     ]) {
