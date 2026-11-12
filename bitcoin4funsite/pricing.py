@@ -90,10 +90,12 @@ def _rate(value, maximum: Decimal, name: str) -> Decimal:
     return amount
 
 
-def _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag=False):
+def _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag=False, in_person=False):
     """Prepare the shared adjusted rates and fixed costs in a private context."""
     if type(include_tag) is not bool:
         raise ValueError("include_tag must be a boolean")
+    if type(in_person) is not bool:
+        raise ValueError("in_person must be a boolean")
     raw_btc = _rate(btc_toman, Decimal("1e15"), "btc_toman")
     raw_usdt = _rate(usdt_toman, Decimal("1e15"), "usdt_toman")
     rate = _rate(fee_rate, Decimal("10000"), "fee_rate")
@@ -104,8 +106,10 @@ def _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag=False):
         network_sats = _ceil(rate * 141)
         # Per-envelope materials: $0.03 wax seal + $0.01 paper + $0.01 print
         # + $0.06 envelope = $0.11. Postage is a separate $0.75 per envelope.
-        materials_sats = _ceil(Decimal("0.11") * adjusted_usdt / satoshi_toman)
-        post_sats = _ceil(Decimal("0.75") * adjusted_usdt / satoshi_toman)
+        # Hand delivery removes both the envelope and the postage: the buyer
+        # receives the card in person, so neither is bought or shipped.
+        materials_sats = 0 if in_person else _ceil(Decimal("0.11") * adjusted_usdt / satoshi_toman)
+        post_sats = 0 if in_person else _ceil(Decimal("0.75") * adjusted_usdt / satoshi_toman)
         tag_sats = _ceil(Decimal("0.12") * adjusted_usdt / satoshi_toman) if include_tag else 0
         metadata = {
             "rates": {
@@ -117,6 +121,7 @@ def _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag=False):
                 "exchange_fee_percent": "0.5", "operator_fee_percent": "15",
                 "materials_usd": "0.11", "post_usd": "0.75",
                 "tag_usd": "0.12", "include_tag": include_tag,
+                "in_person": in_person,
                 "transaction_vbytes": 141,
                 "network_fee_rate": _decimal_text(rate),
                 "seal_usd": "0.03", "paper_usd": "0.01",
@@ -154,32 +159,35 @@ def raw_asset_toman(raw_btc, principal_sats) -> str:
         return _decimal_text(raw * principal / SATOSHIS_PER_BTC)
 
 
-def quote_for_principal(btc_toman, usdt_toman, fee_rate, principal_sats, *, include_tag=False) -> dict:
+def quote_for_principal(btc_toman, usdt_toman, fee_rate, principal_sats, *, include_tag=False, in_person=False) -> dict:
     """Quote one supply-bounded package; row fields keep the v1 numeric types.
 
     The returned row also includes the table's rates, assumptions and costs.
     Rates follow quote_table. Principal accepts int (not bool) or unsigned ASCII
     digits, at most 64 characters, in [501, MAX_SATOSHIS]. Otherwise ValueError.
+    in_person drops the envelope materials and the postage, because the buyer
+    collects the card by hand.
     """
     principal = _unsigned_integer(principal_sats, "principal_sats", 501, MAX_SATOSHIS)
     satoshi_toman, network, materials, post, tag, metadata = _pricing_inputs(
-        btc_toman, usdt_toman, fee_rate, include_tag)
+        btc_toman, usdt_toman, fee_rate, include_tag, in_person)
     with localcontext(Context(prec=128)):
         row = _quote_row(principal, network, materials, post, satoshi_toman, tag=tag)
     return {**row, **metadata}
 
 
-def quote_for_budget(btc_toman, usdt_toman, fee_rate, budget_toman, *, include_tag=False) -> dict:
+def quote_for_budget(btc_toman, usdt_toman, fee_rate, budget_toman, *, include_tag=False, in_person=False) -> dict:
     """Return the largest principal in [501, MAX_SATOSHIS] fitting the budget.
 
     Budget is a whole toman amount: int (not bool) or unsigned ASCII digits,
     at most 64 digits. There is no table's 2,000,000-toman cap. If 501 satoshis
     cannot be afforded, ValueError is raised (no fictitious principal or row).
     Successful rows include rates/assumptions/costs and the unspent remainder.
+    in_person drops the envelope materials and the postage.
     """
     budget = _unsigned_integer(budget_toman, "budget_toman", 0, 10**64 - 1)
     satoshi_toman, network, materials, post, tag, metadata = _pricing_inputs(
-        btc_toman, usdt_toman, fee_rate, include_tag)
+        btc_toman, usdt_toman, fee_rate, include_tag, in_person)
     with localcontext(Context(prec=128)):
         minimum = _quote_row(501, network, materials, post, satoshi_toman, tag=tag)
         if minimum["total_toman"] > budget:
@@ -199,7 +207,7 @@ def quote_for_budget(btc_toman, usdt_toman, fee_rate, budget_toman, *, include_t
     return {**row, **metadata}
 
 
-def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
+def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False, in_person=False) -> dict:
     """Return an offline quote using the selected fee in sat/vbyte.
 
     Rates accept int, Decimal or unsigned ASCII decimal text, never float/bool.
@@ -227,6 +235,9 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
     never from total_toman, so the two ceilings are not applied twice.
     The 0.11 USD materials charge is the sum of a 0.03 wax seal, 0.01 paper,
     0.01 print and 0.06 envelope; postage is a separate 0.75 USD per envelope.
+    in_person=True zeroes both materials_sats and post_sats: the buyer collects
+    the card by hand, so no envelope is bought and nothing is shipped. The tag
+    charge and the network fee are unaffected.
     The 141 vB estimate assumes one P2WPKH input and two P2WPKH outputs.
     A first 501-satoshi quote is always shown, even above 3,000,000 toman.
     Budget rows begin at the next strictly greater 100,000-toman multiple;
@@ -235,7 +246,7 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
     budget); it is never hidden by pretending the whole budget was spent.
     """
     satoshi_toman, network_sats, materials_sats, post_sats, tag, metadata = _pricing_inputs(
-        btc_toman, usdt_toman, fee_rate, include_tag)
+        btc_toman, usdt_toman, fee_rate, include_tag, in_person)
     with localcontext(Context(prec=128)):
         first = _quote_row(501, network_sats, materials_sats, post_sats, satoshi_toman, tag=tag)
         rows = [first]

@@ -174,7 +174,7 @@ class QuoteTableTests(unittest.TestCase):
         self.assertEqual(quote["assumptions"], {
             "exchange_fee_percent": "0.5", "operator_fee_percent": "15",
             "materials_usd": "0.11", "post_usd": "0.75",
-            "tag_usd": "0.12", "include_tag": False, "transaction_vbytes": 141,
+            "tag_usd": "0.12", "include_tag": False, "in_person": False, "transaction_vbytes": 141,
             "network_fee_rate": "1.1",
             "seal_usd": "0.03", "paper_usd": "0.01", "print_usd": "0.01", "envelope_usd": "0.06",
         })

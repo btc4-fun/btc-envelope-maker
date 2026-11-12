@@ -159,6 +159,9 @@
   let marketSnapshot = null;
   const speed = document.getElementById("quote-speed");
   const tag = document.getElementById("quote-tag");
+  const inPerson = document.getElementById("quote-in-person");
+  /** The catalog key for the current tag/hand-delivery choice; hand delivery drops materials and post. */
+  const variantName = (withTag, hand) => (withTag ? "with_tag" : "no_tag") + (hand ? "_in_person" : "");
 
   function quote(principal) {
     const network = BigInt(snapshot.costs.network_sats);
@@ -252,7 +255,7 @@
 
   function selectQuote() {
     clearResult();
-    const selected = catalog?.[speed.value]?.[tag.checked ? "with_tag" : "no_tag"];
+    const selected = catalog?.[speed.value]?.[variantName(tag.checked, inPerson.checked)];
     if (!selected) {
       snapshot = null;
       calculate.disabled = true;
@@ -273,6 +276,7 @@
   }
   speed.addEventListener("change", selectQuote);
   tag.addEventListener("change", selectQuote);
+  inPerson.addEventListener("change", selectQuote);
 
   function validMarket(market) {
     if (!validSnapshot(market) ||
@@ -306,9 +310,10 @@
     });
   }
 
-  function validChoice(market, choice, withTag) {
+  function validChoice(market, choice, withTag, hand) {
     if (!choice || choice.assumptions?.tag_usd !== "0.12" ||
         choice.assumptions?.include_tag !== withTag ||
+        choice.assumptions?.in_person !== hand ||
         !integer(choice.costs?.tag_sats) ||
         !validMarket({ ...market, ...choice }) ||
         !["btc_toman", "usdt_toman", "satoshi_toman"].every(key => choice.rates[key] === market.rates[key]) ||
@@ -320,8 +325,9 @@
     const dollarCost = cents => ceilDivide(cents * usdt.numerator * sat.denominator,
       100n * usdt.denominator * sat.numerator);
     const network = ceilDivide(fee.numerator * 141n, fee.denominator);
-    const materials = dollarCost(11n);
-    const post = dollarCost(75n);
+    // Hand delivery buys no envelope and ships nothing, so both charges are zero.
+    const materials = hand ? 0n : dollarCost(11n);
+    const post = hand ? 0n : dollarCost(75n);
     const tagCost = withTag ? dollarCost(12n) : 0n;
     if (BigInt(choice.costs.network_sats) !== network || BigInt(choice.costs.materials_sats) !== materials ||
         BigInt(choice.costs.post_sats) !== post ||
@@ -396,8 +402,9 @@
       catalog = {};
       for (const name of ["economy", "medium", "fast"]) {
         const choices = market.quote_options?.[name];
-        if (choices && ["no_tag", "with_tag"].every(variant =>
-          validChoice(market, choices[variant], variant === "with_tag"))) catalog[name] = choices;
+        if (choices && [["no_tag", false, false], ["with_tag", true, false],
+                        ["no_tag_in_person", false, true], ["with_tag_in_person", true, true]]
+          .every(([variant, withTag, hand]) => validChoice(market, choices[variant], withTag, hand))) catalog[name] = choices;
         document.getElementById("quote-speed-" + name).disabled = !catalog[name];
       }
       // Older snapshots remain usable, but cannot invent tag or priority costs.
@@ -406,8 +413,10 @@
       document.getElementById("quote-speed-economy").disabled = false;
       speed.value = "economy";
       tag.checked = false;
+      inPerson.checked = false;
       speed.disabled = false;
       tag.disabled = !catalog.economy.with_tag;
+      inPerson.disabled = !catalog.economy.no_tag_in_person;
       document.getElementById("quote-options-status").textContent =
         ["medium", "fast"].some(name => !catalog[name])
           ? "بعضی گزینه‌ها نرخ معتبر ندارند و غیرفعال‌اند؛ نرخ جایگزین فرض نشده است."

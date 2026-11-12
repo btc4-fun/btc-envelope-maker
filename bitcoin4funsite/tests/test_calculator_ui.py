@@ -276,8 +276,9 @@ assert.equal(requests.length,1,'No external requests or automatic polling');
         import sys
         sys.path.insert(0, str(ROOT))
         from pricing import quote_table
-        options = {speed: {variant: quote_table("12345678901.12345678", "98765.4321", fee, include_tag=tag)
-                           for variant, tag in (("no_tag", False), ("with_tag", True))}
+        options = {speed: {variant: quote_table("12345678901.12345678", "98765.4321", fee, include_tag=tag, in_person=hand)
+                           for variant, tag, hand in (("no_tag", False, False), ("with_tag", True, False),
+                                                      ("no_tag_in_person", False, True), ("with_tag_in_person", True, True))}
                    for speed, fee in (("economy", "1.1"), ("medium", "2.125"), ("fast", "3.25"))}
         self.run_script("const choices=" + json.dumps(options) + r''';
 const payload=Object.assign(marketFixture(),choices.economy.no_tag,{quote_options:choices});
@@ -285,11 +286,12 @@ handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
 assert.equal(ids['quote-speed'].value,'economy');
 assert.equal(ids['quote-tag'].checked,false);
 for (const speed of ['economy','medium','fast']) {
-  for(const variant of ['no_tag','with_tag']) {
+  for(const variant of ['no_tag','with_tag','no_tag_in_person','with_tag_in_person']) {
     const table=choices[speed][variant];
     ids['quote-speed'].value=speed; await ids['quote-speed'].emit('change');
     assert.equal(ids['quote-result'].hidden,true);
-    ids['quote-tag'].checked=variant==='with_tag'; await ids['quote-tag'].emit('change');
+    ids['quote-tag'].checked=variant.startsWith('with_tag'); await ids['quote-tag'].emit('change');
+    ids['quote-in-person'].checked=variant.endsWith('_in_person'); await ids['quote-in-person'].emit('change');
     assert.equal(ids['quote-result'].hidden,true);
     assert.equal(ids['quote-tag-cost'].textContent.replaceAll(',',''),String(table.costs.tag_sats));
     assert.equal(ids['network-fee-rate'].textContent,table.assumptions.network_fee_rate);
@@ -329,8 +331,9 @@ assert.equal(requests[0].options.body,undefined);
             post = ceiling(Fraction(75, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
             tag = ceiling(Fraction(12, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
             minimum = ceiling(ceiling(Fraction(23, 20) * (501 + network + materials + post + tag)) * sat)
-            options = {variant: quote_table(btc, usdt, fee, include_tag=enabled)
-                       for variant, enabled in [('no_tag', False), ('with_tag', True)]}
+            options = {variant: quote_table(btc, usdt, fee, include_tag=tag_on, in_person=hand)
+                       for variant, tag_on, hand in [('no_tag', False, False), ('with_tag', True, False),
+                                                     ('no_tag_in_person', False, True), ('with_tag_in_person', True, True)]}
             for budget in (minimum - 1, minimum, minimum + 1, minimum + 100001, 10**32 - 1):
                 principal = min(maximum, 20 * (Fraction(budget) // sat) // 23 - network - materials - post - tag)
                 total = ceiling(ceiling(Fraction(23, 20) * (principal + network + materials + post + tag)) * sat)
@@ -359,8 +362,9 @@ assert.equal(requests.length,cases.length);
         import sys
         sys.path.insert(0, str(ROOT))
         from pricing import quote_table
-        options = {speed: {variant: quote_table('10000000000', '100000', fee, include_tag=tag)
-                           for variant, tag in (('no_tag', False), ('with_tag', True))}
+        options = {speed: {variant: quote_table('10000000000', '100000', fee, include_tag=tag_on, in_person=hand)
+                           for variant, tag_on, hand in (('no_tag', False, False), ('with_tag', True, False),
+                                                         ('no_tag_in_person', False, True), ('with_tag_in_person', True, True))}
                    for speed, fee in (('economy', '1'), ('medium', '2'), ('fast', '3'))}
         self.run_script('const choices=' + json.dumps(options) + r''';
 for (const damage of [
@@ -923,7 +927,7 @@ class Element {
   async emit(name) { await Promise.all((this.listeners[name] || []).map(handler=>handler({preventDefault(){}}))); }
 }
 const names = process.argv[3] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status','gross-valuation','gross-status','gross-result','gross-toman','gross-raw-price','gross-fetched-at','gross-stale'] :
-  process.argv[3] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-materials','quote-post','quote-tag-cost-result','quote-operator','quote-operator-toman','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
+  process.argv[3] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-in-person','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-materials','quote-post','quote-tag-cost-result','quote-operator','quote-operator-toman','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
 const ids=Object.fromEntries(names.map(name=>[name,new Element()]));
 if(ids['gross-result']) ids['gross-result'].hidden=true;
 if(ids['gross-stale']) ids['gross-stale'].hidden=true;
