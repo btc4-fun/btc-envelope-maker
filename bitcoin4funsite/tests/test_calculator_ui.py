@@ -48,9 +48,13 @@ assert.equal(ids['market-status'].dataset.state,'error');
         source = self.render("costs.html")
         self.assertLess(source.index('id="quote-form"'), source.index('id="payment-details"'))
         self.assertLess(source.index('href="#payment-details"'), source.index('id="payment-details"'))
-        self.assertIn('چاپ و مهر', source)
-        self.assertIn('۰٫۱۸', source)
-        self.assertIn('یک مهر', source)
+        self.assertIn('مواد پاکت', source)
+        self.assertIn('هزینهٔ پست', source)
+        self.assertIn('یازده سنت', source)
+        self.assertIn('هفتاد و پنج سنت', source)
+        self.assertIn('سه سنت مهر مومی', source)
+        self.assertIn('شش سنت پاکت', source)
+        self.assertNotIn('۰٫۱۸', source)
 
     def test_market_loading_indicator_settles_on_success_and_failure(self):
         self.run_script(r'''
@@ -221,7 +225,7 @@ assert.equal(requests.length,1);
     def test_costs_page_discloses_formula_sources_cache_and_network_uncertainty(self):
         source = self.render("costs.html")
         document = Document(source)
-        for phrase in ("۵۰۱", "حداقل بسته", "حداقل همگانی", "۰٫۵", "۱۵", "۰٫۱۵", "۱۴۱", "یک ورودی", "دو خروجی", "سگویت", "اقتصادی", "روزها", "حذف", "تضمین", "۶۰ ثانیه", "۳۰۰ ثانیه", "ریال", "باقی‌مانده", "سرور"):
+        for phrase in ("۵۰۱", "حداقل بسته", "حداقل همگانی", "۰٫۵", "۱۵", "هفتاد و پنج سنت", "۱۴۱", "یک ورودی", "دو خروجی", "سگویت", "اقتصادی", "روزها", "حذف", "تضمین", "۶۰ ثانیه", "۳۰۰ ثانیه", "ریال", "باقی‌مانده", "سرور"):
             self.assertIn(phrase, source)
         self.assertNotIn("BlueWallet", source)
         for name in ("market-stale", "market-data"):
@@ -256,13 +260,13 @@ const first=ids['quote-rows'].children[0];
 assert.equal(first.children.length,3,'Keep the three primary columns');
 assert.ok(all(first).some(node=>node.textContent==='501'));
 assert.ok(all(first).some(node=>node.textContent==='0.00000501'));
-assert.ok(all(first).some(node=>node.textContent==='94,600'));
+assert.ok(all(first).some(node=>node.textContent==='172,800'));
 assert.ok(all(first).some(node=>node.tagName==='details'));
 const detailText=all(first).map(node=>node.textContent).join(' ');
-for (const word of ['شبکه','چاپ','گرداننده','ریال','946,000','124','180','141']) assert.ok(detailText.includes(word),word);
+for (const word of ['شبکه','مواد پاکت','پست','گرداننده','ریال','1,728,000','226','110','750','141']) assert.ok(detailText.includes(word),word);
 const secondText=all(ids['quote-rows'].children[1]).map(node=>node.textContent).join(' ');
 assert.match(secondText,/باقی‌مانده/);
-assert.ok(secondText.includes('48,000'));
+assert.ok(secondText.includes('0'));
 assert.equal(all(ids['market-data']).filter(node=>['img','iframe','a'].includes(node.tagName)).length,0);
 await tick();
 assert.equal(requests.length,1,'No external requests or automatic polling');
@@ -299,7 +303,7 @@ for (const speed of ['economy','medium','fast']) {
       await edit('quote-amount',String(row.budget_toman??row.principal_sats));
       await ids['quote-form'].emit('submit');
       assert.equal(ids['quote-result'].hidden,false,JSON.stringify({speed,variant,row}));
-      for(const [key,field] of Object.entries({principal_sats:'principal',network_sats:'network',print_sats:'print',tag_sats:'tag-cost-result',operator_sats:'operator',total_toman:'total-toman',total_sats:'total-sats',total_rial:'total-rial'})) {
+      for(const [key,field] of Object.entries({principal_sats:'principal',network_sats:'network',materials_sats:'materials',post_sats:'post',tag_sats:'tag-cost-result',operator_sats:'operator',total_toman:'total-toman',total_sats:'total-sats',total_rial:'total-rial'})) {
         assert.equal(ids['quote-'+field].textContent.replaceAll(',',''),String(row[key]),speed+variant+key);
       }
     }
@@ -321,14 +325,15 @@ assert.equal(requests[0].options.body,undefined);
                                ('0.000000000000000001', '0.000000000000000001', '0.000000000000000001')]:
             sat = Fraction(btc) * Fraction(201, 200) / 100000000
             network = ceiling(Fraction(fee) * 141)
-            printing = ceiling(Fraction(18, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
+            materials = ceiling(Fraction(11, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
+            post = ceiling(Fraction(75, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
             tag = ceiling(Fraction(12, 100) * Fraction(usdt) * Fraction(201, 200) / sat)
-            minimum = ceiling(ceiling(Fraction(23, 20) * (501 + network + printing + tag)) * sat)
+            minimum = ceiling(ceiling(Fraction(23, 20) * (501 + network + materials + post + tag)) * sat)
             options = {variant: quote_table(btc, usdt, fee, include_tag=enabled)
                        for variant, enabled in [('no_tag', False), ('with_tag', True)]}
             for budget in (minimum - 1, minimum, minimum + 1, minimum + 100001, 10**32 - 1):
-                principal = min(maximum, 20 * (Fraction(budget) // sat) // 23 - network - printing - tag)
-                total = ceiling(ceiling(Fraction(23, 20) * (principal + network + printing + tag)) * sat)
+                principal = min(maximum, 20 * (Fraction(budget) // sat) // 23 - network - materials - post - tag)
+                total = ceiling(ceiling(Fraction(23, 20) * (principal + network + materials + post + tag)) * sat)
                 cases.append({'options': options, 'budget': str(budget), 'principal': str(principal),
                               'total': str(total), 'remainder': str(budget - total), 'tag': str(tag)})
         self.run_script('const cases=' + json.dumps(cases) + r''';
@@ -421,7 +426,7 @@ await edit('quote-amount','3000');
 assert.equal(ids['quote-result'].hidden,true,'Typing must not calculate');
 await ids['quote-form'].emit('submit');
 assert.equal(ids['quote-result'].hidden,false);
-for(const [field,value] of Object.entries({principal:'3,000',btc:'0.00003',network:'141',print:'180',operator:'499','total-sats':'3,820','total-toman':'382,000','total-rial':'3,820,000'})) {
+for(const [field,value] of Object.entries({principal:'3,000',btc:'0.00003',network:'141',materials:'110',post:'750',operator:'601','total-sats':'4,602','total-toman':'460,200','total-rial':'4,602,000'})) {
   assert.equal(ids['quote-'+field].textContent,value,field);
 }
 assert.equal(ids['quote-status'].dataset.state,'success');
@@ -437,7 +442,7 @@ handler=async()=>({ok:true,json:async()=>marketFixture()});
 load(); await tick();
 ids['quote-mode'].value='budget_toman'; await ids['quote-mode'].emit('change');
 await edit('quote-amount','200000'); await ids['quote-form'].emit('submit');
-assert.equal(ids['quote-principal'].textContent,'1,418');
+assert.equal(ids['quote-principal'].textContent,'738');
 assert.equal(ids['quote-operator'].textContent,'261');
 assert.equal(ids['quote-total-sats'].textContent,'2,000');
 assert.equal(ids['quote-total-toman'].textContent,'200,000');
@@ -447,7 +452,7 @@ assert.equal(ids['quote-budget-details'].hidden,false);
 await edit('quote-amount','200099');
 assert.equal(ids['quote-result'].hidden,true,'Editing invalidates the previous quote');
 await ids['quote-form'].emit('submit');
-assert.equal(ids['quote-principal'].textContent,'1,418');
+assert.equal(ids['quote-principal'].textContent,'738');
 assert.equal(ids['quote-remainder'].textContent,'99');
 ids['quote-mode'].value='principal_sats'; await ids['quote-mode'].emit('change');
 assert.equal(ids['quote-result'].hidden,true,'Changing units invalidates the previous quote');
@@ -490,20 +495,20 @@ assert.equal(requests.length,1);
 handler=async()=>({ok:true,json:async()=>marketFixture()}); load(); await tick();
 for(const mode of ['principal_sats','budget_toman']) {
   ids['quote-mode'].value=mode; await ids['quote-mode'].emit('change');
-  const bad=['','0','-1','+500','1e3','1.0','1,000','۵۰۰','٥٠٠',' 500','500 ','500\n','500\r','0500','9'.repeat(33),...(mode==='principal_sats'?['499','500','2100000000000001']:['94599'])];
+  const bad=['','0','-1','+500','1e3','1.0','1,000','۵۰۰','٥٠٠',' 500','500 ','500\n','500\r','0500','9'.repeat(33),...(mode==='principal_sats'?['499','500','2100000000000001']:['172799'])];
   for(const value of bad) {
     await edit('quote-amount',mode==='principal_sats'?'3000':'200000');
     await ids['quote-form'].emit('submit');
     assert.equal(ids['quote-result'].hidden,false);
     await edit('quote-amount',value); await ids['quote-form'].emit('submit');
     assert.equal(ids['quote-result'].hidden,true,JSON.stringify(value));
-    for(const key of ['principal','btc','network','print','operator','total-sats','total-toman','total-rial','budget','remainder']) assert.equal(ids['quote-'+key].textContent,'','Clear old result: '+value);
+    for(const key of ['principal','btc','network','materials','post','operator','total-sats','total-toman','total-rial','budget','remainder']) assert.equal(ids['quote-'+key].textContent,'','Clear old result: '+value);
     assert.equal(ids['quote-amount'].getAttribute('aria-invalid'),'true',JSON.stringify(value));
     assert.equal(ids['quote-status'].dataset.state,'error');
-    if(value==='94599') assert.match(ids['quote-status'].textContent,/کافی نیست/);
+    if(value==='172799') assert.match(ids['quote-status'].textContent,/کافی نیست/);
   }
 }
-await edit('quote-amount','94600'); await ids['quote-form'].emit('submit');
+await edit('quote-amount','172800'); await ids['quote-form'].emit('submit');
 assert.equal(ids['quote-amount'].getAttribute('aria-invalid'),null);
 assert.equal(ids['quote-principal'].textContent,'501');
 assert.equal(ids['quote-remainder'].textContent,'0');
@@ -546,24 +551,26 @@ assert.equal(requests.length,1);
         maximum = 2100000000000000
         scenarios = []
         # Python Fraction is independent of the UI's decimal-string BigInt implementation.
-        for rate_text, network, printing in (("0.000000000000001", 1, 2),
-                                              ("100.00000000000000000001", 141, 150),
-                                              ("0.333333333333333333", 0, 0),
-                                              ("105.00000000000000000000000001", 443, 193)):
+        for rate_text, network, materials, post in (("0.000000000000001", 1, 2, 3),
+                                              ("100.00000000000000000001", 141, 150, 200),
+                                              ("0.333333333333333333", 0, 0, 0),
+                                              ("105.00000000000000000000000001", 443, 193, 250)):
             rate = Fraction(rate_text)
 
             def quote(principal):
-                subtotal = principal + network + printing
+                subtotal = principal + network + materials + post
                 operator = (subtotal * 15 + 99) // 100
                 total = subtotal + operator
                 cost = (total * rate.numerator + rate.denominator - 1) // rate.denominator
-                return {"principal": str(principal), "network": str(network), "print": str(printing),
+                return {"principal": str(principal), "network": str(network), "materials": str(materials),
+                        "post": str(post),
                         "operator": str(operator), "total-sats": str(total),
                         "total-toman": str(cost), "total-rial": str(cost * 10)}
 
             for principal in (501, 502, 3000, maximum - 1, maximum):
                 scenarios.append({"mode": "principal_sats", "input": str(principal), "rate": rate_text,
-                                  "network": network, "printing": printing, "expected": quote(principal)})
+                                  "network": network, "materials": materials, "post": post,
+                                  "expected": quote(principal)})
             for budget in (int(quote(501)["total-toman"]), int(quote(3000)["total-toman"]) + 1,
                            int(quote(maximum)["total-toman"]), 10 ** 32 - 1):
                 low, high = 501, maximum
@@ -576,14 +583,16 @@ assert.equal(requests.length,1);
                 expected = quote(low)
                 expected.update(budget=str(budget), remainder=str(budget - int(expected["total-toman"])))
                 scenarios.append({"mode": "budget_toman", "input": str(budget), "rate": rate_text,
-                                  "network": network, "printing": printing, "expected": expected})
+                                  "network": network, "materials": materials, "post": post,
+                                  "expected": expected})
         self.run_script("const scenarios=" + json.dumps(scenarios) + r''';
 for(const test of scenarios) {
   const payload=marketFixture();
   payload.rates.satoshi_toman=test.rate;
-  payload.costs.network_sats=test.network; payload.costs.print_sats=test.printing;
+  payload.costs.network_sats=test.network; payload.costs.materials_sats=test.materials;
+  payload.costs.post_sats=test.post;
   payload.rows=payload.rows.slice(0,1);
-  Object.assign(payload.rows[0],{network_sats:test.network,print_sats:test.printing,total_sats:501+test.network+test.printing+124});
+  Object.assign(payload.rows[0],{network_sats:test.network,materials_sats:test.materials,post_sats:test.post,total_sats:501+test.network+test.materials+test.post+226});
   handler=async()=>({ok:true,json:async()=>payload}); load(); await tick();
   ids['quote-mode'].value=test.mode; await ids['quote-mode'].emit('change');
   await edit('quote-amount',test.input); await ids['quote-form'].emit('submit');
@@ -602,7 +611,7 @@ assert.equal(requests.length,scenarios.length,'One snapshot for each independent
             # JSON costs are rejected, never rounded into a usable browser quote.
             metadata = expected or vectors[0]["expected"]
             costs = {key: int(value) for key, value in metadata["costs"].items()}
-            subtotal = 501 + costs["network_sats"] + costs["print_sats"]
+            subtotal = 501 + costs["network_sats"] + costs["materials_sats"] + costs["post_sats"]
             operator = (subtotal * 15 + 99) // 100
             total = subtotal + operator
             rate = Fraction(metadata["rates"]["satoshi_toman"])
@@ -630,7 +639,7 @@ for(const test of cases) {
     rejected++; continue;
   }
   assert.equal(ids['quote-result'].hidden,false,test.id);
-  for(const [key,field] of Object.entries({principal_sats:'principal',network_sats:'network',print_sats:'print',operator_sats:'operator',total_sats:'total-sats',total_toman:'total-toman',total_rial:'total-rial'})) {
+  for(const [key,field] of Object.entries({principal_sats:'principal',network_sats:'network',materials_sats:'materials',post_sats:'post',operator_sats:'operator',total_sats:'total-sats',total_toman:'total-toman',total_rial:'total-rial'})) {
     assert.equal(ids['quote-'+field].textContent.replaceAll(',',''),test.expected[key],test.id+':'+key);
   }
   assert.equal(ids['quote-btc'].textContent,test.expected.btc.replace(/\.?0+$/,''),test.id);
@@ -912,7 +921,7 @@ class Element {
   async emit(name) { await Promise.all((this.listeners[name] || []).map(handler=>handler({preventDefault(){}}))); }
 }
 const names = process.argv[3] === 'converter' ? ['satoshi-converter','btc-amount','satoshi-amount','converter-status','gross-valuation','gross-status','gross-result','gross-toman','gross-raw-price','gross-fetched-at','gross-stale'] :
-  process.argv[3] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-print','quote-tag-cost-result','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
+  process.argv[3] === 'market' ? ['market-panel','market-status','market-loading','market-stale','market-data','market-fetched-at','btc-price','usdt-price','sat-price','network-fee-rate','quote-speed','quote-speed-economy','quote-speed-medium','quote-speed-fast','quote-tag','quote-tag-cost','quote-options-status','quote-rows','quote-form','quote-mode','quote-amount','quote-calculate','quote-status','quote-result','quote-principal','quote-btc','quote-network','quote-materials','quote-post','quote-tag-cost-result','quote-operator','quote-total-sats','quote-total-toman','quote-total-rial','quote-budget','quote-remainder','quote-budget-details','quote-result-fetched-at','quote-result-warning'] : [];
 const ids=Object.fromEntries(names.map(name=>[name,new Element()]));
 if(ids['gross-result']) ids['gross-result'].hidden=true;
 if(ids['gross-stale']) ids['gross-stale'].hidden=true;
@@ -932,10 +941,10 @@ const marketFixture=()=>({status:'fresh',fetched_at:'2026-10-30T10:00:00+00:00',
   source:{prices:'https://swapwallet.app/api/v1/market/prices',fees:'https://mempool.space/api/v1/fees/recommended'},
   raw_rates:{btc_toman:'9950248756.21890547263681592039800995',usdt_toman:'99502.4875621890547263681592039800995'},
   rates:{btc_toman:'10000000000',usdt_toman:'100000',satoshi_toman:'100'},
-  assumptions:{exchange_fee_percent:'0.5',operator_fee_percent:'15',print_usd:'0.18',transaction_vbytes:141,network_fee_rate:'1'},
-  costs:{network_sats:141,print_sats:180},
-  rows:[{principal_sats:501,btc:'0.00000501',network_sats:141,print_sats:180,operator_sats:124,total_sats:946,total_toman:94600,total_rial:946000,budget_toman:null,remainder_toman:0},
-        {principal_sats:1000,btc:'0.00001000',network_sats:141,print_sats:180,operator_sats:199,total_sats:1520,total_toman:152000,total_rial:1520000,budget_toman:200000,remainder_toman:48000}]});
+  assumptions:{exchange_fee_percent:'0.5',operator_fee_percent:'15',materials_usd:'0.11',post_usd:'0.75',tag_usd:'0.12',seal_usd:'0.03',paper_usd:'0.01',print_usd:'0.01',envelope_usd:'0.06',transaction_vbytes:141,network_fee_rate:'1'},
+  costs:{network_sats:141,materials_sats:110,post_sats:750,tag_sats:0},
+  rows:[{principal_sats:501,btc:'0.00000501',network_sats:141,materials_sats:110,post_sats:750,tag_sats:0,operator_sats:226,total_sats:1728,total_toman:172800,total_rial:1728000,budget_toman:null,remainder_toman:0},
+        {principal_sats:738,btc:'0.00000738',network_sats:141,materials_sats:110,post_sats:750,tag_sats:0,operator_sats:261,total_sats:2000,total_toman:200000,total_rial:2000000,budget_toman:200000,remainder_toman:0}]});
 const load=()=>{
   // A reload gets a new DOM, not another set of listeners on the previous page.
   for(const name of names) ids[name]=new Element();

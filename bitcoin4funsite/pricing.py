@@ -50,14 +50,15 @@ def _ceil(value: Decimal) -> int:
     return int(value.to_integral_value(rounding=ROUND_CEILING))
 
 
-def _quote_row(principal: int, network: int, printing: int,
+def _quote_row(principal: int, network: int, materials: int, post: int,
                satoshi_toman: Decimal, budget: int | None = None, tag: int = 0) -> dict:
-    operator = _ceil(Decimal("0.15") * (principal + network + printing + tag))
-    total_sats = principal + network + printing + tag + operator
+    operator = _ceil(Decimal("0.15") * (principal + network + materials + post + tag))
+    total_sats = principal + network + materials + post + tag + operator
     total_toman = _ceil(total_sats * satoshi_toman)
     return {
         "principal_sats": principal, "btc": sats_to_btc(principal),
-        "network_sats": network, "print_sats": printing, "tag_sats": tag,
+        "network_sats": network, "materials_sats": materials, "post_sats": post,
+        "tag_sats": tag,
         "operator_sats": operator, "total_sats": total_sats,
         "total_toman": total_toman, "total_rial": total_toman * 10,
         "budget_toman": budget,
@@ -98,8 +99,10 @@ def _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag=False):
         adjusted_usdt = raw_usdt * Decimal("1.005")
         satoshi_toman = adjusted_btc / SATOSHIS_PER_BTC
         network_sats = _ceil(rate * 141)
-        # Combined per-envelope charge: $0.15 printing + one $0.03 wax seal.
-        print_sats = _ceil(Decimal("0.18") * adjusted_usdt / satoshi_toman)
+        # Per-envelope materials: $0.03 wax seal + $0.01 paper + $0.01 print
+        # + $0.06 envelope = $0.11. Postage is a separate $0.75 per envelope.
+        materials_sats = _ceil(Decimal("0.11") * adjusted_usdt / satoshi_toman)
+        post_sats = _ceil(Decimal("0.75") * adjusted_usdt / satoshi_toman)
         tag_sats = _ceil(Decimal("0.12") * adjusted_usdt / satoshi_toman) if include_tag else 0
         metadata = {
             "rates": {
@@ -109,13 +112,17 @@ def _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag=False):
             },
             "assumptions": {
                 "exchange_fee_percent": "0.5", "operator_fee_percent": "15",
-                "print_usd": "0.18", "tag_usd": "0.12", "include_tag": include_tag,
+                "materials_usd": "0.11", "post_usd": "0.75",
+                "tag_usd": "0.12", "include_tag": include_tag,
                 "transaction_vbytes": 141,
                 "network_fee_rate": _decimal_text(rate),
+                "seal_usd": "0.03", "paper_usd": "0.01",
+                "print_usd": "0.01", "envelope_usd": "0.06",
             },
-            "costs": {"network_sats": network_sats, "print_sats": print_sats, "tag_sats": tag_sats},
+            "costs": {"network_sats": network_sats, "materials_sats": materials_sats,
+                      "post_sats": post_sats, "tag_sats": tag_sats},
         }
-    return satoshi_toman, network_sats, print_sats, tag_sats, metadata
+    return satoshi_toman, network_sats, materials_sats, post_sats, tag_sats, metadata
 
 
 def _unsigned_integer(value, name: str, minimum: int, maximum: int) -> int:
@@ -152,9 +159,10 @@ def quote_for_principal(btc_toman, usdt_toman, fee_rate, principal_sats, *, incl
     digits, at most 64 characters, in [501, MAX_SATOSHIS]. Otherwise ValueError.
     """
     principal = _unsigned_integer(principal_sats, "principal_sats", 501, MAX_SATOSHIS)
-    satoshi_toman, network, printing, tag, metadata = _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag)
+    satoshi_toman, network, materials, post, tag, metadata = _pricing_inputs(
+        btc_toman, usdt_toman, fee_rate, include_tag)
     with localcontext(Context(prec=128)):
-        row = _quote_row(principal, network, printing, satoshi_toman, tag=tag)
+        row = _quote_row(principal, network, materials, post, satoshi_toman, tag=tag)
     return {**row, **metadata}
 
 
@@ -167,9 +175,10 @@ def quote_for_budget(btc_toman, usdt_toman, fee_rate, budget_toman, *, include_t
     Successful rows include rates/assumptions/costs and the unspent remainder.
     """
     budget = _unsigned_integer(budget_toman, "budget_toman", 0, 10**64 - 1)
-    satoshi_toman, network, printing, tag, metadata = _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag)
+    satoshi_toman, network, materials, post, tag, metadata = _pricing_inputs(
+        btc_toman, usdt_toman, fee_rate, include_tag)
     with localcontext(Context(prec=128)):
-        minimum = _quote_row(501, network, printing, satoshi_toman, tag=tag)
+        minimum = _quote_row(501, network, materials, post, satoshi_toman, tag=tag)
         if minimum["total_toman"] > budget:
             raise ValueError(
                 f"budget_toman insufficient for minimum 501-satoshi package; "
@@ -178,12 +187,12 @@ def quote_for_budget(btc_toman, usdt_toman, fee_rate, budget_toman, *, include_t
         low, high = 501, MAX_SATOSHIS
         while low < high:
             middle = (low + high + 1) // 2
-            candidate = _quote_row(middle, network, printing, satoshi_toman, tag=tag)
+            candidate = _quote_row(middle, network, materials, post, satoshi_toman, tag=tag)
             if candidate["total_toman"] <= budget:
                 low = middle
             else:
                 high = middle - 1
-        row = _quote_row(low, network, printing, satoshi_toman, budget, tag=tag)
+        row = _quote_row(low, network, materials, post, satoshi_toman, budget, tag=tag)
     return {**row, **metadata}
 
 
@@ -194,18 +203,23 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
     Raw prices are positive and <= 1e15 toman; fee is positive and <= 10,000
     sat/vbyte. Rates have at most 18 decimal places (minimum positive 1e-18).
     Malformed/out-of-bounds inputs raise ValueError. include_tag must be bool;
-    it defaults to False. Tag cost uses the same USD/USDT assumption as print
-    and is included in the operator subtotal, not the envelope principal.
+    it defaults to False. Tag cost uses the same USD/USDT assumption as the
+    envelope materials and postage, and is included in the operator subtotal,
+    not the envelope principal.
 
     Both raw prices are multiplied by 1.005 before costing. Every following
     ceiling is explicit (no intermediate currency rounding):
       network_sats = ceil(fee_rate * 141)
-      print_sats = ceil(0.18 * adjusted_usdt / adjusted_satoshi_toman)
+      materials_sats = ceil(0.11 * adjusted_usdt / adjusted_satoshi_toman)
+      post_sats = ceil(0.75 * adjusted_usdt / adjusted_satoshi_toman)
       tag_sats = ceil(0.12 * adjusted_usdt / adjusted_satoshi_toman) if include_tag else 0
-      operator_sats = ceil(0.15 * (principal + network_sats + print_sats + tag_sats))
-      total_toman = ceil((principal + network_sats + print_sats + tag_sats + operator_sats)
-                         * adjusted_satoshi_toman)
+      operator_sats = ceil(0.15 * (principal + network_sats + materials_sats
+                                   + post_sats + tag_sats))
+      total_toman = ceil((principal + network_sats + materials_sats + post_sats
+                          + tag_sats + operator_sats) * adjusted_satoshi_toman)
       total_rial = total_toman * 10
+    The 0.11 USD materials charge is the sum of a 0.03 wax seal, 0.01 paper,
+    0.01 print and 0.06 envelope; postage is a separate 0.75 USD per envelope.
     The 141 vB estimate assumes one P2WPKH input and two P2WPKH outputs.
     A first 501-satoshi quote is always shown, even above 3,000,000 toman.
     Budget rows begin at the next strictly greater 100,000-toman multiple;
@@ -213,19 +227,22 @@ def quote_table(btc_toman, usdt_toman, fee_rate, *, include_tag=False) -> dict:
     ceiling. Remainder is budget minus actual rounded cost (zero without a
     budget); it is never hidden by pretending the whole budget was spent.
     """
-    satoshi_toman, network_sats, print_sats, tag, metadata = _pricing_inputs(btc_toman, usdt_toman, fee_rate, include_tag)
+    satoshi_toman, network_sats, materials_sats, post_sats, tag, metadata = _pricing_inputs(
+        btc_toman, usdt_toman, fee_rate, include_tag)
     with localcontext(Context(prec=128)):
-        first = _quote_row(501, network_sats, print_sats, satoshi_toman, tag=tag)
+        first = _quote_row(501, network_sats, materials_sats, post_sats, satoshi_toman, tag=tag)
         rows = [first]
         first_budget = (first["total_toman"] // 100_000 + 1) * 100_000
         for budget in range(first_budget, 3_000_001, 100_000):
             low, high = 501, MAX_SATOSHIS
             while low < high:
                 middle = (low + high + 1) // 2
-                candidate = _quote_row(middle, network_sats, print_sats, satoshi_toman, tag=tag)
+                candidate = _quote_row(middle, network_sats, materials_sats, post_sats,
+                                       satoshi_toman, tag=tag)
                 if candidate["total_toman"] <= budget:
                     low = middle
                 else:
                     high = middle - 1
-            rows.append(_quote_row(low, network_sats, print_sats, satoshi_toman, budget, tag=tag))
+            rows.append(_quote_row(low, network_sats, materials_sats, post_sats,
+                                   satoshi_toman, budget, tag=tag))
         return {**metadata, "rows": rows}
