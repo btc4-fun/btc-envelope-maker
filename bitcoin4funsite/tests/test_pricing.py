@@ -90,23 +90,25 @@ class QuoteTableTests(unittest.TestCase):
         from pricing import quote_for_budget, quote_for_principal, quote_table
 
         inputs = ("10000000000", "100000", "1.1")
-        # 11 cents -> 110 sats; 75 cents postage -> 750 sats.
-        # ceil(15% * (501 + 156 + 110 + 750)) = 228.
-        # ceil((501 + 156 + 110 + 750 + 228) * 100.5) = 175373 toman.
+        # 5 cents materials -> 50 sats; 6 cents envelope -> 60 sats; 75 cents postage -> 750 sats.
+        # ceil(15% * (501 + 156 + 50 + 60 + 750)) = 228.
+        # ceil((501 + 156 + 50 + 60 + 750 + 228) * 100.5) = 175373 toman.
         for include_tag in (False, True):
             row = quote_for_principal(*inputs, 501, include_tag=include_tag)
-            self.assertEqual(row["materials_sats"], 110)
+            self.assertEqual(row["materials_sats"], 50)
+            self.assertEqual(row["envelope_sats"], 60)
             self.assertEqual(row["post_sats"], 750)
-            self.assertEqual(row["costs"]["materials_sats"], 110)
+            self.assertEqual(row["costs"]["materials_sats"], 50)
+            self.assertEqual(row["costs"]["envelope_sats"], 60)
             self.assertEqual(row["costs"]["post_sats"], 750)
-            self.assertEqual(row["assumptions"]["materials_usd"], "0.11")
+            self.assertEqual(row["assumptions"]["materials_usd"], "0.05")
             self.assertEqual(row["assumptions"]["post_usd"], "0.75")
             self.assertEqual(
                 (row["assumptions"]["seal_usd"], row["assumptions"]["paper_usd"],
                  row["assumptions"]["print_usd"], row["assumptions"]["envelope_usd"]),
                 ("0.03", "0.01", "0.01", "0.06"))
             table = quote_table(*inputs, include_tag=include_tag)["rows"][0]
-            self.assertEqual((table["materials_sats"], table["post_sats"]), (110, 750))
+            self.assertEqual((table["materials_sats"], table["envelope_sats"], table["post_sats"]), (50, 60, 750))
         row = quote_for_principal(*inputs, 501)
         self.assertEqual((row["operator_sats"], row["total_sats"], row["total_toman"]),
                          (228, 1745, 175373))
@@ -131,7 +133,7 @@ class QuoteTableTests(unittest.TestCase):
                 for row in table["rows"]:
                     self.assertEqual(row["tag_sats"], tag)
                     subtotal = (row["principal_sats"] + row["network_sats"] + row["materials_sats"]
-                                + row["post_sats"] + tag)
+                                + row["envelope_sats"] + row["post_sats"] + tag)
                     self.assertEqual(row["operator_sats"], ceiling(Fraction(15, 100) * subtotal))
                     self.assertEqual(row["total_toman"], ceiling(ceiling(Fraction(23, 20) * subtotal) * sat))
                     custom = (quote_for_principal(*inputs, 501, include_tag=include_tag)
@@ -142,7 +144,8 @@ class QuoteTableTests(unittest.TestCase):
                         # Independent algebraic inverse, not another binary search.
                         limit = Fraction(row["budget_toman"]) // sat
                         self.assertEqual(row["principal_sats"], 20 * limit // 23 - row["network_sats"]
-                                         - row["materials_sats"] - row["post_sats"] - tag)
+                                         - row["materials_sats"] - row["envelope_sats"]
+                                         - row["post_sats"] - tag)
         self.assertEqual(quote_table(*inputs), quote_table(*inputs, include_tag=False))
 
     def test_tag_option_requires_boolean_and_ignores_hostile_decimal_context(self):
@@ -173,16 +176,16 @@ class QuoteTableTests(unittest.TestCase):
         })
         self.assertEqual(quote["assumptions"], {
             "exchange_fee_percent": "0.5", "operator_fee_percent": "15",
-            "materials_usd": "0.11", "post_usd": "0.75",
+            "materials_usd": "0.05", "post_usd": "0.75",
             "tag_usd": "0.12", "include_tag": False, "in_person": False, "transaction_vbytes": 141,
             "network_fee_rate": "1.1",
             "seal_usd": "0.03", "paper_usd": "0.01", "print_usd": "0.01", "envelope_usd": "0.06",
         })
-        self.assertEqual(quote["costs"], {"network_sats": 156, "materials_sats": 110,
-                                          "post_sats": 750, "tag_sats": 0})
+        self.assertEqual(quote["costs"], {"network_sats": 156, "materials_sats": 50,
+                                          "envelope_sats": 60, "post_sats": 750, "tag_sats": 0})
         self.assertEqual(quote["rows"][0], {
             "principal_sats": 501, "btc": "0.00000501", "network_sats": 156,
-            "materials_sats": 110, "post_sats": 750, "tag_sats": 0,
+            "materials_sats": 50, "envelope_sats": 60, "post_sats": 750, "tag_sats": 0,
             "operator_sats": 228, "operator_toman": 22914, "total_sats": 1745,
             "total_toman": 175373, "total_rial": 1753730,
             "budget_toman": None, "remainder_toman": 0,
@@ -252,8 +255,8 @@ class QuoteTableTests(unittest.TestCase):
         from pricing import quote_table
 
         # Chosen so the 501-satoshi row costs exactly 100,000 toman with the
-        # 11-cent materials and 75-cent postage model.
-        quote = quote_table("17155601303.825699", "1", "0.001")
+        # 5-cent materials, 6-cent envelope and 75-cent postage model.
+        quote = quote_table("17125902330.00231201993474966", "1", "0.001")
         self.assertEqual(quote["rows"][0]["total_toman"], 100000)
         self.assertEqual(quote["rows"][1]["budget_toman"], 200000)
         self.assertEqual(quote["rows"][-1]["budget_toman"], 3000000)
@@ -287,16 +290,17 @@ class QuoteTableTests(unittest.TestCase):
                 adjusted_usdt = Fraction(usdt) * Fraction(1005, 1000)
                 sat_price = adjusted_btc / 100000000
                 network = ceiling(Fraction(fee) * 141)
-                materials = ceiling(Fraction(11, 100) * adjusted_usdt / sat_price)
+                materials = ceiling(Fraction(5, 100) * adjusted_usdt / sat_price)
+                envelope = ceiling(Fraction(6, 100) * adjusted_usdt / sat_price)
                 post = ceiling(Fraction(75, 100) * adjusted_usdt / sat_price)
-                self.assertEqual(quote["costs"], {"network_sats": network, "materials_sats": materials,
+                self.assertEqual(quote["costs"], {"network_sats": network, "materials_sats": materials, "envelope_sats": envelope,
                                                   "post_sats": post, "tag_sats": 0})
                 self.assertEqual(Fraction(quote["rates"]["btc_toman"]), adjusted_btc)
                 self.assertEqual(Fraction(quote["rates"]["usdt_toman"]), adjusted_usdt)
                 for row in quote["rows"]:
                     principal = row["principal_sats"]
                     self.assertEqual(btc_to_sats(row["btc"]), principal)
-                    subtotal = principal + network + materials + post
+                    subtotal = principal + network + materials + envelope + post
                     operator = ceiling(Fraction(15, 100) * subtotal)
                     self.assertEqual(row["operator_sats"], operator)
                     self.assertEqual(row["total_sats"], subtotal + operator)
@@ -324,16 +328,17 @@ class CustomQuoteTests(unittest.TestCase):
             fee = decimal_rate(10000, rng.choice((0, 8, 18)))
             sat_price = Fraction(btc) * Fraction(201, 200) / 100000000
             network = ceiling(Fraction(fee) * 141)
-            materials = ceiling(Fraction(11, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
+            materials = ceiling(Fraction(5, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
+            envelope = ceiling(Fraction(6, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
             post = ceiling(Fraction(75, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
             principal = rng.choice((501, rng.randint(501, MAX_SATOSHIS), MAX_SATOSHIS))
-            subtotal = principal + network + materials + post
+            subtotal = principal + network + materials + envelope + post
             budget = ceiling(ceiling(Fraction(23, 20) * subtotal) * sat_price) + rng.choice((-1, 0, 1))
             # Algebraically invert the two integer ceilings, independently of
             # production's binary search: total_sats <= floor(budget/sat_price).
             total_sats_limit = Fraction(budget) // sat_price
             subtotal_limit = 20 * total_sats_limit // 23
-            expected_principal = min(MAX_SATOSHIS, subtotal_limit - network - materials - post)
+            expected_principal = min(MAX_SATOSHIS, subtotal_limit - network - materials - envelope - post)
             with self.subTest(case=case, budget=budget):
                 if expected_principal < 501:
                     with self.assertRaisesRegex(ValueError, "insufficient"):
@@ -341,7 +346,7 @@ class CustomQuoteTests(unittest.TestCase):
                     continue
                 row = quote_for_budget(btc, usdt, fee, budget)
                 self.assertEqual(row["principal_sats"], expected_principal)
-                actual_subtotal = expected_principal + network + materials + post
+                actual_subtotal = expected_principal + network + materials + envelope + post
                 expected_total = ceiling(ceiling(Fraction(23, 20) * actual_subtotal) * sat_price)
                 self.assertEqual(row["total_toman"], expected_total)
                 self.assertEqual(row["remainder_toman"], budget - expected_total)
@@ -462,13 +467,15 @@ class CustomQuoteTests(unittest.TestCase):
                 btc, usdt = Fraction(inputs["btc_toman"]), Fraction(inputs["usdt_toman"])
                 sat_price = btc * Fraction(201, 200) / 100000000
                 network = ceiling(Fraction(inputs["fee_rate"]) * 141)
-                materials = ceiling(Fraction(11, 100) * usdt * Fraction(201, 200) / sat_price)
-                post = ceiling(Fraction(75, 100) * usdt * Fraction(201, 200) / sat_price)
+                materials = ceiling(Fraction(5, 100) * usdt * Fraction(201, 200) / sat_price)
+                hand = inputs.get("in_person", False)
+                envelope = 0 if hand else ceiling(Fraction(6, 100) * usdt * Fraction(201, 200) / sat_price)
+                post = 0 if hand else ceiling(Fraction(75, 100) * usdt * Fraction(201, 200) / sat_price)
                 tag = (ceiling(Fraction(12, 100) * usdt * Fraction(201, 200) / sat_price)
                        if inputs.get("include_tag", False) else 0)
 
                 def cost(principal):
-                    return ceiling(ceiling(Fraction(23, 20) * (principal + network + materials + post + tag)) * sat_price)
+                    return ceiling(ceiling(Fraction(23, 20) * (principal + network + materials + envelope + post + tag)) * sat_price)
 
                 budget = int(inputs["budget_toman"]) if case["mode"] == "budget" else None
                 if "expected_error" in case:
@@ -476,14 +483,25 @@ class CustomQuoteTests(unittest.TestCase):
                     self.assertEqual(int(case["expected_error"]["minimum_total_toman"]), cost(501))
                     continue
                 expected = case["expected"]
-                principal = (int(inputs["principal_sats"]) if budget is None else
-                             min(supply, 20 * (Fraction(budget) // sat_price) // 23 - network - materials - post - tag))
+                if budget is None:
+                    principal = int(inputs["principal_sats"])
+                else:
+                    # Independent exact inverse: binary search on this oracle's own cost
+                    # function, so no closed-form approximation can drift from the model.
+                    low, high = 501, supply
+                    while low < high:
+                        middle = (low + high + 1) // 2
+                        if cost(middle) <= budget:
+                            low = middle
+                        else:
+                            high = middle - 1
+                    principal = low
                 self.assertGreaterEqual(principal, 501)
                 self.assertEqual(int(expected["principal_sats"]), principal)
                 self.assertEqual(expected["btc"], f"{principal // 100000000}.{principal % 100000000:08d}")
-                subtotal = principal + network + materials + post + tag
+                subtotal = principal + network + materials + envelope + post + tag
                 operator = ceiling(Fraction(15, 100) * subtotal)
-                values = {"network_sats": network, "materials_sats": materials, "post_sats": post,
+                values = {"network_sats": network, "materials_sats": materials, "envelope_sats": envelope, "post_sats": post,
                           "tag_sats": tag,
                           "operator_sats": operator, "total_sats": subtotal + operator,
                           "total_toman": cost(principal), "total_rial": cost(principal) * 10,
@@ -492,9 +510,9 @@ class CustomQuoteTests(unittest.TestCase):
                     self.assertEqual(expected[key], str(value), key)
                 self.assertEqual(expected["budget_toman"], None if budget is None else str(budget))
                 self.assertEqual(expected["costs"], {key: str(value) for key, value in
-                                                  (("network_sats", network), ("materials_sats", materials),
+                                                  (("network_sats", network), ("materials_sats", materials), ("envelope_sats", envelope),
                                                    ("post_sats", post), ("tag_sats", tag))})
-                self.assertEqual(expected["assumptions"]["materials_usd"], "0.11")
+                self.assertEqual(expected["assumptions"]["materials_usd"], "0.05")
                 self.assertEqual(expected["assumptions"]["post_usd"], "0.75")
                 self.assertEqual(expected["assumptions"]["seal_usd"], "0.03")
                 self.assertEqual(expected["assumptions"]["paper_usd"], "0.01")
@@ -586,11 +604,12 @@ class CustomQuoteTests(unittest.TestCase):
                 ceiling = lambda x: -(-x.numerator // x.denominator)
                 sat_price = Fraction(btc) * Fraction(201, 200) / 100000000
                 network = ceiling(Fraction(fee) * 141)
-                materials = ceiling(Fraction(11, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
+                materials = ceiling(Fraction(5, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
+                envelope = ceiling(Fraction(6, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
                 post = ceiling(Fraction(75, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
 
                 def cost(principal):
-                    subtotal = principal + network + materials + post
+                    subtotal = principal + network + materials + envelope + post
                     return ceiling((subtotal + ceiling(Fraction(3, 20) * subtotal)) * sat_price)
 
                 self.assertGreaterEqual(row["principal_sats"], 501)
@@ -645,17 +664,18 @@ class CustomQuoteTests(unittest.TestCase):
                 ceiling = lambda x: -(-x.numerator // x.denominator)
                 sat_price = Fraction(btc) * Fraction(201, 200) / 100000000
                 network = ceiling(Fraction(fee) * 141)
-                materials = ceiling(Fraction(11, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
+                materials = ceiling(Fraction(5, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
+                envelope = ceiling(Fraction(6, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
                 post = ceiling(Fraction(75, 100) * Fraction(usdt) * Fraction(201, 200) / sat_price)
-                operator = ceiling(Fraction(3, 20) * (principal + network + materials + post))
-                total = principal + network + materials + post + operator
+                operator = ceiling(Fraction(3, 20) * (principal + network + materials + envelope + post))
+                total = principal + network + materials + envelope + post + operator
                 self.assertEqual({key: row[key] for key in (
-                    "principal_sats", "network_sats", "materials_sats", "post_sats",
+                    "principal_sats", "network_sats", "materials_sats", "envelope_sats", "post_sats",
                     "operator_sats", "total_sats",
                     "total_toman", "total_rial", "budget_toman", "remainder_toman",
                 )}, {
                     "principal_sats": principal, "network_sats": network,
-                    "materials_sats": materials, "post_sats": post,
+                    "materials_sats": materials, "envelope_sats": envelope, "post_sats": post,
                     "operator_sats": operator, "total_sats": total,
                     "total_toman": ceiling(total * sat_price),
                     "total_rial": ceiling(total * sat_price) * 10,

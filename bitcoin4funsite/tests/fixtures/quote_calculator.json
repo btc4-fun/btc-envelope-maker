@@ -25,7 +25,8 @@
     "principal_sats": "3000",
     "btc": "0.00003000",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "603",
@@ -43,7 +44,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -52,12 +54,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -77,14 +79,15 @@
     "principal_sats": "3000",
     "btc": "0.00003000",
     "network_sats": "175",
-    "materials_sats": "89",
+    "materials_sats": "41",
+    "envelope_sats": "49",
     "post_sats": "601",
     "tag_sats": "0",
     "operator_sats": "580",
     "operator_toman": "71963",
-    "total_sats": "4445",
-    "total_toman": "551510",
-    "total_rial": "5515100",
+    "total_sats": "4446",
+    "total_toman": "551634",
+    "total_rial": "5516340",
     "budget_toman": null,
     "remainder_toman": "0",
     "rates": {
@@ -95,7 +98,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -104,12 +108,12 @@
      "network_fee_rate": "1.23456789",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "175",
-     "materials_sats": "89",
+     "materials_sats": "41",
+     "envelope_sats": "49",
      "post_sats": "601",
      "tag_sats": "0"
     }
@@ -130,13 +134,14 @@
     "btc": "0.00003000",
     "network_sats": "1410000",
     "materials_sats": "1",
+    "envelope_sats": "1",
     "post_sats": "1",
     "tag_sats": "0",
     "operator_sats": "211951",
     "operator_toman": "2130107550000",
-    "total_sats": "1624953",
-    "total_toman": "16330777650000",
-    "total_rial": "163307776500000",
+    "total_sats": "1624954",
+    "total_toman": "16330787700000",
+    "total_rial": "163307877000000",
     "budget_toman": null,
     "remainder_toman": "0",
     "rates": {
@@ -147,7 +152,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -156,12 +162,12 @@
      "network_fee_rate": "9999.999999999999999999",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "1410000",
      "materials_sats": "1",
+     "envelope_sats": "1",
      "post_sats": "1",
      "tag_sats": "0"
     }
@@ -181,7 +187,8 @@
     "principal_sats": "2100000000000000",
     "btc": "21000000.00000000",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "315000000000153",
@@ -199,7 +206,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -208,12 +216,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -233,7 +241,8 @@
     "principal_sats": "3000",
     "btc": "0.00003000",
     "network_sats": "1",
-    "materials_sats": "11000000000000000000000000000000000000000",
+    "materials_sats": "5000000000000000000000000000000000000000",
+    "envelope_sats": "6000000000000000000000000000000000000000",
     "post_sats": "75000000000000000000000000000000000000000",
     "tag_sats": "0",
     "operator_sats": "12900000000000000000000000000000000000451",
@@ -251,7 +260,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -260,12 +270,12 @@
      "network_fee_rate": "0.000000000000000001",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "1",
-     "materials_sats": "11000000000000000000000000000000000000000",
+     "materials_sats": "5000000000000000000000000000000000000000",
+     "envelope_sats": "6000000000000000000000000000000000000000",
      "post_sats": "75000000000000000000000000000000000000000",
      "tag_sats": "0"
     }
@@ -315,7 +325,8 @@
     "principal_sats": "501",
     "btc": "0.00000501",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "228",
@@ -333,7 +344,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -342,12 +354,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -368,7 +380,8 @@
     "principal_sats": "714",
     "btc": "0.00000714",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "260",
@@ -386,7 +399,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -395,12 +409,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -421,7 +435,8 @@
     "principal_sats": "3000",
     "btc": "0.00003000",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "603",
@@ -439,7 +454,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -448,12 +464,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -474,7 +490,8 @@
     "principal_sats": "2999",
     "btc": "0.00002999",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "603",
@@ -492,7 +509,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -501,12 +519,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -527,7 +545,8 @@
     "principal_sats": "431603",
     "btc": "0.00431603",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "64893",
@@ -545,7 +564,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -554,12 +574,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -577,10 +597,11 @@
     "budget_toman": "50000001"
    },
    "expected": {
-    "principal_sats": "349556",
-    "btc": "0.00349556",
+    "principal_sats": "349555",
+    "btc": "0.00349555",
     "network_sats": "175",
-    "materials_sats": "89",
+    "materials_sats": "41",
+    "envelope_sats": "49",
     "post_sats": "601",
     "tag_sats": "0",
     "operator_sats": "52564",
@@ -598,7 +619,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -607,17 +629,17 @@
      "network_fee_rate": "1.23456789",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "175",
-     "materials_sats": "89",
+     "materials_sats": "41",
+     "envelope_sats": "49",
      "post_sats": "601",
      "tag_sats": "0"
     }
    },
-   "raw_asset_toman": "43155061.3396111105818968",
+   "raw_asset_toman": "43154937.882822099347329",
    "next_principal_total_toman": "50000115"
   },
   {
@@ -633,7 +655,8 @@
     "principal_sats": "2100000000000000",
     "btc": "21000000.00000000",
     "network_sats": "1",
-    "materials_sats": "11000000",
+    "materials_sats": "5000000",
+    "envelope_sats": "6000000",
     "post_sats": "75000000",
     "tag_sats": "0",
     "operator_sats": "315000012900001",
@@ -651,7 +674,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -660,12 +684,12 @@
      "network_fee_rate": "0.000000000000000001",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "1",
-     "materials_sats": "11000000",
+     "materials_sats": "5000000",
+     "envelope_sats": "6000000",
      "post_sats": "75000000",
      "tag_sats": "0"
     }
@@ -685,7 +709,8 @@
     "principal_sats": "2100000000000000",
     "btc": "21000000.00000000",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "315000000000153",
@@ -703,7 +728,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -712,12 +738,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -737,7 +763,8 @@
     "principal_sats": "2099999999999999",
     "btc": "20999999.99999999",
     "network_sats": "156",
-    "materials_sats": "110",
+    "materials_sats": "50",
+    "envelope_sats": "60",
     "post_sats": "750",
     "tag_sats": "0",
     "operator_sats": "315000000000153",
@@ -755,7 +782,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -764,12 +792,12 @@
      "network_fee_rate": "1.1",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "156",
-     "materials_sats": "110",
+     "materials_sats": "50",
+     "envelope_sats": "60",
      "post_sats": "750",
      "tag_sats": "0"
     }
@@ -791,15 +819,16 @@
     "btc": "21000000.00000000",
     "network_sats": "1410000",
     "materials_sats": "1",
+    "envelope_sats": "1",
     "post_sats": "1",
     "tag_sats": "0",
     "operator_sats": "315000000211501",
     "operator_toman": "3165750002125585050000",
-    "total_sats": "2415000001621503",
-    "total_toman": "24270750016296105150000",
-    "total_rial": "242707500162961051500000",
+    "total_sats": "2415000001621504",
+    "total_toman": "24270750016296115200000",
+    "total_rial": "242707500162961152000000",
     "budget_toman": "9999999999999999999999999999999999999999999999999999999999999999",
-    "remainder_toman": "9999999999999999999999999999999999999999975729249983703894849999",
+    "remainder_toman": "9999999999999999999999999999999999999999975729249983703884799999",
     "rates": {
      "btc_toman": "1004999999999999.999999999999999998995",
      "usdt_toman": "0.000000000000000001005",
@@ -808,7 +837,8 @@
     "assumptions": {
      "exchange_fee_percent": "0.5",
      "operator_fee_percent": "15",
-     "materials_usd": "0.11",
+     "materials_usd": "0.05",
+     "envelope_usd": "0.06",
      "post_usd": "0.75",
      "tag_usd": "0.12",
      "include_tag": false,
@@ -817,12 +847,12 @@
      "network_fee_rate": "9999.999999999999999999",
      "seal_usd": "0.03",
      "paper_usd": "0.01",
-     "print_usd": "0.01",
-     "envelope_usd": "0.06"
+     "print_usd": "0.01"
     },
     "costs": {
      "network_sats": "1410000",
      "materials_sats": "1",
+     "envelope_sats": "1",
      "post_sats": "1",
      "tag_sats": "0"
     }

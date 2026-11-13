@@ -166,15 +166,16 @@
   function quote(principal) {
     const network = BigInt(snapshot.costs.network_sats);
     const materials = BigInt(snapshot.costs.materials_sats);
+    const envelope = BigInt(snapshot.costs.envelope_sats ?? 0);
     const post = BigInt(snapshot.costs.post_sats);
     const tagCost = BigInt(snapshot.costs.tag_sats ?? 0);
-    const operator = ceilDivide((principal + network + materials + post + tagCost) * 15n, 100n);
-    const total = principal + network + materials + post + tagCost + operator;
+    const operator = ceilDivide((principal + network + materials + envelope + post + tagCost) * 15n, 100n);
+    const total = principal + network + materials + envelope + post + tagCost + operator;
     const rate = rational(snapshot.rates.satoshi_toman);
     const toman = ceilDivide(total * rate.numerator, rate.denominator);
     // The operator's income in toman: the same 15% fee converted once, never 15% of total-toman.
     const operatorToman = ceilDivide(operator * rate.numerator, rate.denominator);
-    return { principal, network, materials, post, "tag-cost-result": tagCost, operator, "operator-toman": operatorToman,
+    return { principal, network, materials, envelope, post, "tag-cost-result": tagCost, operator, "operator-toman": operatorToman,
       "total-sats": total, "total-toman": toman, "total-rial": toman * 10n };
   }
 
@@ -230,7 +231,7 @@
 
   function clearResult() {
     result.hidden = true;
-    for (const name of ["principal", "btc", "network", "materials", "post", "tag-cost-result", "operator", "operator-toman", "total-sats", "total-toman",
+    for (const name of ["principal", "btc", "network", "materials", "envelope", "post", "tag-cost-result", "operator", "operator-toman", "total-sats", "total-toman",
       "total-rial", "budget", "remainder", "result-warning", "result-fetched-at"]) {
       document.getElementById("quote-" + name).textContent = "";
     }
@@ -283,7 +284,7 @@
         !market.rates || ![market.rates.btc_toman, market.rates.usdt_toman, market.rates.satoshi_toman].every(positiveDecimal) ||
         market.assumptions?.exchange_fee_percent !== "0.5" ||
         market.assumptions?.operator_fee_percent !== "15" ||
-        market.assumptions?.materials_usd !== "0.11" || market.assumptions?.post_usd !== "0.75" ||
+        market.assumptions?.materials_usd !== "0.05" || market.assumptions?.envelope_usd !== "0.06" || market.assumptions?.post_usd !== "0.75" ||
         market.assumptions?.transaction_vbytes !== 141 ||
         !positiveDecimal(market.assumptions?.network_fee_rate) ||
         !integer(market.costs?.network_sats) || !integer(market.costs?.materials_sats) ||
@@ -291,16 +292,17 @@
         !integer(market.costs?.tag_sats ?? 0) ||
         !Array.isArray(market.rows) || market.rows.length < 1 || market.rows.length > 31) return false;
     return market.rows.every((row, index) => {
-      if (!row || ![row.principal_sats, row.network_sats, row.materials_sats, row.post_sats, row.tag_sats ?? 0, row.operator_sats,
+      if (!row || ![row.principal_sats, row.network_sats, row.materials_sats, row.envelope_sats ?? 0, row.post_sats, row.tag_sats ?? 0, row.operator_sats,
           row.operator_toman, row.total_sats, row.total_toman, row.total_rial, row.remainder_toman].every(integer) ||
           row.principal_sats < 501 || row.principal_sats > 2100000000000000 || row.total_toman === 0 ||
           typeof row.btc !== "string" || !/^(?:0|[1-9][0-9]{0,7})\.[0-9]{8}$/.test(row.btc) ||
           row.network_sats !== market.costs.network_sats || row.materials_sats !== market.costs.materials_sats ||
+          (row.envelope_sats ?? 0) !== (market.costs.envelope_sats ?? 0) ||
           row.post_sats !== market.costs.post_sats ||
           (row.tag_sats ?? 0) !== (market.costs.tag_sats ?? 0)) return false;
       const [whole, fraction] = row.btc.split(".");
       if (BigInt(whole) * 100000000n + BigInt(fraction) !== BigInt(row.principal_sats) ||
-          BigInt(row.principal_sats) + BigInt(row.network_sats) + BigInt(row.materials_sats) + BigInt(row.post_sats) + BigInt(row.tag_sats ?? 0) + BigInt(row.operator_sats) !== BigInt(row.total_sats) ||
+          BigInt(row.principal_sats) + BigInt(row.network_sats) + BigInt(row.materials_sats) + BigInt(row.envelope_sats ?? 0) + BigInt(row.post_sats) + BigInt(row.tag_sats ?? 0) + BigInt(row.operator_sats) !== BigInt(row.total_sats) ||
           BigInt(row.total_toman) * 10n !== BigInt(row.total_rial)) return false;
       if (index === 0) return row.principal_sats === 501 && row.budget_toman === null && row.remainder_toman === 0;
       return integer(row.budget_toman) && row.budget_toman >= 100000 && row.budget_toman <= 3000000 &&
@@ -325,21 +327,24 @@
     const dollarCost = cents => ceilDivide(cents * usdt.numerator * sat.denominator,
       100n * usdt.denominator * sat.numerator);
     const network = ceilDivide(fee.numerator * 141n, fee.denominator);
-    // Hand delivery buys no envelope and ships nothing, so both charges are zero.
-    const materials = hand ? 0n : dollarCost(11n);
+    // Materials (seal, paper, print) are always spent on the card. Hand delivery
+    // drops only the two postal charges: the envelope and the postage.
+    const materials = dollarCost(5n);
+    const envelope = hand ? 0n : dollarCost(6n);
     const post = hand ? 0n : dollarCost(75n);
     const tagCost = withTag ? dollarCost(12n) : 0n;
     if (BigInt(choice.costs.network_sats) !== network || BigInt(choice.costs.materials_sats) !== materials ||
+        BigInt(choice.costs.envelope_sats ?? 0) !== envelope ||
         BigInt(choice.costs.post_sats) !== post ||
         BigInt(choice.costs.tag_sats) !== tagCost) return false;
     const cost = principal => {
-      const subtotal = principal + network + materials + post + tagCost;
+      const subtotal = principal + network + materials + envelope + post + tagCost;
       return ceilDivide(ceilDivide(subtotal * 115n, 100n) * sat.numerator, sat.denominator);
     };
     return choice.rows.every(row => {
       if (!integer(row.tag_sats)) return false;
       const principal = BigInt(row.principal_sats);
-      const subtotal = principal + network + materials + post + tagCost;
+      const subtotal = principal + network + materials + envelope + post + tagCost;
       return BigInt(row.operator_sats) === ceilDivide(subtotal * 15n, 100n) &&
         BigInt(row.operator_toman) === ceilDivide(BigInt(row.operator_sats) * sat.numerator, sat.denominator) &&
         BigInt(row.total_toman) === cost(principal) &&
@@ -368,7 +373,7 @@
     const breakdown = element("dl");
     for (const [label, value] of [
       ["اصل مبلغ؛ ساتوشی", row.principal_sats], ["شبکه؛ ساتوشی", row.network_sats],
-      ["مواد پاکت؛ ساتوشی", row.materials_sats], ["پست؛ ساتوشی", row.post_sats],
+      ["مواد پاکت؛ ساتوشی", row.materials_sats], ["پاکت؛ ساتوشی", row.envelope_sats ?? 0], ["پست؛ ساتوشی", row.post_sats],
       ["برچسب؛ ساتوشی", row.tag_sats ?? 0],
       ["گرداننده؛ ساتوشی", row.operator_sats],
       ["درآمد گرداننده؛ تومان", row.operator_toman],
